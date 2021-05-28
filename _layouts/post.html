@@ -79,13 +79,14 @@ layout: default
 
         <div class="post-tail-bottom
           d-flex justify-content-between align-items-center mt-3 pt-5 pb-2">
-          {% if site.data.rights.license %}
+          <!-- no need for license for now -->
+          <!-- {% if site.data.rights.license %}
           <div class="license-wrapper">
             This post is licensed under
             <a href="{{ site.data.rights.license.link }}">{{ site.data.rights.license.name }}</a>
             by the author.
           </div>
-          {% endif %}
+          {% endif %} -->
 
           {% include post-sharing.html %}
 
