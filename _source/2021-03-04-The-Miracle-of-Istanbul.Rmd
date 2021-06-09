@@ -15,29 +15,31 @@ tags: [soccer, 足球, football, visualization, r]
 ```{r include=FALSE, cache=FALSE}
 base_dir <- "~/github_Allanware/mysite/" # i.e. where the jekyll blog is on the hard drive.
 base_url <- "/" # keep as is
-fig_path <- "assets/blog_imgs/the-miracle-of-istanbul/" 
+fig_path <- "assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/" 
 knitr::opts_knit$set(base.dir = base_dir, base.url = base_url)
 knitr::opts_chunk$set(fig.path = fig_path,
                       cache.path = '../cache/',
                       message=FALSE, warning=FALSE,
                       cache = TRUE) 
+# credit: http://svmiller.com/blog/2019/08/two-helpful-rmarkdown-jekyll-tips/
+
+# src for adding html in md: https://jayrobwilliams.com/posts/2020/09/jekyll-html
 ```
+## Introduction
+On May 25th 2005, the 2005 UEFA Champions league final took place at the Atatürk Olympic Stadium in Istanbul. 65000 audiences at the stadium and hundreds of millions of fans worldwide were about to witness a soccer game that would be later called the **Miracle of Istanbul**. The full-of-talent team AC Milan first took the lead within the first minute by their captain Maldini. They further scored two more goals before half-time, making it a 3-0 lead. Rumor said that the Milan team opened bottles of champagnes in the locker room during the half-time break to celebrate their soon-to-be 2nd champions league title in three years. However, in the second half Liverpool launched a comeback and scored 3 goals in a dramatic six-minute spell to level the score at 3–3, and beat Milan 3-2 in the brutal penalty shoot-out stage. The English commentator said:"If this doesn't prove fate exists, then nothing will" at the end of the game. To be sure, this epic comeback defies any words that try to describe it, but I will try to use visualizations to do this job and more importantly, try to figure out how the comeback happened. 
 
 ```{r include=FALSE}
 library(ggplot2) 
 library(StatsBombR) # data source 
 library(soccermatics) # visualization tool for soccer data
 # Data for matches that are free, data for other matches are only accessible through API key
-Matches <- FreeMatches(FreeCompetitions())
 ```
-
-## Introduction
-On May 25th 2005, the 2005 UEFA Champions league final took place at the Atatürk Olympic Stadium in Istanbul. 65000 audiences at the stadium and hundreds of millions of fans worldwide were about to witness a soccer game that would be later called the **Miracle of Istanbul**. The full-of-talent team AC Milan first took the lead within the first minute by their captain Maldini. They further scored two more goals before half-time, making it a 3-0 lead. Rumor said that the Milan team opened bottles of champagnes in the locker room during the half-time break to celebrate their soon-to-be 2nd champions league title in three years. However, in the second half Liverpool launched a comeback and scored 3 goals in a dramatic six-minute spell to level the score at 3–3, and beat Milan 3-2 in the brutal penalty shoot-out stage. The English commentator said:"If this doesn't prove fate exists, then nothing will" at the end of the game. To be sure, this epic comeback defies any words that try to describe it, but I will try to use visualizations to do this job and more importantly, try to figure out how the comeback happened. 
 
 ### The underdog
 The Liverpool captain Steven Gerrard described his team as the underdog before the match, compared to the all-star Milan side, and he was right. According to data from the transfermarkt.co.uk,  
 ```{r}
 # get the data for the miracle of istanbul
+Matches <- FreeMatches(FreeCompetitions())
 istanbul <- get.matchFree(Matches[which(Matches$match_id == 2302764),])
 milanLineup <- istanbul[[24]][[1]]$player.name
 liverpoolLineup <- istanbul[[24]][[2]]$player.name
@@ -132,9 +134,7 @@ library(timevis)
 timevis(data, groups = timevisDataGroups)
 ```
 
-To view this graph, we need to scroll all the way back to 2005 (the timevis package is an interactive visualization package, you can scroll and zoom in/out). To make it convenient, I have included a screenshot of the timeline (after finished all the scrolling and the zooming) for reference. 
-
-![](/Users/allan/Downloads/timeline.png)
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/timeline.png)
 
 To summarize the timeline that we see above. In the first half, Milan scored immediately when the game began, and scored two more goals towards the end of the first half. On the other hand, Liverpool made a substitute because of injury. Before the start of the 2nd half, Liverpool was already 3-0 down and used one (out of total 3) substitution involuntarily. At the beginning of the 2nd half, Liverpool made yet another substitution. This substitution is due to the tactical consideration by the Liverpool manager, trying to turn things around, and it did. About 10 minutes later, Liverpool score their first goal, making it 3-1, and in this 6 minutes spell, they score three goals in total, levelling the score to 3-3. Both teams did not score in the later parts of the game, and Liverpool beat Milan 3-2 in Penalty shootout (the red X denotes penalty missing or being saved by the goalkeeper). 
 

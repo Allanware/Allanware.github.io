@@ -40,12 +40,8 @@ According to data from the transfermarkt.co.uk,
 
 ``` r
 # get the data for the miracle of istanbul
+Matches <- FreeMatches(FreeCompetitions())
 istanbul <- get.matchFree(Matches[which(Matches$match_id == 2302764),])
-```
-
-    ## [1] "Whilst we are keen to share data and facilitate research, we also urge you to be responsible with the data. Please register your details on https://www.statsbomb.com/resource-centre and read our User Agreement carefully."
-
-``` r
 milanLineup <- istanbul[[24]][[1]]$player.name
 liverpoolLineup <- istanbul[[24]][[2]]$player.name
 milanmv <- c(13.5, 2.7, 9.0, 29.7, 2.7, 18.9, 22.5, 16.2, 23.4, 31.5, 13.5)
@@ -56,7 +52,7 @@ coul <- suppressWarnings(brewer.pal(2, "Set2"))
 barplot(height=mvSums$value, names=mvSums$name, col=coul, main = "Market value of Starting XI", sub = "184M £ vs 109M £", ylab = "in million pounds", font.sub = 4)
 ```
 
-![](/assets/blog_imgs/the-miracle-of-istanbul/unnamed-chunk-3-1.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-3-1.png)<!-- -->
 
 ``` r
 mv <- data.frame(name = c(milanLineup, liverpoolLineup), value = c(milanmv, liverpoolmv))
@@ -71,7 +67,7 @@ mvtop10 %>%
     theme_bw()
 ```
 
-![](/assets/blog_imgs/the-miracle-of-istanbul/unnamed-chunk-3-2.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-3-2.png)<!-- -->
 we can see that the market value of Milan’s starting XI is significantly
 higher than Liverpool’s. Individually, Milan’s players took 8 places out
 of the top 10 highest market value players of the joint teams. The
@@ -193,13 +189,7 @@ library(timevis)
 timevis(data, groups = timevisDataGroups)
 ```
 
-To view this graph, we need to scroll all the way back to 2005 (the
-timevis package is an interactive visualization package, you can scroll
-and zoom in/out). To make it convenient, I have included a screenshot of
-the timeline (after finished all the scrolling and the zooming) for
-reference.
-
-![](/Users/allan/Downloads/timeline.png)
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/timeline.png)
 
 To summarize the timeline that we see above. In the first half, Milan
 scored immediately when the game began, and scored two more goals
@@ -250,7 +240,7 @@ is %>%
   soccerShotmap(theme = "dark")
 ```
 
-![](/assets/blog_imgs/the-miracle-of-istanbul/unnamed-chunk-9-1.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-9-1.png)<!-- -->
 
 As we can see, in the 1st half, Milan made 8 shots (8 dots on the pic
 above) and Liverpool made 5. However, most of the shots by Milan (6 out
@@ -262,7 +252,7 @@ is %>%
   soccerShotmap(theme = "dark")
 ```
 
-![](/assets/blog_imgs/the-miracle-of-istanbul/unnamed-chunk-10-1.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-10-1.png)<!-- -->
 In the 2nd half, we’d expect that Liverpool dominates the shots and
 shots in the box. On the contrary, Milan still dominates the number of
 shots and shots in the box. Liverpool made only 2 shots inside the box
@@ -279,7 +269,7 @@ is %>%
   soccerShotmap(theme = "dark")
 ```
 
-![](/assets/blog_imgs/the-miracle-of-istanbul/unnamed-chunk-11-1.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-11-1.png)<!-- -->
 Surprisingly (or not so surprisingly after seeing the shots made in the
 2nd half of the game), Liverpool made no attempts and Milan made 7 more
 shots, 3 of them inside the box with 1 near the post of the goal (so
@@ -300,7 +290,7 @@ is %>%
                 title = "Milan's passing map in the 1st half")
 ```
 
-![](/assets/blog_imgs/the-miracle-of-istanbul/unnamed-chunk-12-1.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-12-1.png)<!-- -->
 
 ``` r
 is %>%
@@ -309,7 +299,7 @@ is %>%
                 title = "Milan's passing map in the 1st half (25' onwards)")
 ```
 
-![](/assets/blog_imgs/the-miracle-of-istanbul/unnamed-chunk-12-2.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-12-2.png)<!-- -->
 
 ``` r
 is %>%
@@ -318,7 +308,7 @@ is %>%
                 title = "Liverpool's passing map in the 1st half")
 ```
 
-![](/assets/blog_imgs/the-miracle-of-istanbul/unnamed-chunk-12-3.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-12-3.png)<!-- -->
 
 ``` r
 is %>%
@@ -327,7 +317,7 @@ is %>%
                 title = "Liverpool's passing map in the 1st half (25' onwards)")
 ```
 
-![](/assets/blog_imgs/the-miracle-of-istanbul/unnamed-chunk-12-4.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-12-4.png)<!-- -->
 
 ``` r
 passMap <- function(df, team, p, startminutes=NA, endminutes=NA) {
@@ -396,13 +386,13 @@ is %>%
                 title = "Milan's passing map in the 6 minute spell", minPass = 1)
 ```
 
-![](/assets/blog_imgs/the-miracle-of-istanbul/unnamed-chunk-13-1.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-13-1.png)<!-- -->
 
 ``` r
 passMap(is, "AC Milan", 2, 54, 60)
 ```
 
-![](/assets/blog_imgs/the-miracle-of-istanbul/unnamed-chunk-13-2.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-13-2.png)<!-- -->
 
 ``` r
 is %>%
@@ -411,13 +401,13 @@ is %>%
                 title = "Liverpool's passing map in the 6 minute spell", minPass = 1)
 ```
 
-![](/assets/blog_imgs/the-miracle-of-istanbul/unnamed-chunk-13-3.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-13-3.png)<!-- -->
 
 ``` r
 passMap(is, "Liverpool", 2, 54, 60)
 ```
 
-![](/assets/blog_imgs/the-miracle-of-istanbul/unnamed-chunk-13-4.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-13-4.png)<!-- -->
 
 We have seen the hell for Liverpool, i.e., the first half of the game,
 where Milan scored an early goal and player on counter and scored two
@@ -454,7 +444,7 @@ soccerPitch(arrow = "r",
   geom_point(data = d2, aes(x = location.x, y = location.y, col = type.name), size = 3, alpha = 0.5)
 ```
 
-![](/assets/blog_imgs/the-miracle-of-istanbul/unnamed-chunk-14-1.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-14-1.png)<!-- -->
 
 ``` r
 d2 <- is %>% 
@@ -466,7 +456,7 @@ soccerPitch(arrow = "r",
   geom_point(data = d2, aes(x = location.x, y = location.y, col = type.name), size = 3, alpha = 0.5)
 ```
 
-![](/assets/blog_imgs/the-miracle-of-istanbul/unnamed-chunk-14-2.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-14-2.png)<!-- -->
 The **1st picture** is the defensive actions done by Liverpool players
 in 6 minutes. What is staggering is that they managed to achieve 7 ball
 retrievals, leading to the decline in Milan’s passing accuracy. The
@@ -493,7 +483,7 @@ is %>%
                     subtitle = "Average position (1st half)")
 ```
 
-![](/assets/blog_imgs/the-miracle-of-istanbul/unnamed-chunk-15-1.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-15-1.png)<!-- -->
 
 ``` r
 is %>%
@@ -504,7 +494,7 @@ is %>%
                     subtitle = "Average position (1st half)")
 ```
 
-![](/assets/blog_imgs/the-miracle-of-istanbul/unnamed-chunk-15-2.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-15-2.png)<!-- -->
 
 The **1st picture** is the average position of the Milan in the 1st
 half. The average position is defined as the average coordinates of
@@ -533,7 +523,7 @@ is %>%
                     subtitle = "Average position (2nd half)")
 ```
 
-![](/assets/blog_imgs/the-miracle-of-istanbul/unnamed-chunk-16-1.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-16-1.png)<!-- -->
 
 ``` r
 is %>%
@@ -544,7 +534,7 @@ is %>%
                     subtitle = "Average position (2nd half)")
 ```
 
-![](/assets/blog_imgs/the-miracle-of-istanbul/unnamed-chunk-16-2.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-16-2.png)<!-- -->
 
 With 3-0 down, Liverpool took right back Finnan down (therefore
 forfeiting the attacking on the sides tactics) and put Hamman up
