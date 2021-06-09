@@ -26,7 +26,7 @@ knitr::opts_chunk$set(fig.path = fig_path,
 # src for adding html in md: https://jayrobwilliams.com/posts/2020/09/jekyll-html
 ```
 ## Introduction
-On May 25th 2005, the 2005 UEFA Champions league final took place at the Atatürk Olympic Stadium in Istanbul. 65000 audiences at the stadium and hundreds of millions of fans worldwide were about to witness a soccer game that would be later called the **Miracle of Istanbul**. The full-of-talent team AC Milan first took the lead within the first minute by their captain Maldini. They further scored two more goals before half-time, making it a 3-0 lead. Rumor said that the Milan team opened bottles of champagnes in the locker room during the half-time break to celebrate their soon-to-be 2nd champions league title in three years. However, in the second half Liverpool launched a comeback and scored 3 goals in a dramatic six-minute spell to level the score at 3–3, and beat Milan 3-2 in the brutal penalty shoot-out stage. The English commentator said:"If this doesn't prove fate exists, then nothing will" at the end of the game. To be sure, this epic comeback defies any words that try to describe it, but I will try to use visualizations to do this job and more importantly, try to figure out how the comeback happened. 
+On May 25th 2005, the 2005 UEFA Champions league final took place at the Atatürk Olympic Stadium in Istanbul. 65000 audiences at the stadium and hundreds of millions of fans worldwide were about to witness a soccer game that would be later called the **Miracle of Istanbul**. The full-of-talent team AC Milan first took the lead within the first minute by their captain Maldini. They further scored two more goals before half-time, making it a 3-0 lead. Rumors said that the Milan team opened bottles of champagnes in the locker room during the half-time break to celebrate their soon-to-be 2nd champions league title in three years. However, in the second half Liverpool launched a comeback and scored 3 goals in a dramatic six-minute spell to level the score at 3–3, and beat Milan 3-2 in the brutal penalty shoot-out stage. The English commentator said:"If this doesn't prove fate exists, then nothing will" at the end of the game. To be sure, this epic comeback defies any words that try to describe it, but I will try to use visualizations to do this job and more importantly, try to figure out how the comeback happened. 
 
 ```{r include=FALSE}
 library(ggplot2) 
@@ -149,7 +149,7 @@ Another thing that stands out from the timeline graph is that there were only 2 
 As the timeline suggested, we see a distinction between the 1st half and the 2nd half. Each team scored three goals and the other team scored nothing. Specifically, the 1st half is the heaven for Milan, the hell for Liverpool; the 2nd half is exactly the reverse of the 1st half.
 Can we visualize the difference, the difference between heaven and hell?
 
-### The shots
+### Shots
 ```{r}
 is <- tibble::as_tibble(istanbul)
 is %>%

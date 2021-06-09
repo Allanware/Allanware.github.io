@@ -21,7 +21,7 @@ hundreds of millions of fans worldwide were about to witness a soccer
 game that would be later called the **Miracle of Istanbul**. The
 full-of-talent team AC Milan first took the lead within the first minute
 by their captain Maldini. They further scored two more goals before
-half-time, making it a 3-0 lead. Rumor said that the Milan team opened
+half-time, making it a 3-0 lead. Rumors said that the Milan team opened
 bottles of champagnes in the locker room during the half-time break to
 celebrate their soon-to-be 2nd champions league title in three years.
 However, in the second half Liverpool launched a comeback and scored 3
@@ -231,7 +231,7 @@ nothing. Specifically, the 1st half is the heaven for Milan, the hell
 for Liverpool; the 2nd half is exactly the reverse of the 1st half. Can
 we visualize the difference, the difference between heaven and hell?
 
-### The shots
+### Shots
 
 ``` r
 is <- tibble::as_tibble(istanbul)
