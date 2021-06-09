@@ -1,10 +1,10 @@
 ---
 title: The Miracle of Istanbul
 author: Wenxuan Zhao
-date: 2021-03-04 23:33:00 -0700 
+date: 2021-03-04 23:33:00 -0700
 categories: [Visualization]
 tags: [soccer, 足球, football, visualization, r]
-excerpt: What happened in the 2nd half of the 2005 Champions League final, compared to the 1st half? This post uses R to expose details that the highlights and/or the match itself ignored.  
+excerpt: What happened in the 2nd half of the 2005 Champions League final, compared to the 1st half? This post uses R to expose details that the highlights and/or the match itself ignored.
 output:
   md_document:
     variant: gfm
@@ -603,9 +603,50 @@ Main lessons learnt: It is no doubt a miracle, because:
 
 ### Data
 
--   Statsbomb
-
-### Visualization package
+-   Statsbomb å \#\#\# Visualization package
 
 -   soccermatics
+
 -   ggplot2
+
+## My working session
+
+``` r
+sessionInfo()
+```
+
+    ## R version 4.1.0 (2021-05-18)
+    ## Platform: x86_64-apple-darwin20.4.0 (64-bit)
+    ## Running under: macOS Big Sur 11.4
+    ## 
+    ## Matrix products: default
+    ## BLAS:   /usr/local/Cellar/openblas/0.3.15_1/lib/libopenblasp-r0.3.15.dylib
+    ## LAPACK: /usr/local/Cellar/r/4.1.0/lib/R/lib/libRlapack.dylib
+    ## 
+    ## locale:
+    ## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+    ## 
+    ## attached base packages:
+    ## [1] parallel  stats     graphics  grDevices utils     datasets  methods  
+    ## [8] base     
+    ## 
+    ## other attached packages:
+    ##  [1] forcats_0.5.1      RColorBrewer_1.1-2 soccermatics_0.9.4 StatsBombR_0.1.0  
+    ##  [5] tidyr_1.1.3        sp_1.4-5           purrr_0.3.4        jsonlite_1.7.2    
+    ##  [9] httr_1.4.2         doParallel_1.0.16  iterators_1.0.13   foreach_1.5.1     
+    ## [13] RCurl_1.98-1.3     rvest_1.0.0        tibble_3.1.2       stringr_1.4.0     
+    ## [17] stringi_1.6.2      dplyr_1.0.6        ggplot2_3.3.3     
+    ## 
+    ## loaded via a namespace (and not attached):
+    ##  [1] zoo_1.8-9         tidyselect_1.1.1  xfun_0.23         lattice_0.20-44  
+    ##  [5] colorspace_2.0-1  vctrs_0.3.8       generics_0.1.0    htmltools_0.5.1.1
+    ##  [9] yaml_2.2.1        utf8_1.2.1        rlang_0.4.11      R.oo_1.24.0      
+    ## [13] pillar_1.6.1      glue_1.4.2        withr_2.4.2       R.utils_2.10.1   
+    ## [17] tweenr_1.0.2      plyr_1.8.6        lifecycle_1.0.0   munsell_0.5.0    
+    ## [21] gtable_0.3.0      SDMTools_1.1-221  R.methodsS3_1.8.1 codetools_0.2-18 
+    ## [25] evaluate_0.14     knitr_1.33        fansi_0.5.0       xts_0.12.1       
+    ## [29] Rcpp_1.0.6        scales_1.1.1      farver_2.1.0      ggforce_0.3.3    
+    ## [33] digest_0.6.27     ggrepel_0.9.1     polyclip_1.10-0   grid_4.1.0       
+    ## [37] cowplot_1.1.1     tools_4.1.0       bitops_1.0-7      magrittr_2.0.1   
+    ## [41] crayon_1.4.1      pkgconfig_2.0.3   ellipsis_0.3.2    MASS_7.3-54      
+    ## [45] xml2_1.3.2        rmarkdown_2.8     R6_2.5.0          compiler_4.1.0

@@ -340,9 +340,13 @@ It is no doubt a miracle, because:
 ### Data
 
 * Statsbomb
-
+å
 ### Visualization package
 
 * soccermatics
 * ggplot2
 
+## My working session 
+``` {r}
+sessionInfo()
+```
