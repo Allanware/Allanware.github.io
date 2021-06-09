@@ -1,9 +1,27 @@
 ---
-title: "The Miracle of Istanbul"
-author: "Wenxuan Zhao"
-date: '2021-03-04'
-output: md_document
+title: The Miracle of Istanbul
+author: Wenxuan Zhao
+date: 2021-03-04 23:33:00 -0700
+output:
+  md_document:
+    variant: gfm
+    preserve_yaml: TRUE
+knit: (function(inputFile, encoding) {
+  rmarkdown::render(inputFile, encoding = encoding, output_dir = "../_posts") })
+  
+categories: [Visualization]
+tags: [soccer, 足球, football, visualization, r]
 ---
+```{r include=FALSE, cache=FALSE}
+base_dir <- "~/github_Allanware/mysite/" # i.e. where the jekyll blog is on the hard drive.
+base_url <- "/" # keep as is
+fig_path <- "assets/blog_imgs/the-miracle-of-istanbul/" 
+knitr::opts_knit$set(base.dir = base_dir, base.url = base_url)
+knitr::opts_chunk$set(fig.path = fig_path,
+                      cache.path = '../cache/',
+                      message=FALSE, warning=FALSE,
+                      cache = TRUE) 
+```
 
 ```{r include=FALSE}
 library(ggplot2) 
