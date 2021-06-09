@@ -3,8 +3,6 @@
 # Import the theme
 theme: jekyll-theme-chirpy
 
-plugins:
-  - jekyll-multiple-languages-plugin
 # Only if your site type is GitHub Project sites and doesn't have a custom domain,
 # change below value to '/projectname'.
 baseurl: ''
@@ -22,7 +20,7 @@ title: Wenxuan Zhao                         # the main title
 tagline: 赵文轩   # it will display as the sub-title
 
 description: >-                        # used by seo meta and the atom feed
-  blog, life, Computer Science, Football/soccer, FC Barcelona, China, U.S., Go/Baduk/Weiqi, music, movie/film, book, big questions, small questions.
+  blog, life, Computer Science, Football, soccer, FC Barcelona, China, U.S., Go, Baduk, music, movie, film, book, 足球, 电影, 巴萨, 计算机科学, 计算机, 博客, 生活, 美国, 围棋.
 
 # fill in the protocol & hostname for your site, e.g., 'https://username.github.io'
 url: 'https://allanware.github.io'
@@ -164,3 +162,6 @@ jekyll-archives:
   permalinks:
     tag: /tags/:name/
     category: /categories/:name/
+
+plugins:
+  - jekyll-seo-tag
