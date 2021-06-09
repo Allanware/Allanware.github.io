@@ -1,16 +1,16 @@
 ---
 title: The Miracle of Istanbul
 author: Wenxuan Zhao
-date: 2021-03-04 23:33:00 -0700
+date: 2021-03-04 23:33:00 -0700 
+categories: [Visualization]
+tags: [soccer, 足球, football, visualization, r]
+excerpt: What happened in the 2nd half of the 2005 Champions League final, compared to the 1st half? This post uses R to expose details that the highlights and/or the match itself ignored.  
 output:
   md_document:
     variant: gfm
     preserve_yaml: TRUE
 knit: (function(inputFile, encoding) {
   rmarkdown::render(inputFile, encoding = encoding, output_dir = "../_posts") })
-  
-categories: [Visualization]
-tags: [soccer, 足球, football, visualization, r]
 ---
 
 ## Introduction
