@@ -1,3 +1,9 @@
+---
+title: "The Miracle of Istanbul"
+author: "Wenxuan Zhao"
+date: '2021-03-04'
+output: md_document
+---
 
 ```{r include=FALSE}
 library(ggplot2) 
@@ -5,8 +11,6 @@ library(StatsBombR) # data source
 library(soccermatics) # visualization tool for soccer data
 # Data for matches that are free, data for other matches are only accessible through API key
 Matches <- FreeMatches(FreeCompetitions())
-# get the data for the miracle of istanbul
-istanbul <- get.matchFree(Matches[which(Matches$match_id == 2302764),])
 ```
 
 ## Introduction
@@ -15,6 +19,8 @@ On May 25th 2005, the 2005 UEFA Champions league final took place at the Atatür
 ### The underdog
 The Liverpool captain Steven Gerrard described his team as the underdog before the match, compared to the all-star Milan side, and he was right. According to data from the transfermarkt.co.uk,  
 ```{r}
+# get the data for the miracle of istanbul
+istanbul <- get.matchFree(Matches[which(Matches$match_id == 2302764),])
 milanLineup <- istanbul[[24]][[1]]$player.name
 liverpoolLineup <- istanbul[[24]][[2]]$player.name
 milanmv <- c(13.5, 2.7, 9.0, 29.7, 2.7, 18.9, 22.5, 16.2, 23.4, 31.5, 13.5)
@@ -74,7 +80,7 @@ istanbul$location.y <- location.y
 
 ## Timeline of the match 
 To figure out how the game evolves, we need to know the milestones of the match. The milestones of a match are the key events, and according to convention, including match start, goals, 1st half ends, 2nd half starts, cards, substitution, penalties.
-```{r}
+```{r eval=FALSE}
 # get the goals and penalties  
 goalEvents <- istanbul[which(istanbul$shot.outcome.id == 97 | istanbul$shot.type.name == "Penalty"), ]
 # get the subs
@@ -108,7 +114,9 @@ library(timevis)
 timevis(data, groups = timevisDataGroups)
 ```
 
-To view this graph, we need to scroll all the way back to 2005 (the timevis package is an interactive visualization package, you can scroll and zoom in/out).
+To view this graph, we need to scroll all the way back to 2005 (the timevis package is an interactive visualization package, you can scroll and zoom in/out). To make it convenient, I have included a screenshot of the timeline (after finished all the scrolling and the zooming) for reference. 
+
+![](/Users/allan/Downloads/timeline.png)
 
 To summarize the timeline that we see above. In the first half, Milan scored immediately when the game began, and scored two more goals towards the end of the first half. On the other hand, Liverpool made a substitute because of injury. Before the start of the 2nd half, Liverpool was already 3-0 down and used one (out of total 3) substitution involuntarily. At the beginning of the 2nd half, Liverpool made yet another substitution. This substitution is due to the tactical consideration by the Liverpool manager, trying to turn things around, and it did. About 10 minutes later, Liverpool score their first goal, making it 3-1, and in this 6 minutes spell, they score three goals in total, levelling the score to 3-3. Both teams did not score in the later parts of the game, and Liverpool beat Milan 3-2 in Penalty shootout (the red X denotes penalty missing or being saved by the goalkeeper). 
 
