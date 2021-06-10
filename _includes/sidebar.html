@@ -61,6 +61,8 @@
           javascript:location.href = 'mailto:' + ['{{ email[0] }}','{{ email[1] }}'].join('@')
         {%- elsif entry.type == 'rss' -%}
           {{ "/feed.xml" | relative_url }}
+        {%- elsif entry.type == 'linkedin' -%}
+          {{ entry.url }}
         {%- else -%}
           {{ entry.url }}
         {%- endif -%}
