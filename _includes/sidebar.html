@@ -26,10 +26,7 @@
 
     <div class="site-subtitle">{{- site.tagline -}}</div>
 
-  </div><!-- .profile-wrapper -->
-
-  <ul class="w-100">
-    <!-- home -->
+    <ul>
     <li class="nav-item{% if page.layout == 'home' %}{{ " active" }}{% endif %}">
       <a href="{{ '/' | relative_url }}" class="nav-link">
         <i class="fa-fw fas fa-home ml-xl-3 mr-xl-3 unloaded"></i>
@@ -46,8 +43,9 @@
     </li> <!-- .nav-item -->
     {% endfor %}
 
-  </ul> <!-- ul.nav.flex-column -->
-
+    </ul> <!-- ul.nav.flex-column -->
+  </div>
+  
   <div class="sidebar-bottom mt-auto d-flex flex-wrap justify-content-center">
 
     {% for entry in site.data.contact %}
