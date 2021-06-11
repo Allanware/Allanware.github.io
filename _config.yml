@@ -97,7 +97,7 @@ collections:
   zh:
     output: true
     sort_by: order
-    permalink: /zh/:title
+    permalink: /zh/:title/
   tabs:
     output: true
     sort_by: order
