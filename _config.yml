@@ -94,7 +94,7 @@ kramdown:
       start_line: 1
 
 collections:
-  zh:
+  zhtabs:
     output: true
     sort_by: order
     permalink: /zh/:title/
@@ -137,7 +137,7 @@ defaults:
   -
     scope:
       path: ''
-      type: zh             # see `site.collections`
+      type: zhtabs             # see `site.collections`
     values:
       layout: page
       dynamic_title: true    # Hide title in mobile screens
@@ -152,6 +152,13 @@ defaults:
       comments: true   
       toc: true      
       permalink: /zh/posts/:title/
+      lang: zh-CN
+      base-url: "/zh/"
+  
+  -
+    scope:
+      path: 'zh'
+    values:
       lang: zh-CN
       base-url: "/zh/"
 
@@ -190,3 +197,5 @@ jekyll-archives:
 
 plugins:
   - jekyll-seo-tag
+
+paginate_path: "zh/page:num/"
