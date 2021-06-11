@@ -78,8 +78,6 @@ disqus:
   comments: true  # boolean type, the global switch for posts comments.
   shortname: 'allanware-github-io'    # Fill with your Disqus shortname. › https://help.disqus.com/en/articles/1717111-what-s-a-shortname
 
-paginate: 10
-
 # ------------ The following options are not recommended to be modified ------------------
 
 kramdown:
@@ -199,3 +197,4 @@ plugins:
   - jekyll-seo-tag
 
 paginate_path: "zh/page:num/"
+paginate: 10
