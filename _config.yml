@@ -143,7 +143,7 @@ defaults:
       base-url: "/zh/"
   -
     scope:
-      path: 'zh/_posts'      
+      path: '_posts/zh'      
       type: posts
     values:
       layout: post
@@ -151,11 +151,10 @@ defaults:
       toc: true      
       permalink: /zh/posts/:title/
       lang: zh-CN
-      base-url: "/zh/"
-  
+      base-url: "/zh/"  
   -
     scope:
-      path: 'zh'
+      path: 'zh/'
     values:
       lang: zh-CN
       base-url: "/zh/"
