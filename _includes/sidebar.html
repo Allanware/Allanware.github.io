@@ -21,10 +21,12 @@
     </div>
 
     <div class="site-title mt-3">
-      <a href="{{ page.base-url | relative_url }}">{{- site.title -}}</a>
+      <a href="{{ '/' | relative_url }}">{{- site.title -}}</a>
     </div>
 
-    <div class="site-subtitle">{{- site.tagline -}}</div>
+    <div class="site-subtitle">
+      <a class="site-subtitle" href="{{ '/zh' | relative_url }}">{{- site.tagline -}}</a>
+    </div>
 
     <ul>
       <!-- home -->
