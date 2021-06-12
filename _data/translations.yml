@@ -64,3 +64,12 @@ min:
 Cancel:
   en-US: "Cancel"
   zh-CN: "取消"
+
+post:
+  en-US: "Post"
+  zh-CN: "文章"
+
+page: 
+  en-US: "Page"
+  zh-CN: "页面"
+  

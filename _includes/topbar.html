@@ -71,11 +71,11 @@
 
     <div id="topbar-title">
       {% if page.layout == 'home' %}
-        {{- site.title -}}
+      {{- site.data.translations[site.title][page.lang] -}}
       {% elsif page.dynamic_title %}
         {{- page.title -}}
       {% else %}
-        {{- page.layout | capitalize -}}
+        {{- site.data.translations[page.layout][page.lang] | capitalize -}}
       {% endif %}
     </div>
 
