@@ -120,9 +120,10 @@ defaults:
       base-url: "/"
   -
     scope:
-      path: _drafts
+      path: ''
     values:
-      comments: false
+      layout: post
+      lang: en-US
   -
     scope:
       path: ''
@@ -140,7 +141,7 @@ defaults:
       layout: page
       dynamic_title: true    # Hide title in mobile screens
       lang: zh-CN
-      base-url: "/zh/"
+      base-url: "/zh"
   -
     scope:
       path: '_posts/zh'      
@@ -151,13 +152,13 @@ defaults:
       toc: true      
       permalink: /zh/posts/:title/
       lang: zh-CN
-      base-url: "/zh/"  
+      base-url: "/zh"  
   -
     scope:
-      path: 'zh/'
+      path: "zh"
     values:
       lang: zh-CN
-      base-url: "/zh/"
+      base-url: "/zh"
 
 sass:
   style: compressed

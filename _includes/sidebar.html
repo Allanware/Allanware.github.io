@@ -6,7 +6,7 @@
 
   <div class="profile-wrapper text-center">
     <div id="avatar">
-      <a href="{{ '/' | relative_url }}" alt="avatar" class="mx-auto">
+      <a href="{{ page.base-url | relative_url }}" alt="avatar" class="mx-auto">
         {% capture avatar_url %}
           {%- if site.avatar contains '://' -%}
             {{ site.avatar }}
@@ -21,29 +21,38 @@
     </div>
 
     <div class="site-title mt-3">
-      <a href="{{ '/' | relative_url }}">{{- site.title -}}</a>
+      <a href="{{ page.base-url | relative_url }}">{{- site.title -}}</a>
     </div>
 
     <div class="site-subtitle">{{- site.tagline -}}</div>
 
     <ul>
-    <li class="nav-item{% if page.layout == 'home' %}{{ " active" }}{% endif %}">
-      <a href="{{ '/' | relative_url }}" class="nav-link">
-        <i class="fa-fw fas fa-home ml-xl-3 mr-xl-3 unloaded"></i>
-        <span>{{ "HOME" }}</span>
-      </a>
-    </li>
-    <!-- the real tabs -->
-    {% for tab in site.tabs %}
-    <li class="nav-item{% if tab.url == page.url %}{{ " active" }}{% endif %}">
-      <a href="{{ tab.url | relative_url }}" class="nav-link">
-        <i class="fa-fw {{ tab.icon }} ml-xl-3 mr-xl-3 unloaded"></i>
-        <span>{{ tab.title | upcase }}</span>
-      </a>
-    </li> <!-- .nav-item -->
-    {% endfor %}
-
+      <!-- home -->
+      <li class="nav-item{% if page.layout == 'home' %}{{ " active" }}{% endif %}">
+        <a href="{{ page.base-url | relative_url }}" class="nav-link">
+          <i class="fa-fw fas fa-home ml-xl-3 mr-xl-3 unloaded"></i>
+          <span>{{ site.data.translations["Home"][page.lang]}}</span>
+        </a>
+      </li>
+      <!-- the real tabs -->
+      {% if page.lang == "zh-CN" %}
+        {% assign tabs = site.zhtabs %}
+      {% else %}
+        {% assign tabs = site.tabs %}
+      {% endif %}
+      {% for tab in tabs %}
+      <li class="nav-item{% if tab.url == page.url %}{{ " active" }}{% endif %}">
+        <a href="{{ tab.url | relative_url }}" class="nav-link">
+          <!-- <i class="fa-fw {{ tab.icon }} ml-xl-3 mr-xl-3 unloaded"></i> -->
+          <span>{{ site.data.translations[tab.lang-id][page.lang] }}</span>
+        </a>
+      </li> <!-- .nav-item -->
+      {% endfor %} 
     </ul> <!-- ul.nav.flex-column -->
+
+    
+
+    
   </div>
   
   <div class="sidebar-bottom mt-auto d-flex flex-wrap justify-content-center">

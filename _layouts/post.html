@@ -9,21 +9,13 @@ layout: default
 
     <div class="post pl-1 pr-1 pl-sm-2 pr-sm-2 pl-md-4 pr-md-4">
 
-      {% assign posts=site.posts | where:"lang-id", page.lang-id | sort:       "lang" | reverse %}
-      <!-- more than one language for this post -->
-      {% if posts.size > 1 %} 
-        {% for post in posts %}
-          <a href="{{ site.base-url }}{{ post.url }}">{{ site.data.languages[post.lang].icon }} {{ site.data.languages[post.lang].label }}</a>
-        {% endfor %}
-      {% endif %} 
-      
       <h1 data-toc-skip>{{ page.title }}</h1>
       
       <div class="post-meta text-muted d-flex flex-column">
         <!-- Published date and author -->
         <div>
           <span class="semi-bold">
-            {{ page.author | default: site.social.name }}
+            {{ page.author | default: site.data.translations[site.social.name][page.lang] }}
           </span>
           {% include timeago.html date=page.date prep="on" tooltip=true %}
         </div>

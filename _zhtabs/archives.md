@@ -1,6 +1,8 @@
 ---
+lang-id: Archives
+lang: zh-CN
 layout: archives
-title: Archives
+title: 档案
 icon: fas fa-archive
 order: 3
 ---

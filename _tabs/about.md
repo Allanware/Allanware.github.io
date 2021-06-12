@@ -1,4 +1,6 @@
 ---
+lang: en-US
+lang-id: About
 title: About
 icon: fas fa-info
 order: 1
