@@ -107,10 +107,10 @@ The above shows the first 10 variables. The first variable `id` is the
 unique identifier of each event; `period` denotes which time period this
 event occurs (eg. 1 = the first half); `timestamp` records the exact
 time of each event; `location` is another important variable that
-records the coordinate information of the event. As I go forward, we
-will use and visualize more interesting variables. An example event
+records the coordinate information of the event. An example event
 therefore would be: player x at time 00:31:52.716 passes the ball at the
-pitch coordinate (24, 40) at mid-height with angle y…
+pitch coordinate (24, 40) at mid-height with angle y…. As I go forward, we
+will use and visualize more interesting variables. 
 
 ### Characteristics of the data
 
@@ -240,7 +240,7 @@ is %>%
   soccerShotmap(theme = "dark")
 ```
 
-![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-9-1.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-9-1.png)
 
 As we can see, in the 1st half, Milan made 8 shots (8 dots on the pic
 above) and Liverpool made 5. However, most of the shots by Milan (6 out
@@ -252,7 +252,7 @@ is %>%
   soccerShotmap(theme = "dark")
 ```
 
-![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-10-1.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-10-1.png)
 In the 2nd half, we’d expect that Liverpool dominates the shots and
 shots in the box. On the contrary, Milan still dominates the number of
 shots and shots in the box. Liverpool made only 2 shots inside the box
@@ -269,7 +269,7 @@ is %>%
   soccerShotmap(theme = "dark")
 ```
 
-![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-11-1.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-11-1.png)
 Surprisingly (or not so surprisingly after seeing the shots made in the
 2nd half of the game), Liverpool made no attempts and Milan made 7 more
 shots, 3 of them inside the box with 1 near the post of the goal (so
@@ -290,7 +290,8 @@ is %>%
                 title = "Milan's passing map in the 1st half")
 ```
 
-![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-12-1.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-12-1.png)
+_picture 1_
 
 ``` r
 is %>%
@@ -299,7 +300,8 @@ is %>%
                 title = "Milan's passing map in the 1st half (25' onwards)")
 ```
 
-![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-12-2.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-12-2.png)
+_picture 2_
 
 ``` r
 is %>%
@@ -308,7 +310,8 @@ is %>%
                 title = "Liverpool's passing map in the 1st half")
 ```
 
-![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-12-3.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-12-3.png)
+_picture 3_
 
 ``` r
 is %>%
@@ -318,43 +321,14 @@ is %>%
 ```
 
 ![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-12-4.png)<!-- -->
+_picture 4_
 
-``` r
-passMap <- function(df, team, p, startminutes=NA, endminutes=NA) {
-  if (!is.na(startminutes))
-    df <- df %>% filter(minute >= startminutes)
-  if (!is.na(endminutes))
-    df <- df %>% filter(minute <= endminutes)
-  
-  d3 <- df %>% 
-  filter(type.name == "Pass" & team.name == team & period == p) %>% 
-  mutate(pass.outcome = as.factor(if_else(is.na(pass.outcome.name), 1, 0)))
-
-  pass.end_location.x <- pass.end_location.y <- rep(NA, nrow(d3))
-  for (i in 1:nrow(d3)) {
-    if (! is.null(d3$pass.end_location[[i]])) {
-      pass.end_location.x[i] <- d3$pass.end_location[[i]][1] * 105 / 120
-      pass.end_location.y[i] <- d3$pass.end_location[[i]][2] * 68 / 80
-    }
-  }
-  d3$pass.end_location.x <- pass.end_location.x
-  d3$pass.end_location.y <- pass.end_location.y
-
-  soccerPitch(arrow = "r",
-              title = paste0(team, "'s passes"), 
-              subtitle = "Pass map") +
-  geom_segment(data = d3, aes(x = location.x, xend = pass.end_location.x, y = location.y, yend = pass.end_location.y, col=   pass.outcome), alpha = 0.75) +
-  geom_point(data = d3, aes(x = location.x, y = location.y, col = pass.outcome), alpha = 0.5) +
-  guides(colour = FALSE)
-}
-```
-
-We break the 1st half into two halves. The **first picture** shows the
+We break the 1st half into two halves. The **picture 1** shows the
 passing map of AC Milan in the first 24 minutes, with Pirlo being the
 center of the passing map (the biggest blue dot in the map), Milan’s
 transition (from attack to defense and vice versa) depended on him.
 Another thing to notice is that one of the Milan’s forward, Crespo, was
-not really involved in the game. The **2nd picture** is the passing map
+not really involved in the game. The **picture 2** is the passing map
 of Milan in the second half of the 1st half. Compared to the first
 picture, Milan’s formation retrieved to their goal. For example, in the
 first 24 minutes, Maldini (left back), Gattuso, Seedorf, were standing
@@ -369,7 +343,7 @@ The scorer of both goals is Crespo, the man who were not “involved” in
 terms of passing in the first 24 minutes, and he became lethal in the
 second part.
 
-The **3rd and the 4th picture** tell the Liverpool’s part of the story
+The **picture 3 and 4** tell the Liverpool’s part of the story
 in the 1st half. The first thing to notice is that Kewell was out and
 Smicer was in for him (Kewell was in the 3rd pic but not in the 4th, and
 Smicer the opposite) because Kewell was injured. And compared the 4th
@@ -386,13 +360,15 @@ is %>%
                 title = "Milan's passing map in the 6 minute spell", minPass = 1)
 ```
 
-![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-13-1.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-13-1.png)
+_picture 1_
 
 ``` r
 passMap(is, "AC Milan", 2, 54, 60)
 ```
 
-![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-13-2.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-13-2.png)
+_picture 2_
 
 ``` r
 is %>%
@@ -401,13 +377,15 @@ is %>%
                 title = "Liverpool's passing map in the 6 minute spell", minPass = 1)
 ```
 
-![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-13-3.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-13-3.png)
+_picture 3_
 
 ``` r
 passMap(is, "Liverpool", 2, 54, 60)
 ```
 
-![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-13-4.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-13-4.png)
+_picture 4_
 
 We have seen the hell for Liverpool, i.e., the first half of the game,
 where Milan scored an early goal and player on counter and scored two
@@ -417,22 +395,21 @@ spell where Liverpool scored 3 goals. That spell was really the heaven
 for Liverpool and for Liverpool’s fans. What happened? Since we are in
 the passing section and analyzing passes are really effective in
 analyzing the whole game, let’s look at all the passes happened in that
-spell. In the **1st picture**, Milan achieved 27 passes with less than
+spell. In the **picture 1**, Milan achieved 27 passes with less than
 60% of them completed. Only 8 players of Milan were involved in passing
-the ball one or more times. Looking more closely, the **2nd picture**
+the ball one or more times. Looking more closely, the **picture 2**
 indicated that the passes from defense to midfield and midfield to
 attack all failed (red: failure, blue: success).
 
-On the contrary, the **3rd picture** shows that all 10 players
+On the contrary, the **picture 3** shows that all 10 players
 (excluding the goalkeeper) were involved in passing, and they achieved
-more than 75% passing accuracy. **The 4th picture** shows the exact
+more than 75% passing accuracy. The **picture 4** shows the exact
 passes.
 
 In the 1st half, the passing accuracy was 78% for Milan. What causes
 this decline in passing accuracy and number of passes on the Milan side,
 whereas Liverpool somehow maintained their passing accuracy? I then look
-at the defensive acts by both teams in the first 15 minutes of the 2nd
-half.
+at the defensive acts by both teams in that six minutes. 
 
 ``` r
 d2 <- is %>% 
@@ -444,7 +421,8 @@ soccerPitch(arrow = "r",
   geom_point(data = d2, aes(x = location.x, y = location.y, col = type.name), size = 3, alpha = 0.5)
 ```
 
-![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-14-1.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-14-1.png)
+_picture 1_
 
 ``` r
 d2 <- is %>% 
@@ -456,11 +434,13 @@ soccerPitch(arrow = "r",
   geom_point(data = d2, aes(x = location.x, y = location.y, col = type.name), size = 3, alpha = 0.5)
 ```
 
-![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-14-2.png)<!-- -->
-The **1st picture** is the defensive actions done by Liverpool players
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-14-2.png)
+_picture 2_
+
+The **picture 1** is the defensive actions done by Liverpool players
 in 6 minutes. What is staggering is that they managed to achieve 7 ball
 retrievals, leading to the decline in Milan’s passing accuracy. The
-**2nd picture** shows the defensive actions done by Milan. The mere 1
+**picture 2** shows the defensive actions done by Milan. The mere 1
 ball retrieve hardly influenced Liverpool’s passing and possession.
 
 ### Position
@@ -483,7 +463,8 @@ is %>%
                     subtitle = "Average position (1st half)")
 ```
 
-![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-15-1.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-15-1.png)
+_picture 1_
 
 ``` r
 is %>%
@@ -494,9 +475,10 @@ is %>%
                     subtitle = "Average position (1st half)")
 ```
 
-![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-15-2.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-15-2.png)
+_picture 2_
 
-The **1st picture** is the average position of the Milan in the 1st
+The **picture 1** is the average position of the Milan in the 1st
 half. The average position is defined as the average coordinates of
 players when they take any actions, not only the passing ones. As we can
 see, the Milan’s formation were really tight in the center of the
@@ -504,7 +486,7 @@ midfield. In addition to the 4 midfielders, one of the forwards Crespo
 was close to midfield as well. And they were close together in the
 center for a reason (as explained below).
 
-In the **2nd picture**, Liverpool’s formation in the 1st half was rather
+In the **picture 2**, Liverpool’s formation in the 1st half was rather
 scattered acrossthe width of the field. This was due to their tactics of
 playing wide on the sides. Gerrard and Olano were together as a pair,
 sitting in the midfield. However, their attacks on the sides were not
@@ -523,7 +505,8 @@ is %>%
                     subtitle = "Average position (2nd half)")
 ```
 
-![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-16-1.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-16-1.png)
+_picture 1_
 
 ``` r
 is %>%
@@ -534,12 +517,13 @@ is %>%
                     subtitle = "Average position (2nd half)")
 ```
 
-![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-16-2.png)<!-- -->
+![](/assets/blog_imgs/2021-03-04-the-miracle-of-istanbul/unnamed-chunk-16-2.png)
+_picture 2_
 
 With 3-0 down, Liverpool took right back Finnan down (therefore
 forfeiting the attacking on the sides tactics) and put Hamman up
 immediately in the beginning of the 2nd half, and the result was
-astonishing! In the **2nd picture**, Hamann took the position of where
+astonishing! In the **picture 2**, Hamann took the position of where
 Gerrard was in the 1st half, and freed Gerrard. By sacrificing the right
 back, the Liverpool squeezed their formation towards the center.
 Gerrard, together with Sanz and Baros, were constantly charging to the
@@ -567,15 +551,12 @@ EDA process on a soccer match dataset can achieve the following things:
     game. Go ask Barcelona fans. Their team used to have 65% possession
     and ended up winning all trophies, and now win nothing with the same
     possession rate. Visualizations like this can combine the visual
-    part with the summary part, providing fans with an immersive and a
-    more understandable way to remember the game they just saw.
+    part with the summary part, providing fans with a more immersive and 
+    insightful perspective towards understanding the game.
 2.  A good starting point for models about soccer game. As the advance
     of data science, models about soccer games are in dire need. A
     prominent example would be the model to predict expected goals given
     the data about soccer games. This EDA process is great for:
-
-<!-- -->
-
     1. See the data and find the characteristics of the data. In my example, it would be a lot of None values in the dataset and incompatible field dimension that I need to manually change.
     2. Visualize the key events that may lead to goals.
     3. Find out directions that may worth pursuing. I find out the 6 minute Liverpool spell and think this may be the direction to look further into. 
@@ -584,8 +565,8 @@ Main lessons learnt: It is no doubt a miracle, because:
 
 1.  Super dramatic. Liverpool dominated the game for only 6 minutes, and
     ended up scoring three goals. Milan took the show for 114 minutes,
-    including 7 shots in extra time, and they failed to score any. The
-    inefficiency in shooting influenced their mindset in the final
+    including 7 shots in extra time, and they failed to score any after the 1st 
+    half. The inefficiency in shooting influenced their mindset in the final
     penality shoot out, missing 3 out of 5. And Dudek’s (Liverpool’s
     goalkeeper) double save from Shevchenko in the 117th minute was
     voted the greatest Champions League moment of all time.
@@ -596,18 +577,17 @@ Main lessons learnt: It is no doubt a miracle, because:
 3.  Human factor. The hard part to visualize. The psychological change
     of the Milan side as they went from ecstasy to doubt, and to fear.
     Their change in mindset when they repeatedly attack but scored
-    nothing. And more importantly, Gerrard and his influence on the
+    nothing. On the other side, Gerrard and his influence on the
     whole team.
 
 ## Credits
 
 ### Data
+- Statsbomb 
 
--   Statsbomb å \#\#\# Visualization package
-
--   soccermatics
-
--   ggplot2
+### Visualization package
+- soccermatics
+- ggplot2
 
 ## My working session
 
@@ -650,3 +630,6 @@ sessionInfo()
     ## [37] cowplot_1.1.1     tools_4.1.0       bitops_1.0-7      magrittr_2.0.1   
     ## [41] crayon_1.4.1      pkgconfig_2.0.3   ellipsis_0.3.2    MASS_7.3-54      
     ## [45] xml2_1.3.2        rmarkdown_2.8     R6_2.5.0          compiler_4.1.0
+
+## source code
+- https://github.com/Allanware/Allanware.github.io/blob/master/_source/2021-03-04-The-Miracle-of-Istanbul.Rmd

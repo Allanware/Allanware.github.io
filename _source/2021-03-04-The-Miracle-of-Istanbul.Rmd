@@ -196,7 +196,13 @@ is %>%
   filter(team.name == "Liverpool" & minute > 24 & period == 1) %>%
   soccerPassmap(fill = "lightblue", arrow = "r",
                 title = "Liverpool's passing map in the 1st half (25' onwards)")
+```
+We break the 1st half into two halves. The **first picture** shows the passing map of AC Milan in the first 24 minutes, with Pirlo being the center of the passing map (the biggest blue dot in the map), Milan's transition (from attack to defense and vice versa) depended on him. Another thing to notice is that one of the Milan's forward, Crespo, was not really involved in the game. The **2nd picture** is the passing map of Milan in the second half of the 1st half. Compared to the first picture, Milan's formation retrieved to their goal. For example, in the first 24 minutes, Maldini (left back), Gattuso, Seedorf, were standing in front of the Pirlo; they were behind Pirlo in the later half of the 1st half. I would guess the reason was due to the increase in aggressiveness of Liverpool, as well as their own strategy of contracting their defensive lines and playing counterattack, since they led 1-0 as early as 1 minute into the game. And that strategy was fantastic! They scored two more goals on counter attack at 39' and 44' when Liverpool tried really hard attacking (since they were 1-0 behind). The scorer of both goals is Crespo, the man who were not "involved" in terms of passing in the first 24 minutes, and he became lethal in the second part. 
 
+The **3rd and the 4th picture** tell the Liverpool's part of the story in the 1st half. The first thing to notice is that Kewell was out and Smicer was in for him (Kewell was in the 3rd pic but not in the 4th, and Smicer the opposite) because Kewell was injured. And compared the 4th with the 3rd picture, Gerrard and Sanz were pushing forward and to the center, while the two wingers Riise and Smicer were roughly in the same position as before. 
+
+#### The six minute spell
+```{r}
 passMap <- function(df, team, p, startminutes=NA, endminutes=NA) {
   if (!is.na(startminutes))
     df <- df %>% filter(minute >= startminutes)
@@ -225,13 +231,6 @@ passMap <- function(df, team, p, startminutes=NA, endminutes=NA) {
   guides(colour = FALSE)
 }
 
-```
-We break the 1st half into two halves. The **first picture** shows the passing map of AC Milan in the first 24 minutes, with Pirlo being the center of the passing map (the biggest blue dot in the map), Milan's transition (from attack to defense and vice versa) depended on him. Another thing to notice is that one of the Milan's forward, Crespo, was not really involved in the game. The **2nd picture** is the passing map of Milan in the second half of the 1st half. Compared to the first picture, Milan's formation retrieved to their goal. For example, in the first 24 minutes, Maldini (left back), Gattuso, Seedorf, were standing in front of the Pirlo; they were behind Pirlo in the later half of the 1st half. I would guess the reason was due to the increase in aggressiveness of Liverpool, as well as their own strategy of contracting their defensive lines and playing counterattack, since they led 1-0 as early as 1 minute into the game. And that strategy was fantastic! They scored two more goals on counter attack at 39' and 44' when Liverpool tried really hard attacking (since they were 1-0 behind). The scorer of both goals is Crespo, the man who were not "involved" in terms of passing in the first 24 minutes, and he became lethal in the second part. 
-
-The **3rd and the 4th picture** tell the Liverpool's part of the story in the 1st half. The first thing to notice is that Kewell was out and Smicer was in for him (Kewell was in the 3rd pic but not in the 4th, and Smicer the opposite) because Kewell was injured. And compared the 4th with the 3rd picture, Gerrard and Sanz were pushing forward and to the center, while the two wingers Riise and Smicer were roughly in the same position as before. 
-
-#### The six minute spell
-```{r}
 is %>%
   filter(team.name == "AC Milan" & minute >= 53 & minute <= 60) %>%
   soccerPassmap(fill = "lightblue", arrow = "r",
