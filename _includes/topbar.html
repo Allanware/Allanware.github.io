@@ -69,7 +69,7 @@
 
     <i id="sidebar-trigger" class="fas fa-bars fa-fw"></i>
 
-    <div id="topbar-title">
+    <!-- <div id="topbar-title">
       {% if page.layout == 'home' %}
         {{- site.title -}}
       {% elsif page.dynamic_title %}
@@ -77,7 +77,7 @@
       {% else %}
         {{- page.layout | capitalize -}}
       {% endif %}
-    </div>
+    </div> -->
 
     <i id="search-trigger" class="fas fa-search fa-fw"></i>
     <span id="search-wrapper" class="align-items-center">
@@ -86,7 +86,7 @@
         aria-label="search" autocomplete="off" placeholder="{{ site.data.translations[site.data.label.search_hint][page.lang] | default: 'Search' }}...">
       <i class="fa fa-times-circle fa-fw" id="search-cleaner"></i>
     </span>
-    <span id="search-cancel" >Cancel</span>
+    <span id="search-cancel" >site.data.translations[Cancel][page.lang]</span>
   </div>
 
 </div>

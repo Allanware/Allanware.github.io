@@ -60,3 +60,7 @@ Pinned:
 min:
   en-US: "min"
   zh-CN: "分钟"
+
+Cancel:
+  en-US: "Cancel"
+  zh-CN: "取消"
