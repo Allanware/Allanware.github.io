@@ -5,6 +5,8 @@ https://allanware.github.io/
 - Disqus comment enabled
 - Google Analytics
 - Posts/blogs can be searched, are categorized based on categories, and are indexed via tags and timline
+- (somewhat limited) Chinese language 
 
 ## TODO
-- add the Chinese language 
+- tag page (not the tags page) in chinese 
+- suggested readings, next/prev readings for an exclusive language
