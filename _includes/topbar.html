@@ -49,7 +49,7 @@
       
         {% if pages.size > 1 %} 
           {% for post in pages %}
-            <a href="{{ site.base-url }}{{ post.url }}">{{ site.data.languages[post.lang].icon }} {{ site.data.languages[post.lang].label }}</a>
+            <a href="{{ post.base-url }}">{{ site.data.languages[post.lang].icon }} {{ site.data.languages[post.lang].label }}</a>
           {% endfor %}
         {% endif %} 
       

@@ -632,4 +632,4 @@ sessionInfo()
     ## [45] xml2_1.3.2        rmarkdown_2.8     R6_2.5.0          compiler_4.1.0
 
 ## source code
-- https://github.com/Allanware/Allanware.github.io/blob/master/_source/2021-03-04-The-Miracle-of-Istanbul.Rmd
+- <https://github.com/Allanware/Allanware.github.io/blob/master/_source/2021-03-04-The-Miracle-of-Istanbul.Rmd>

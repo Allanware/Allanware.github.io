@@ -100,10 +100,9 @@ collections:
     output: true
     sort_by: order
     permalink: /:title/
-
-  
-  
-
+  teaching:
+    output: true
+    
 defaults:
   -
     scope:
@@ -159,6 +158,16 @@ defaults:
     values:
       lang: zh-CN
       base-url: "/zh"
+  -
+    scope:
+      path: ''
+      type: teaching           
+    values:
+      layout: simple_page
+      toc: true 
+      dynamic_title: true    
+      lang: en-US
+      base-url: "/"
 
 sass:
   style: compressed

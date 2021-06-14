@@ -250,7 +250,8 @@ We have seen the hell for Liverpool, i.e., the first half of the game, where Mil
 
 On the contrary, the **3rd picture** shows that all 10 players (excluding the goalkeeper) were involved in passing, and they achieved more than 75% passing accuracy. **The 4th picture** shows the exact passes. 
 
-In the 1st half, the passing accuracy was 78% for Milan. What causes this decline in passing accuracy and number of passes on the Milan side, whereas Liverpool somehow maintained their passing accuracy? I then look at the defensive acts by both teams in the first 15 minutes of the 2nd half. 
+In the 1st half, the passing accuracy was 78% for Milan. What causes this decline in passing accuracy and number of passes on the Milan side, whereas Liverpool somehow maintained their passing accuracy? I then look
+at the defensive acts by both teams in that six minutes.  
 
 ```{r}
 d2 <- is %>% 
