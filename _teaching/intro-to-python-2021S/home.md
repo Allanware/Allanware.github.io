@@ -33,9 +33,15 @@ practice will be provided and encouraged (programming is a skill, it requires pr
 Computer/tablet access (not smartphone), reliable Internet.
 
 ## Course Schedule
-- [Day 1]({{ site.baseurl }}{% link _teaching/intro-to-python-2021S/day1.md %}) 
-- [Day 2]({{ site.baseurl }}{% link _teaching/intro-to-python-2021S/day2.md %})
-- [Day 3]({{ site.baseurl }}{% link _teaching/intro-to-python-2021S/day3.md %})
-- [Day 4]({{ site.baseurl }}{% link _teaching/intro-to-python-2021S/day4.md %})
-- [Day 5]({{ site.baseurl }}{% link _teaching/intro-to-python-2021S/day5.md %})
+
+<div id="access-tags">
+    <div class="d-flex flex-wrap mt-3 mb-1 mr-3">
+        <a class="post-tag" href="{{ site.baseurl }}{% link _teaching/intro-to-python-2021S/day1.md %}">Day 1</a>
+        <a class="post-tag" href="{{ site.baseurl }}{% link _teaching/intro-to-python-2021S/day2.md %}">Day 2</a>
+        <a class="post-tag" href="{{ site.baseurl }}{% link _teaching/intro-to-python-2021S/day3.md %}">Day 3</a>
+        <a class="post-tag" href="{{ site.baseurl }}{% link _teaching/intro-to-python-2021S/day4.md %}">Day 4</a>
+        <a class="post-tag" href="{{ site.baseurl }}{% link _teaching/intro-to-python-2021S/day5.md %}">Day 5</a>
+    </div>
+</div>
+
 
