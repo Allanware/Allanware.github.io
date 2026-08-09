@@ -13,7 +13,7 @@ The primary navigation and language navigation remain separate `<nav>` elements 
 
 The row uses a non-wrapping flex layout with baseline alignment. The primary navigation continues to contain exactly three destinations. The language navigation continues to render only when the current page has a real visible translation and continues to contain exactly one link to that alternate translation. No current-language label or second language link is added.
 
-The existing separator before the language link remains. Link labels, routes, `hreflang`, `lang`, and accessible names do not change.
+The existing separator before the language link remains. The Chinese language label changes from `简体中文` to the shorter `中文`; the English label remains `English`. Routes, `hreflang`, `lang`, and accessible-name behavior do not change.
 
 ## Responsive Behavior
 
@@ -26,6 +26,7 @@ Generated-site tests will require:
 - one navigation-row wrapper;
 - exactly three primary links;
 - exactly one alternate-language link on translated pages;
+- the Chinese alternate-language link is labelled exactly `中文`;
 - both navigation elements as direct children of the shared wrapper;
 - no language navigation for an untranslated post;
 - non-wrapping flex rules in the site stylesheet.
@@ -36,5 +37,5 @@ A browser check at desktop and 390-pixel mobile widths will confirm that the two
 
 - Showing both language names simultaneously.
 - Adding the language link to the primary menu.
-- Changing `English` or `简体中文` labels.
+- Changing the `English` label or any language code/locale.
 - Changing translation availability rules or URLs.
