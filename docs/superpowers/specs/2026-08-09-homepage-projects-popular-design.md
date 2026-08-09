@@ -100,9 +100,11 @@ the `blog` section. Moving the bundle therefore removes “Beyond the Cloud” f
 Posts and RSS by content type instead of hiding or deindexing it. Sitemap and
 SEO behavior remain enabled for the project page.
 
-The projects branch bundle disables rendering only for its section index while
-remaining listable, so Hugo can select its regular project pages for homepage,
-tag, and sitemap output without creating an unrequested `/projects/` archive.
+The projects branch bundle sets `build.render = "never"`, so the section index
+is neither rendered nor included in page collections. The option is not
+cascaded: descendant regular project pages remain rendered and available for
+homepage, tag, and sitemap output without creating an unrequested `/projects/`
+archive.
 
 ## Popular-Post Ranking
 
@@ -166,12 +168,13 @@ then groups matching visible pages in this order:
 1. Projects/项目
 2. Posts/文章
 
-An empty group is omitted. If neither group contains a visible page, the
-existing localized empty state appears. The group lists retain the existing
+An empty group is omitted. If neither group contains a visible page, a new
+content-neutral localized “No tagged content yet”/“暂无相关内容” state appears.
+The group lists retain the existing
 date-and-title archive presentation and remain language-local. Search and count
 controls apply independently to each rendered group only when useful, with
-project-specific search, count, and empty labels rather than calling projects
-“posts.”
+project-specific search, count, and search-empty labels rather than calling
+projects “posts.”
 
 ## Configuration, Localization, and Styling
 
@@ -229,8 +232,9 @@ URL and a project-subpath base URL and assert:
 - language-local projects and empty project state;
 - latest-post reverse-date order, title-only markup, three-item limit, and
   exclusion of projects and hidden pages;
-- popular candidate language/section/visibility filtering, five-item limit,
-  and base-path-safe links;
+- popular candidate language/section/visibility filtering and base-path-safe
+  links (Hugo emits every eligible inert candidate; the runtime cap is tested
+  in Node);
 - unchanged Beyond route, PDF, interaction entity, Giscus term, SEO, and tag
   membership;
 - removal of Beyond from Posts and RSS;
