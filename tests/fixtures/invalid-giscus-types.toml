@@ -1,0 +1,6 @@
+[params.giscus]
+  enabled = true
+  repo = "fixture-owner/fixture-repository"
+  repoId = 42
+  category = "Fixture category"
+  categoryId = true

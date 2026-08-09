@@ -1,0 +1,33 @@
+{{- /* Site-local identity validation shared by Giscus and Kudos. */ -}}
+{{- $page := . -}}
+{{- $hasValue := isset $page.Params "interactionid" -}}
+{{- $value := index $page.Params "interactionid" -}}
+{{- $isString := and $hasValue (eq (printf "%T" $value) "string") -}}
+{{- $raw := "" -}}
+{{- if $isString }}{{ $raw = $value }}{{ end -}}
+{{- $mustValidate := or (not $page.Draft) $hasValue -}}
+{{- $result := "" -}}
+{{- if $mustValidate -}}
+  {{- if not $hasValue -}}
+    {{- errorf "%s: published blog posts require interactionId" $page.File.Path -}}
+  {{- else if not $isString -}}
+    {{- errorf "%s: interactionId must be a string" $page.File.Path -}}
+  {{- else if or (lt (len $raw) 1) (gt (len $raw) 80) (eq (len (findRE `^[a-z0-9]+(-[a-z0-9]+)*$` $raw)) 0) -}}
+    {{- errorf "%s: interactionId %q must match ^[a-z0-9]+(?:-[a-z0-9]+)*$ and be at most 80 characters" $page.File.Path $raw -}}
+  {{- else -}}
+    {{- $translationSetValid := true -}}
+    {{- range $translation := $page.Translations -}}
+      {{- $otherHasValue := isset $translation.Params "interactionid" -}}
+      {{- $otherValue := index $translation.Params "interactionid" -}}
+      {{- $otherIsString := and $otherHasValue (eq (printf "%T" $otherValue) "string") -}}
+      {{- $otherRaw := "" -}}
+      {{- if $otherIsString }}{{ $otherRaw = $otherValue }}{{ end -}}
+      {{- if or (not $otherIsString) (ne $otherRaw $raw) -}}
+        {{- $translationSetValid = false -}}
+        {{- errorf "%s and %s: translations must share interactionId %q" $page.File.Path $translation.File.Path $raw -}}
+      {{- end -}}
+    {{- end -}}
+    {{- if $translationSetValid }}{{ $result = printf "post:%s" $raw }}{{ end -}}
+  {{- end -}}
+{{- end -}}
+{{- return $result -}}

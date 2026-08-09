@@ -50,6 +50,35 @@ def build_site(destination: Path, base_url: str, *extra_arguments: str) -> None:
     subprocess.run(command, cwd=ROOT, check=True, capture_output=True, text=True)
 
 
+def run_hugo(
+    destination: Path,
+    base_url: str,
+    *extra_arguments: str,
+) -> subprocess.CompletedProcess[str]:
+    command = [
+        "hugo",
+        "--source", str(ROOT),
+        "--destination", str(destination),
+        "--baseURL", base_url,
+        "--cleanDestinationDir",
+        "--panicOnWarning",
+        "--noBuildLock",
+        "--cacheDir", str(destination.parent / "cache"),
+        *extra_arguments,
+    ]
+    return subprocess.run(
+        command,
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+
+def command_output(result: subprocess.CompletedProcess[str]) -> str:
+    return "\n".join(part for part in (result.stdout, result.stderr) if part)
+
+
 def read_html(public: Path, relative: str) -> str:
     return (public / relative).read_text(encoding="utf-8")
 
@@ -493,6 +522,372 @@ class GeneratedSiteTests(unittest.TestCase):
                         ),
                     )
             self.assertTrue((project / "zh/tags/测试/index.html").is_file())
+
+    def test_giscus_uses_shared_strict_threads_and_validated_configuration(self):
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            production = temporary_root / "production"
+            build_site(production, "https://example.test/")
+            production_post = read_html(
+                production,
+                "p/beyond-the-cloud/index.html",
+            )
+            self.assertNotIn("giscus.app/client.js", production_post)
+
+            fixture = temporary_root / "fixture"
+            build_site(
+                fixture,
+                "https://example.test/",
+                "--config", "hugo.toml,tests/fixtures/interactions.toml",
+                "--contentDir", "tests/fixtures/content",
+            )
+            english = read_html(fixture, "p/shared-article/index.html")
+            chinese = read_html(fixture, "zh/p/shared-article/index.html")
+            chinese_only = read_html(fixture, "zh/p/chinese-only/index.html")
+            shared_attributes = (
+                'data-repo="fixture-owner/fixture-repository"',
+                'data-repo-id="R_fixture"',
+                'data-category="Fixture category"',
+                'data-category-id="DIC_fixture"',
+                'data-mapping="specific"',
+                'data-term="post:shared-article"',
+                'data-strict="1"',
+                'data-reactions-enabled="1"',
+                'data-emit-metadata="0"',
+                'data-input-position="bottom"',
+                'data-theme="preferred_color_scheme"',
+                'data-loading="lazy"',
+                'crossorigin="anonymous"',
+            )
+            for language, html, locale in (
+                ("English", english, "en"),
+                ("Chinese", chinese, "zh-CN"),
+            ):
+                with self.subTest(language=language):
+                    self.assertEqual(1, html.count("https://giscus.app/client.js"))
+                    self.assertNotIn("http://giscus.app/client.js", html)
+                    for attribute in shared_attributes:
+                        self.assertIn(attribute, html)
+                    self.assertIn(f'data-lang="{locale}"', html)
+                    self.assertRegex(html, r'<script[^>]*\sasync(?:\s|>)')
+            self.assertEqual(1, chinese_only.count("https://giscus.app/client.js"))
+            self.assertIn('data-term="post:chinese-only"', chinese_only)
+            self.assertNotIn('data-term="post:shared-article"', chinese_only)
+
+            padded = temporary_root / "padded"
+            build_site(
+                padded,
+                "https://example.test/",
+                "--config", "hugo.toml,tests/fixtures/padded-giscus.toml",
+                "--contentDir", "tests/fixtures/content",
+            )
+            padded_english = read_html(
+                padded,
+                "p/shared-article/index.html",
+            )
+            padded_chinese = read_html(
+                padded,
+                "zh/p/shared-article/index.html",
+            )
+            for html, locale in (
+                (padded_english, "en"),
+                (padded_chinese, "zh-CN"),
+            ):
+                self.assertIn(
+                    'data-repo="fixture-owner/fixture-repository"',
+                    html,
+                )
+                self.assertIn('data-repo-id="R_fixture"', html)
+                self.assertIn('data-category="Fixture category"', html)
+                self.assertIn('data-category-id="DIC_fixture"', html)
+                self.assertIn(f'data-lang="{locale}"', html)
+                self.assertNotIn("arbitrary-invalid-locale", html)
+
+    def test_giscus_suppresses_incomplete_mistyped_and_malformed_configuration(self):
+        static_configs = (
+            "tests/fixtures/incomplete-interactions.toml",
+            "tests/fixtures/invalid-giscus-repo.toml",
+            "tests/fixtures/invalid-giscus-whitespace.toml",
+            "tests/fixtures/invalid-giscus-enabled.toml",
+            "tests/fixtures/invalid-giscus-types.toml",
+            "tests/fixtures/invalid-giscus-container-scalar.toml",
+            "tests/fixtures/invalid-giscus-container-list.toml",
+        )
+        invalid_field_values = {
+            "enabled-integer": "enabled = 1",
+            "repo-integer": "repo = 42",
+            "repo-whitespace": 'repo = "   "',
+            "repo-missing-owner": 'repo = "/repository"',
+            "repo-missing-name": 'repo = "owner/"',
+            "repo-extra-slash": 'repo = "owner/repository/extra"',
+            "repo-internal-whitespace": 'repo = "owner name/repository"',
+            "repo-id-boolean": "repoId = true",
+            "repo-id-whitespace": 'repoId = "   "',
+            "category-integer": "category = 42",
+            "category-whitespace": 'category = "   "',
+            "category-id-boolean": "categoryId = true",
+            "category-id-whitespace": 'categoryId = "   "',
+        }
+        defaults = {
+            "enabled": "enabled = true",
+            "repo": 'repo = "fixture-owner/fixture-repository"',
+            "repoId": 'repoId = "R_fixture"',
+            "category": 'category = "Fixture category"',
+            "categoryId": 'categoryId = "DIC_fixture"',
+        }
+
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            for index, config in enumerate(static_configs):
+                with self.subTest(config=config):
+                    destination = temporary_root / f"static-{index}"
+                    build_site(
+                        destination,
+                        "https://example.test/",
+                        "--config", f"hugo.toml,{config}",
+                        "--contentDir", "tests/fixtures/content",
+                    )
+                    html = read_html(
+                        destination,
+                        "p/shared-article/index.html",
+                    )
+                    self.assertNotIn("giscus.app/client.js", html)
+
+            for index, (name, invalid_line) in enumerate(
+                invalid_field_values.items()
+            ):
+                with self.subTest(field_case=name):
+                    invalid_key = invalid_line.split(" = ", 1)[0]
+                    lines = ["[params.giscus]"]
+                    for key, default_line in defaults.items():
+                        lines.append(
+                            invalid_line if key == invalid_key else default_line
+                        )
+                    config = temporary_root / f"field-{index}.toml"
+                    config.write_text("\n".join(lines) + "\n", encoding="utf-8")
+                    destination = temporary_root / f"field-{index}"
+                    build_site(
+                        destination,
+                        "https://example.test/",
+                        "--config", f"hugo.toml,{config}",
+                        "--contentDir", "tests/fixtures/content",
+                    )
+                    html = read_html(
+                        destination,
+                        "p/shared-article/index.html",
+                    )
+                    self.assertNotIn("giscus.app/client.js", html)
+
+    def test_hugo_rejects_invalid_published_interaction_ids_directly(self):
+        cases = (
+            (
+                "malformed",
+                "tests/fixtures/invalid-content",
+                "hugo.toml",
+                'interactionId "Invalid ID" must match',
+            ),
+            (
+                "non-string",
+                "tests/fixtures/nonstring-content",
+                "hugo.toml",
+                "interactionId must be a string",
+            ),
+            (
+                "overlong",
+                "tests/fixtures/overlong-content",
+                "hugo.toml",
+                "at most 80 characters",
+            ),
+            (
+                "translation-mismatch",
+                "tests/fixtures/mismatched-content",
+                "hugo.toml",
+                "translations must share interactionId",
+            ),
+            (
+                "missing-with-site-fallback",
+                "tests/fixtures/missing-id-content",
+                "hugo.toml,tests/fixtures/site-id.toml",
+                "published blog posts require interactionId",
+            ),
+            (
+                "missing-with-language-fallback",
+                "tests/fixtures/missing-id-content",
+                "hugo.toml,tests/fixtures/language-id.toml",
+                "published blog posts require interactionId",
+            ),
+        )
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            for index, (name, content_dir, config, expected) in enumerate(cases):
+                with self.subTest(case=name):
+                    result = run_hugo(
+                        temporary_root / f"invalid-{index}",
+                        "https://example.test/",
+                        "--config", config,
+                        "--contentDir", content_dir,
+                    )
+                    self.assertNotEqual(0, result.returncode)
+                    self.assertIn(expected, command_output(result))
+
+    def test_interaction_id_boundaries_and_draft_translation_semantics(self):
+        malformed = {
+            "empty": "",
+            "uppercase": "Uppercase",
+            "leading-hyphen": "-leading",
+            "trailing-hyphen": "trailing-",
+            "double-hyphen": "double--hyphen",
+        }
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            for index, (name, interaction_id) in enumerate(malformed.items()):
+                with self.subTest(malformed=name):
+                    content = temporary_root / f"malformed-{index}" / "content"
+                    bundle = content / "blog" / "identity-case"
+                    bundle.mkdir(parents=True)
+                    (bundle / "index.en.md").write_text(
+                        f'''+++
+title = "Malformed identity"
+date = 2026-08-08
+draft = false
+interactionId = "{interaction_id}"
++++
+
+Fixture.
+''',
+                        encoding="utf-8",
+                    )
+                    result = run_hugo(
+                        temporary_root / f"malformed-{index}" / "public",
+                        "https://example.test/",
+                        "--contentDir", str(content),
+                    )
+                    self.assertNotEqual(0, result.returncode)
+                    self.assertIn(
+                        "must match ^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                        command_output(result),
+                    )
+
+            valid_content = temporary_root / "valid-80" / "content"
+            valid_bundle = valid_content / "blog" / "valid-80"
+            valid_bundle.mkdir(parents=True)
+            exact_limit = "a" * 80
+            (valid_bundle / "index.en.md").write_text(
+                f'''+++
+title = "Exact identity limit"
+date = 2026-08-08
+draft = false
+interactionId = "{exact_limit}"
++++
+
+Fixture.
+''',
+                encoding="utf-8",
+            )
+            valid_public = temporary_root / "valid-80" / "public"
+            valid_result = run_hugo(
+                valid_public,
+                "https://example.test/",
+                "--config", "hugo.toml,tests/fixtures/interactions.toml",
+                "--contentDir", str(valid_content),
+            )
+            self.assertEqual(
+                0,
+                valid_result.returncode,
+                command_output(valid_result),
+            )
+            valid_html = read_html(valid_public, "p/valid-80/index.html")
+            self.assertIn(f'data-term="post:{exact_limit}"', valid_html)
+
+            draft_content = temporary_root / "draft" / "content"
+            draft_bundle = draft_content / "blog" / "standalone-draft"
+            draft_bundle.mkdir(parents=True)
+            (draft_bundle / "index.en.md").write_text(
+                '''+++
+title = "Standalone draft"
+date = 2026-08-08
+draft = true
++++
+
+Fixture.
+''',
+                encoding="utf-8",
+            )
+            draft_public = temporary_root / "draft" / "public"
+            draft_result = run_hugo(
+                draft_public,
+                "https://example.test/",
+                "--config", "hugo.toml,tests/fixtures/interactions.toml",
+                "--contentDir", str(draft_content),
+                "--buildDrafts",
+            )
+            self.assertEqual(
+                0,
+                draft_result.returncode,
+                command_output(draft_result),
+            )
+            draft_html = read_html(
+                draft_public,
+                "p/standalone-draft/index.html",
+            )
+            self.assertNotIn("giscus.app/client.js", draft_html)
+
+            translated = temporary_root / "translated-draft" / "content"
+            translated_bundle = translated / "blog" / "translated-draft"
+            translated_bundle.mkdir(parents=True)
+            (translated_bundle / "index.en.md").write_text(
+                '''+++
+title = "Published translation"
+date = 2026-08-08
+draft = false
+interactionId = "translated-draft"
++++
+
+Fixture.
+''',
+                encoding="utf-8",
+            )
+            (translated_bundle / "index.zh.md").write_text(
+                '''+++
+title = "翻译草稿"
+date = 2026-08-08
+draft = true
++++
+
+测试。
+''',
+                encoding="utf-8",
+            )
+            translated_result = run_hugo(
+                temporary_root / "translated-draft" / "public",
+                "https://example.test/",
+                "--contentDir", str(translated),
+                "--buildDrafts",
+            )
+            self.assertNotEqual(0, translated_result.returncode)
+            self.assertIn(
+                "translations must share interactionId",
+                command_output(translated_result),
+            )
+
+    def test_interaction_identity_is_computed_once_from_page_local_params(self):
+        identity_path = ROOT / "layouts/_partials/interaction-id.html"
+        self.assertTrue(identity_path.is_file())
+        identity = identity_path.read_text(encoding="utf-8")
+        page = (ROOT / "layouts/blog/page.html").read_text(encoding="utf-8")
+        self.assertEqual(1, identity.count("return $result"))
+        self.assertRegex(identity, r'isset\s+\$page\.Params\s+"interactionid"')
+        self.assertNotRegex(identity, r'\$page\.Param\b')
+        self.assertIn("$page.Translations", identity)
+        self.assertNotIn("$page.AllTranslations", identity)
+        self.assertEqual(1, page.count('partial "interaction-id.html" .'))
+        self.assertEqual(
+            1,
+            page.count(
+                'partial "giscus.html" '
+                '(dict "Page" . "Entity" $interactionEntity)'
+            ),
+        )
 
     def test_hidden_translations_are_not_advertised(self):
         with TemporaryDirectory() as temporary:

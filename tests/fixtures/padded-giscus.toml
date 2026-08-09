@@ -1,0 +1,12 @@
+[params.giscus]
+  enabled = true
+  repo = "  fixture-owner/fixture-repository  "
+  repoId = "  R_fixture  "
+  category = "  Fixture category  "
+  categoryId = "  DIC_fixture  "
+
+[languages.en.params]
+  giscusLanguage = "arbitrary-invalid-locale"
+
+[languages.zh.params]
+  giscusLanguage = 42

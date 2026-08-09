@@ -1,0 +1,67 @@
+{{- /* Site-local optional Giscus integration. */ -}}
+{{- $page := .Page -}}
+{{- $entity := .Entity -}}
+{{- $giscus := dict -}}
+{{- if isset $page.Site.Params "giscus" -}}
+  {{- $configured := index $page.Site.Params "giscus" -}}
+  {{- if reflect.IsMap $configured }}{{ $giscus = $configured }}{{ end -}}
+{{- end -}}
+
+{{- $enabled := false -}}
+{{- if isset $giscus "enabled" -}}
+  {{- $value := index $giscus "enabled" -}}
+  {{- if eq (printf "%T" $value) "bool" }}{{ $enabled = $value }}{{ end -}}
+{{- end -}}
+
+{{- $repo := "" -}}
+{{- if isset $giscus "repo" -}}
+  {{- $value := index $giscus "repo" -}}
+  {{- if eq (printf "%T" $value) "string" }}{{ $repo = strings.TrimSpace $value }}{{ end -}}
+{{- end -}}
+
+{{- $repoID := "" -}}
+{{- if isset $giscus "repoid" -}}
+  {{- $value := index $giscus "repoid" -}}
+  {{- if eq (printf "%T" $value) "string" }}{{ $repoID = strings.TrimSpace $value }}{{ end -}}
+{{- end -}}
+
+{{- $category := "" -}}
+{{- if isset $giscus "category" -}}
+  {{- $value := index $giscus "category" -}}
+  {{- if eq (printf "%T" $value) "string" }}{{ $category = strings.TrimSpace $value }}{{ end -}}
+{{- end -}}
+
+{{- $categoryID := "" -}}
+{{- if isset $giscus "categoryid" -}}
+  {{- $value := index $giscus "categoryid" -}}
+  {{- if eq (printf "%T" $value) "string" }}{{ $categoryID = strings.TrimSpace $value }}{{ end -}}
+{{- end -}}
+
+{{- $locale := "" -}}
+{{- if eq $page.Language.Lang "en" -}}
+  {{- $locale = "en" -}}
+{{- else if eq $page.Language.Lang "zh" -}}
+  {{- $locale = "zh-CN" -}}
+{{- end -}}
+{{- $validRepo := gt (len (findRE `^[^[:space:]/]+/[^[:space:]/]+$` $repo)) 0 -}}
+{{- if and $entity $enabled $validRepo $repoID $category $categoryID $locale -}}
+  <section class="post-interaction comments" aria-label="{{ T "comments" }}">
+    <h3>{{ T "comments" }}</h3>
+    <script src="https://giscus.app/client.js"
+      data-repo="{{ $repo }}"
+      data-repo-id="{{ $repoID }}"
+      data-category="{{ $category }}"
+      data-category-id="{{ $categoryID }}"
+      data-mapping="specific"
+      data-term="{{ $entity }}"
+      data-strict="1"
+      data-reactions-enabled="1"
+      data-emit-metadata="0"
+      data-input-position="bottom"
+      data-theme="preferred_color_scheme"
+      data-lang="{{ $locale }}"
+      data-loading="lazy"
+      crossorigin="anonymous"
+      async></script>
+  </section>
+{{- end -}}

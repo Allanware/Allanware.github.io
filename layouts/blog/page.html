@@ -14,5 +14,7 @@
       </p>
     {{ end }}
     {{ if .Site.Params.toc }}<div class="toc">{{ partial "toc.html" . }}</div>{{ end }}
+    {{ $interactionEntity := partial "interaction-id.html" . }}
+    {{ partial "giscus.html" (dict "Page" . "Entity" $interactionEntity) }}
   </article>
 {{ end }}

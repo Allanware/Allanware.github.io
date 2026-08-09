@@ -1,0 +1,6 @@
+[params.giscus]
+  enabled = true
+  repo = "not-a-repository"
+  repoId = "R_fixture"
+  category = "Fixture category"
+  categoryId = "DIC_fixture"
