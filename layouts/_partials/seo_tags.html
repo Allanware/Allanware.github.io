@@ -1,0 +1,21 @@
+{{- /* Derived from rokcso/hugo-bearneo@f5c57c5ea39a091f0167af6312f4d4e385df2e6c: layouts/partials/seo_tags.html */ -}}
+{{- $description := .Site.Params.description -}}
+{{- with .Description -}}
+  {{- $description = . -}}
+{{- else -}}
+  {{- if .IsPage -}}
+    {{- $description = .Summary | plainify | transform.HTMLUnescape | strings.TrimSpace -}}
+  {{- end -}}
+{{- end -}}
+<meta name="title" content="{{ with .Title }}{{ . }}{{ else }}{{ .Site.Title }}{{ end }}">
+<meta name="description" content="{{ $description }}">
+{{ with .Params.tags }}<meta name="keywords" content="{{ delimit . "," }}">{{ end }}
+<link rel="canonical" href="{{ .Permalink }}">
+{{ $visibleTranslations := where .AllTranslations "Params.hidden" "ne" true }}
+{{ if and (ge (len $visibleTranslations) 2) (ne .Kind "term") }}
+  {{ range $visibleTranslations }}<link rel="alternate" hreflang="{{ .Language.Locale }}" href="{{ .Permalink }}">{{ end }}
+  {{ range where $visibleTranslations "Language.Name" "en" }}<link rel="alternate" hreflang="x-default" href="{{ .Permalink }}">{{ end }}
+{{ end }}
+{{ partial "opengraph.html" . }}
+{{ partial "twitter_cards.html" . }}
+{{ partial "schema.html" . }}

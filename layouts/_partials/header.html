@@ -5,10 +5,14 @@
 <nav aria-label="{{ T "primaryNavigation" }}" data-primary-navigation>
   {{ partial "nav.html" . }}
 </nav>
-{{- if and .IsTranslated (ne .Kind "term") }}
+{{- $currentPage := . -}}
+{{- $visibleTranslations := where .AllTranslations "Params.hidden" "ne" true -}}
+{{- if and (ge (len $visibleTranslations) 2) (ne .Kind "term") }}
   <nav class="language-switcher" aria-label="{{ T "languageNavigation" }}">
-    {{- range .Translations }}
-      <a href="{{ .RelPermalink }}" hreflang="{{ .Language.Locale }}" lang="{{ .Language.Locale }}" aria-label="{{ T "switchLanguageTo" .Language.Label }}">{{ .Language.Label }}</a>
+    {{- range $visibleTranslations }}
+      {{- if ne .RelPermalink $currentPage.RelPermalink }}
+        <a href="{{ .RelPermalink }}" hreflang="{{ .Language.Locale }}" lang="{{ .Language.Locale }}" aria-label="{{ T "switchLanguageTo" .Language.Label }}">{{ .Language.Label }}</a>
+      {{- end }}
     {{- end }}
   </nav>
 {{- end }}

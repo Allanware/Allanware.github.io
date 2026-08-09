@@ -54,6 +54,54 @@ def read_html(public: Path, relative: str) -> str:
     return (public / relative).read_text(encoding="utf-8")
 
 
+def alternate_link_entries(html: str) -> list[tuple[str, str]]:
+    return re.findall(
+        r'<link[^>]+rel="alternate"[^>]+hreflang="([^"]+)"[^>]+href="([^"]+)"',
+        html,
+    )
+
+
+def alternate_links(html: str) -> set[tuple[str, str]]:
+    return set(alternate_link_entries(html))
+
+
+class MetadataParser(HTMLParser):
+    DESCRIPTION_SELECTORS = {
+        ("name", "description"): "description",
+        ("property", "og:description"): "og:description",
+        ("name", "twitter:description"): "twitter:description",
+        ("itemprop", "description"): "schema:description",
+    }
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.descriptions: dict[str, list[str]] = {
+            name: [] for name in self.DESCRIPTION_SELECTORS.values()
+        }
+
+    def handle_starttag(
+        self,
+        tag: str,
+        attributes: list[tuple[str, str | None]],
+    ) -> None:
+        if tag != "meta":
+            return
+        values = dict(attributes)
+        content = values.get("content")
+        if content is None:
+            return
+        for selector, name in self.DESCRIPTION_SELECTORS.items():
+            attribute, expected = selector
+            if values.get(attribute) == expected:
+                self.descriptions[name].append(content)
+
+
+def metadata_descriptions(html: str) -> dict[str, list[str]]:
+    parser = MetadataParser()
+    parser.feed(html)
+    return parser.descriptions
+
+
 class PrimaryNavigationParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
@@ -152,6 +200,380 @@ class MarkupReviewParser(HTMLParser):
 
 
 class GeneratedSiteTests(unittest.TestCase):
+    def test_seo_uses_only_real_translations(self):
+        with TemporaryDirectory() as temporary:
+            public = Path(temporary) / "public"
+            build_site(public, "https://example.test/")
+            unpaired = read_html(public, "p/beyond-the-cloud/index.html")
+            self.assertEqual(set(), alternate_links(unpaired))
+            self.assertEqual([], alternate_link_entries(unpaired))
+            beyond_descriptions = metadata_descriptions(unpaired)
+            for selector, values in beyond_descriptions.items():
+                with self.subTest(metadata_selector=selector):
+                    self.assertEqual(1, len(values))
+            self.assertEqual(
+                1,
+                len({values[0] for values in beyond_descriptions.values()}),
+            )
+            beyond_description = next(iter(beyond_descriptions.values()))[0]
+            self.assertIn(
+                "A general challenge in information visualization",
+                beyond_description,
+            )
+            self.assertIn("p<.001", beyond_description)
+            self.assertNotEqual(
+                "Wenxuan Zhao ; Karen B. Schloss",
+                beyond_description.strip(),
+            )
+
+            fixture = Path(temporary) / "fixture"
+            build_site(
+                fixture,
+                "https://example.test/",
+                "--config", "hugo.toml,tests/fixtures/interactions.toml",
+                "--contentDir", "tests/fixtures/content",
+            )
+            english = read_html(fixture, "p/shared-article/index.html")
+            chinese = read_html(fixture, "zh/p/shared-article/index.html")
+            english_posts = read_html(fixture, "blog/index.html")
+            chinese_posts = read_html(fixture, "zh/blog/index.html")
+            self.assertIn('<p data-post-count>1 post</p>', english_posts)
+            self.assertIn('data-count-one="{count} post"', english_posts)
+            self.assertIn('data-count-many="{count} posts"', english_posts)
+            self.assertIn('<p data-post-count>2 篇文章</p>', chinese_posts)
+            self.assertIn('data-count-one="{count} 篇文章"', chinese_posts)
+            self.assertIn('data-count-many="{count} 篇文章"', chinese_posts)
+            expected = {
+                ("en-US", "https://example.test/p/shared-article/"),
+                ("zh-CN", "https://example.test/zh/p/shared-article/"),
+                ("x-default", "https://example.test/p/shared-article/"),
+            }
+            for html in [english, chinese]:
+                self.assertEqual(expected, alternate_links(html))
+                self.assertEqual(3, len(alternate_link_entries(html)))
+            self.assertIn('class="language-switcher"', english)
+            self.assertIn('href="/zh/p/shared-article/"', english)
+            self.assertIn('href="/p/shared-article/"', chinese)
+            for html in [english, chinese]:
+                self.assertIn('src="/p/shared-article/diagram.svg"', html)
+                self.assertIn('href="/p/shared-article/notes.txt"', html)
+            self.assertTrue((fixture / "p/shared-article/diagram.svg").is_file())
+            self.assertTrue((fixture / "p/shared-article/notes.txt").is_file())
+            chinese_only = read_html(fixture, "zh/p/chinese-only/index.html")
+            self.assertEqual(set(), alternate_links(chinese_only))
+            self.assertIn(
+                '<link rel="canonical" href="https://example.test/zh/p/chinese-only/">',
+                chinese_only,
+            )
+            word_count = re.search(r'data-word-count="(\d+)"', chinese_only)
+            self.assertIsNotNone(word_count)
+            self.assertEqual(26, int(word_count.group(1)))
+            description = re.search(
+                r'<meta name="description" content="([^"]*)"',
+                chinese_only,
+            )
+            self.assertIsNotNone(description)
+            self.assertEqual("天地玄黄宇宙洪荒日月盈", description.group(1).strip())
+            self.assertNotIn("尾标", description.group(1))
+            chinese_descriptions = metadata_descriptions(chinese_only)
+            self.assertEqual(
+                {"天地玄黄宇宙洪荒日月盈"},
+                {
+                    value
+                    for values in chinese_descriptions.values()
+                    for value in values
+                },
+            )
+            self.assertTrue(
+                all(len(values) == 1 for values in chinese_descriptions.values())
+            )
+            english_tags = read_html(fixture, "tags/index.html")
+            chinese_tags = read_html(fixture, "zh/tags/index.html")
+            self.assertIn("#fixture", english_tags)
+            self.assertNotIn("#测试", english_tags)
+            self.assertIn("#测试", chinese_tags)
+            self.assertNotIn("#fixture", chinese_tags)
+            self.assertIn('href="/zh/tags/%E6%B5%8B%E8%AF%95/"', chinese_tags)
+            self.assertTrue((fixture / "zh/tags/测试/index.html").is_file())
+            chinese_term = read_html(fixture, "zh/tags/测试/index.html")
+            self.assertIn("共享文章", chinese_term)
+            self.assertIn("仅中文文章", chinese_term)
+            self.assertNotIn("Shared article", chinese_term)
+            english_same_term = read_html(fixture, "tags/same-spelling/index.html")
+            chinese_same_term = read_html(
+                fixture,
+                "zh/tags/same-spelling/index.html",
+            )
+            for term_html in [english_same_term, chinese_same_term]:
+                self.assertNotIn('class="language-switcher"', term_html)
+                self.assertEqual(set(), alternate_links(term_html))
+            self.assertIn("Shared article", english_same_term)
+            self.assertNotIn("仅中文文章", english_same_term)
+            self.assertIn("仅中文文章", chinese_same_term)
+            self.assertNotIn("Shared article", chinese_same_term)
+            sitemap_index = ET.parse(fixture / "sitemap.xml").getroot()
+            locations = {
+                node.text for node in sitemap_index.findall("{*}sitemap/{*}loc")
+            }
+            self.assertEqual(
+                {
+                    "https://example.test/en/sitemap.xml",
+                    "https://example.test/zh/sitemap.xml",
+                },
+                locations,
+            )
+            english_sitemap = ET.parse(fixture / "en/sitemap.xml").getroot()
+            shared_entry = next(
+                node for node in english_sitemap.findall("{*}url")
+                if node.findtext("{*}loc")
+                == "https://example.test/p/shared-article/"
+            )
+            sitemap_alternate_entries = [
+                (link.attrib["hreflang"], link.attrib["href"])
+                for link in shared_entry.findall(
+                    "{http://www.w3.org/1999/xhtml}link"
+                )
+            ]
+            self.assertEqual(expected, set(sitemap_alternate_entries))
+            self.assertEqual(3, len(sitemap_alternate_entries))
+            chinese_sitemap = ET.parse(fixture / "zh/sitemap.xml").getroot()
+            chinese_shared_entry = next(
+                node for node in chinese_sitemap.findall("{*}url")
+                if node.findtext("{*}loc")
+                == "https://example.test/zh/p/shared-article/"
+            )
+            chinese_sitemap_alternate_entries = [
+                (link.attrib["hreflang"], link.attrib["href"])
+                for link in chinese_shared_entry.findall(
+                    "{http://www.w3.org/1999/xhtml}link"
+                )
+            ]
+            self.assertEqual(expected, set(chinese_sitemap_alternate_entries))
+            self.assertEqual(3, len(chinese_sitemap_alternate_entries))
+            chinese_only_entry = next(
+                node for node in chinese_sitemap.findall("{*}url")
+                if node.findtext("{*}loc")
+                == "https://example.test/zh/p/chinese-only/"
+            )
+            self.assertEqual(
+                [],
+                chinese_only_entry.findall(
+                    "{http://www.w3.org/1999/xhtml}link"
+                ),
+            )
+            for sitemap, location in [
+                (english_sitemap, "https://example.test/tags/same-spelling/"),
+                (
+                    chinese_sitemap,
+                    "https://example.test/zh/tags/same-spelling/",
+                ),
+            ]:
+                term_entry = next(
+                    node for node in sitemap.findall("{*}url")
+                    if node.findtext("{*}loc") == location
+                )
+                self.assertEqual(
+                    [],
+                    term_entry.findall(
+                        "{http://www.w3.org/1999/xhtml}link"
+                    ),
+                )
+
+            project = Path(temporary) / "project"
+            build_site(
+                project,
+                "https://example.test/example-blog/",
+                "--config", "hugo.toml,tests/fixtures/interactions.toml",
+                "--contentDir", "tests/fixtures/content",
+            )
+            project_english = read_html(
+                project,
+                "p/shared-article/index.html",
+            )
+            project_chinese = read_html(
+                project,
+                "zh/p/shared-article/index.html",
+            )
+            project_expected = {
+                (
+                    "en-US",
+                    "https://example.test/example-blog/p/shared-article/",
+                ),
+                (
+                    "zh-CN",
+                    "https://example.test/example-blog/zh/p/shared-article/",
+                ),
+                (
+                    "x-default",
+                    "https://example.test/example-blog/p/shared-article/",
+                ),
+            }
+            for html in [project_english, project_chinese]:
+                self.assertEqual(project_expected, alternate_links(html))
+                self.assertEqual(3, len(alternate_link_entries(html)))
+                self.assertIn(
+                    'src="/example-blog/p/shared-article/diagram.svg"',
+                    html,
+                )
+                self.assertIn(
+                    'href="/example-blog/p/shared-article/notes.txt"',
+                    html,
+                )
+            self.assertIn(
+                '<link rel="canonical" '
+                'href="https://example.test/example-blog/zh/p/shared-article/">',
+                project_chinese,
+            )
+            project_sitemap_index = ET.parse(project / "sitemap.xml").getroot()
+            self.assertEqual(
+                {
+                    "https://example.test/example-blog/en/sitemap.xml",
+                    "https://example.test/example-blog/zh/sitemap.xml",
+                },
+                {
+                    node.text
+                    for node in project_sitemap_index.findall(
+                        "{*}sitemap/{*}loc"
+                    )
+                },
+            )
+            project_sitemaps = {
+                "en": ET.parse(project / "en/sitemap.xml").getroot(),
+                "zh": ET.parse(project / "zh/sitemap.xml").getroot(),
+            }
+            project_shared_locations = {
+                "en": "https://example.test/example-blog/p/shared-article/",
+                "zh": "https://example.test/example-blog/zh/p/shared-article/",
+            }
+            for language, sitemap in project_sitemaps.items():
+                with self.subTest(project_sitemap=language):
+                    for node in sitemap.findall("{*}url"):
+                        self.assertTrue(
+                            node.findtext("{*}loc").startswith(
+                                "https://example.test/example-blog/"
+                            )
+                        )
+                        for link in node.findall(
+                            "{http://www.w3.org/1999/xhtml}link"
+                        ):
+                            self.assertTrue(
+                                link.attrib["href"].startswith(
+                                    "https://example.test/example-blog/"
+                                )
+                            )
+                    shared = next(
+                        node for node in sitemap.findall("{*}url")
+                        if node.findtext("{*}loc")
+                        == project_shared_locations[language]
+                    )
+                    project_sitemap_alternates = [
+                        (link.attrib["hreflang"], link.attrib["href"])
+                        for link in shared.findall(
+                            "{http://www.w3.org/1999/xhtml}link"
+                        )
+                    ]
+                    self.assertEqual(
+                        project_expected,
+                        set(project_sitemap_alternates),
+                    )
+                    self.assertEqual(3, len(project_sitemap_alternates))
+                    same_spelling_location = (
+                        "https://example.test/example-blog/"
+                        + ("" if language == "en" else "zh/")
+                        + "tags/same-spelling/"
+                    )
+                    same_spelling = next(
+                        node for node in sitemap.findall("{*}url")
+                        if node.findtext("{*}loc") == same_spelling_location
+                    )
+                    self.assertEqual(
+                        [],
+                        same_spelling.findall(
+                            "{http://www.w3.org/1999/xhtml}link"
+                        ),
+                    )
+            self.assertTrue((project / "zh/tags/测试/index.html").is_file())
+
+    def test_hidden_translations_are_not_advertised(self):
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            content = temporary_root / "content"
+            fixtures = {
+                "blog/visible-with-hidden/index.en.md": '''+++
+title = "Visible English translation"
+date = 2026-08-09
+draft = false
+interactionId = "visible-with-hidden"
++++
+
+Visible English content.
+''',
+                "blog/visible-with-hidden/index.zh.md": '''+++
+title = "隐藏的中文翻译"
+date = 2026-08-09
+draft = false
+hidden = true
+interactionId = "visible-with-hidden"
++++
+
+隐藏的中文内容。
+''',
+            }
+            for relative, source in fixtures.items():
+                path = content / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(source, encoding="utf-8")
+
+            public = temporary_root / "public"
+            build_site(
+                public,
+                "https://example.test/",
+                "--contentDir",
+                str(content),
+            )
+            english = read_html(
+                public,
+                "p/visible-with-hidden/index.html",
+            )
+            chinese = read_html(
+                public,
+                "zh/p/visible-with-hidden/index.html",
+            )
+            for html in [english, chinese]:
+                self.assertEqual([], alternate_link_entries(html))
+                self.assertNotIn('class="language-switcher"', html)
+
+            visible_url = "https://example.test/p/visible-with-hidden/"
+            hidden_url = "https://example.test/zh/p/visible-with-hidden/"
+            for language in ["en", "zh"]:
+                sitemap = ET.parse(
+                    public / language / "sitemap.xml"
+                ).getroot()
+                advertised_urls = {
+                    node.findtext("{*}loc")
+                    for node in sitemap.findall("{*}url")
+                }
+                advertised_urls.update(
+                    link.attrib["href"]
+                    for node in sitemap.findall("{*}url")
+                    for link in node.findall(
+                        "{http://www.w3.org/1999/xhtml}link"
+                    )
+                )
+                with self.subTest(sitemap_language=language):
+                    self.assertNotIn(hidden_url, advertised_urls)
+            english_sitemap = ET.parse(public / "en/sitemap.xml").getroot()
+            visible_entry = next(
+                node for node in english_sitemap.findall("{*}url")
+                if node.findtext("{*}loc") == visible_url
+            )
+            self.assertEqual(
+                [],
+                visible_entry.findall(
+                    "{http://www.w3.org/1999/xhtml}link"
+                ),
+            )
+
     def test_rss_is_separate_and_localized(self):
         configuration = tomllib.loads((ROOT / "hugo.toml").read_text())
         self.assertEqual(10, configuration["services"]["rss"]["limit"])
@@ -723,6 +1145,11 @@ Hidden content.
             taxonomy = read_html(public, "tags/index.html")
             term = read_html(public, "tags/mixedcase/index.html")
             article = read_html(public, "p/newer/index.html")
+            sitemap = ET.parse(public / "en/sitemap.xml").getroot()
+            sitemap_locations = {
+                node.findtext("{*}loc")
+                for node in sitemap.findall("{*}url")
+            }
 
             with self.subTest("English list has search, module, and visible count"):
                 self.assertIn("data-post-search", english_blog)
@@ -769,6 +1196,24 @@ Hidden content.
                 self.assertIn("Newer visible post", term)
                 self.assertIn("Older visible post", term)
                 self.assertNotIn("Hidden post", term)
+
+            with self.subTest("sitemap excludes hidden posts but keeps structure"):
+                self.assertNotIn(
+                    "https://example.test/p/hidden/",
+                    sitemap_locations,
+                )
+                self.assertIn(
+                    "https://example.test/p/newer/",
+                    sitemap_locations,
+                )
+                self.assertIn(
+                    "https://example.test/blog/",
+                    sitemap_locations,
+                )
+                self.assertIn(
+                    "https://example.test/tags/",
+                    sitemap_locations,
+                )
 
             with self.subTest("article renders content, tag, TOC, and word count"):
                 self.assertRegex(article, r'<article data-word-count="\d+">')
@@ -821,6 +1266,18 @@ Hidden content.
             taxonomy = read_html(public, "tags/index.html")
             self.assertIn("No tags yet", taxonomy)
             self.assertNotIn("HiddenOnly", taxonomy)
+            sitemap = ET.parse(public / "en/sitemap.xml").getroot()
+            sitemap_locations = {
+                node.findtext("{*}loc")
+                for node in sitemap.findall("{*}url")
+            }
+            self.assertNotIn(
+                "https://example.test/tags/hiddenonly/",
+                sitemap_locations,
+            )
+            self.assertIn("https://example.test/", sitemap_locations)
+            self.assertIn("https://example.test/blog/", sitemap_locations)
+            self.assertIn("https://example.test/tags/", sitemap_locations)
 
     def test_markdown_hooks_are_safe_valid_unique_and_keyboard_accessible(self):
         with TemporaryDirectory() as temporary:

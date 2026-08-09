@@ -1,0 +1,12 @@
+summaryLength = 10
+
+[params.giscus]
+  enabled = true
+  repo = "fixture-owner/fixture-repository"
+  repoId = "R_fixture"
+  category = "Fixture category"
+  categoryId = "DIC_fixture"
+
+[params.kudos]
+  enabled = true
+  endpoint = "http://127.0.0.1:4174"

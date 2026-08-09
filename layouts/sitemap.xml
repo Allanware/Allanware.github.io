@@ -1,0 +1,22 @@
+{{- /* Site-local multilingual sitemap template. */ -}}
+{{- printf "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>" | safeHTML }}
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  {{ $pages := where .Pages "Params.hidden" "ne" true }}
+  {{ range $pages }}
+    {{ $includePage := true }}
+    {{ if eq .Kind "term" }}
+      {{ $includePage = gt (len (where .Pages "Params.hidden" "ne" true)) 0 }}
+    {{ end }}
+    {{ if $includePage }}
+      <url>
+        <loc>{{ .Permalink }}</loc>
+        {{ if not .Lastmod.IsZero }}<lastmod>{{ .Lastmod.Format "2006-01-02T15:04:05-07:00" | safeHTML }}</lastmod>{{ end }}
+        {{ $visibleTranslations := where .AllTranslations "Params.hidden" "ne" true }}
+        {{ if and (ge (len $visibleTranslations) 2) (ne .Kind "term") }}
+          {{ range $visibleTranslations }}<xhtml:link rel="alternate" hreflang="{{ .Language.Locale }}" href="{{ .Permalink }}" />{{ end }}
+          {{ range where $visibleTranslations "Language.Name" "en" }}<xhtml:link rel="alternate" hreflang="x-default" href="{{ .Permalink }}" />{{ end }}
+        {{ end }}
+      </url>
+    {{ end }}
+  {{ end }}
+</urlset>
