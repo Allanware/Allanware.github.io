@@ -1,7 +1,7 @@
 # Inline Language Switch Design
 
 **Date:** 2026-08-09
-**Status:** Pending spacing-refinement review
+**Status:** Approved
 
 ## Goal
 

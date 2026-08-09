@@ -2,13 +2,15 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Keep the single alternate-language link on the same header row as Home, Posts, and Tags, and shorten the Chinese label to `中文`.
+**Goal:** Keep the single alternate-language link immediately after Home, Posts, and Tags on the same header row, and shorten the Chinese label to `中文`.
 
-**Architecture:** Preserve separate primary and language `<nav>` landmarks, but place them inside one presentational `.header-navigation` flex row. Keep translation availability and linking logic unchanged; CSS prevents the two navigation landmarks from wrapping into separate rows at the supported mobile width.
+**Architecture:** Preserve separate primary and language `<nav>` landmarks, but place them inside one presentational `.header-navigation` flex row. Size the primary navigation to its contents so the language landmark follows Tags instead of consuming the remaining row width. Keep translation availability and linking logic unchanged; CSS prevents the two navigation landmarks from wrapping into separate rows at the supported mobile width.
 
 **Tech Stack:** Hugo 0.164 Go templates, TOML, CSS, Python standard-library generated-site tests, Playwright/Chrome acceptance.
 
 ---
+
+**Current state:** Tasks 1 and 2 were completed in `e9b17c7` and `9be9e88`. Execute Task 3 for the approved spacing refinement.
 
 ### Task 1: Render one semantic, non-wrapping navigation row
 
@@ -116,7 +118,7 @@ Change the existing primary-navigation block to keep its links together:
 [data-primary-navigation] {
   align-items: baseline;
   display: flex;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   flex-wrap: nowrap;
   gap: 0.5rem;
   min-width: 0;
@@ -189,12 +191,15 @@ At 1280×900 and 390×844, open `/` and `/zh/` and assert:
 ```javascript
 const primary = document.querySelector("[data-primary-navigation]").getBoundingClientRect();
 const language = document.querySelector(".language-switcher").getBoundingClientRect();
+const lastPrimaryLink = document.querySelector("[data-primary-navigation] a:last-child").getBoundingClientRect();
+const languageLink = document.querySelector(".language-switcher a").getBoundingClientRect();
 const sameRow = Math.abs(primary.top - language.top) <= 1;
+const adjacencyGap = languageLink.left - lastPrimaryLink.right;
 const noOverflow = document.documentElement.scrollWidth <= document.documentElement.clientWidth;
 const languageLinks = document.querySelectorAll(".language-switcher a").length;
 ```
 
-Expected: `sameRow === true`, `noOverflow === true`, and `languageLinks === 1` for both languages at both viewport sizes. The English page link text is `中文`; the Chinese page link text is `English`.
+Expected: `sameRow === true`, `0 <= adjacencyGap <= 24`, `noOverflow === true`, and `languageLinks === 1` for both languages at both viewport sizes. The English page link text is `中文`; the Chinese page link text is `English`.
 
 Open `/p/beyond-the-cloud/` and confirm `.language-switcher` is absent while the three primary links remain in `.header-navigation`.
 
@@ -218,4 +223,78 @@ git add assets/css/site.css hugo.toml layouts/_partials/header.html tests/test_s
   docs/superpowers/plans/2026-08-09-inline-language-switch.md \
   docs/superpowers/specs/2026-08-09-inline-language-switch-design.md
 git commit -m "style: keep language switch inline"
+```
+
+### Task 3: Keep the language link adjacent to Tags
+
+**Files:**
+- Modify: `tests/test_site.py`
+- Modify: `assets/css/site.css`
+
+- [ ] **Step 1: Add a failing primary-navigation sizing assertion**
+
+In `GeneratedSiteTests.test_chrome_is_localized_and_uses_browser_color_preference`, add this assertion after the existing primary-navigation flex assertion:
+
+```python
+            self.assertRegex(
+                site_css,
+                r"\[data-primary-navigation\]\s*\{[^}]*"
+                r"flex:\s*0\s+1\s+auto;[^}]*\}",
+            )
+```
+
+- [ ] **Step 2: Run the focused test and observe the required failure**
+
+Run:
+
+```bash
+python3 -m unittest -v \
+  tests.test_site.GeneratedSiteTests.test_chrome_is_localized_and_uses_browser_color_preference
+```
+
+Expected: FAIL because `[data-primary-navigation]` still uses `flex: 1 1 auto` and pushes the language navigation to the far edge.
+
+- [ ] **Step 3: Stop the primary navigation from consuming remaining width**
+
+In `assets/css/site.css`, change only the flex shorthand in the existing primary-navigation block:
+
+```css
+[data-primary-navigation] {
+  align-items: baseline;
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  min-width: 0;
+}
+```
+
+Keep the separate navigation landmarks, divider, translation rules, and link labels unchanged.
+
+- [ ] **Step 4: Run focused and complete automated verification**
+
+Run:
+
+```bash
+python3 -m unittest -v \
+  tests.test_site.GeneratedSiteTests.test_chrome_is_localized_and_uses_browser_color_preference
+python3 -m unittest discover -s tests -p 'test_*.py' -v
+node --test tests/*.test.mjs
+```
+
+Expected: 71 Python tests and 35 Node tests PASS.
+
+- [ ] **Step 5: Repeat browser geometry acceptance**
+
+At 1280×900 and 390×844 on `/`, `/zh/`, `/example-blog/`, and `/example-blog/zh/`, compute `adjacencyGap` using the Task 2 geometry snippet.
+
+Expected: both navigation landmarks remain on the same row, `0 <= adjacencyGap <= 24` pixels, there is no document-level horizontal overflow, and each translated page contains exactly one alternate-language link. The untranslated Beyond post retains only the three primary links.
+
+- [ ] **Step 6: Commit the refinement**
+
+```bash
+git add assets/css/site.css tests/test_site.py \
+  docs/superpowers/plans/2026-08-09-inline-language-switch.md \
+  docs/superpowers/specs/2026-08-09-inline-language-switch-design.md
+git commit -m "style: keep language switch beside tags"
 ```
