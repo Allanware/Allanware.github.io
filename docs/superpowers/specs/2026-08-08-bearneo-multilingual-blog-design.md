@@ -123,7 +123,7 @@ Site-local templates must use `locale`, `label`, `direction`, `.Language.Locale`
 | `layouts/home.html`, `layouts/blog/{section,page}.html` | Localized home, Posts list, and post rendering |
 | `layouts/taxonomy.html`, `layouts/term.html` | Localized tag overview and term archives |
 | `layouts/home.rss.xml`, `layouts/sitemap.xml` | Language-specific feeds and real-translation sitemap alternates |
-| `layouts/_partials/{header,nav,footer,toc,post-list}.html` | Localized chrome, exactly three primary destinations, dates, counts, and title-only search |
+| `layouts/_partials/{header,nav,footer,toc,post-list}.html` | Localized chrome, an RSS-only footer, exactly three primary destinations, dates, counts, and title-only search |
 | `layouts/_partials/{seo_tags,interaction-id,giscus,kudos}.html` | Canonical/alternate metadata and guarded shared interactions |
 | `layouts/_markup/{render-image,render-link}.html` | Resolve URL-decoded bundle-resource paths, preserve authored query/fragment suffixes, and give translations one canonical asset URL |
 | `layouts/_shortcodes/bundle-image.html` | Preserve explicit accessible image widths while reusing the same zoom/resource behavior |
@@ -252,7 +252,7 @@ The site title will be localized:
 - English: `Wenxuan Zhao`
 - Chinese: `赵文轩`
 
-All interface strings move into `i18n/en.toml` and `i18n/zh.toml`: navigation, post lists, search, empty results, table of contents, dates, RSS, comments, upvotes, and footer links. English plural strings such as `There are N pieces.` use Hugo's `one`/`other` forms; the Chinese translations are count-invariant.
+All interface strings move into `i18n/en.toml` and `i18n/zh.toml`: navigation, post lists, search, empty results, table of contents, dates, RSS, comments, and upvotes. English plural strings such as `There are N pieces.` use Hugo's `one`/`other` forms; the Chinese translations are count-invariant. The footer contains only the localized current-language RSS link; the visible Bear Neo attribution and sitemap link are intentionally omitted.
 
 Dates use the page language's locale through `time.Format`. Go's `.Date.Format`, which the theme uses, emits English month names regardless of language and is replaced wherever a date is rendered.
 
@@ -313,7 +313,7 @@ The site exposes independent language feeds, relative to the configured base URL
 
 Each feed filters to blog posts available in that language and uses localized site metadata. Posts with `hidden = true` are removed before publish-date sorting and limiting. Feed-discovery links and visible RSS links point to the current language's feed; the theme's hardcoded `/index.xml` in the footer would otherwise send Chinese readers to the English feed and break subpath hosting. The explicit `[services.rss] limit = 10` setting is applied after sorting in the custom feed template. Summary text is HTML-unescaped and then XML-escaped exactly once so literal entities remain well formed without double escaping. No combined bilingual feed will be created. With the initial English-only content, the Chinese feed is valid but has no post entries.
 
-Hugo will generate a multilingual sitemap index and language-specific sitemap entries. The footer's hardcoded `/sitemap.xml` becomes `relURL`-based so it survives subpath hosting.
+Hugo will generate a multilingual sitemap index and language-specific sitemap entries for search engines and deployment checks, but the sitemap is not linked visibly from the footer.
 
 Canonical and alternate-language metadata are emitted only for pages that actually exist and are not marked `hidden = true`. A generated hidden page emits one `robots` `noindex` directive and omits its own canonical and all `hreflang` alternates. Visible translation pairs receive reciprocal `hreflang` links; unpaired posts do not claim a nonexistent or hidden alternate. For a translation set containing visible English, `x-default` points to the English page; a Chinese-only post has only its canonical URL. Term pages are excluded from alternate metadata because equal tag spelling does not declare semantic equivalence across the independent vocabularies, and hidden-only terms are omitted from the sitemap.
 
@@ -463,6 +463,8 @@ The local implementation can proceed without these values, but fully activating 
 These values remain centralized in site parameters, so activating the services does not require editing theme templates or post bodies.
 
 ## 18. Revision Log
+
+**2026-08-09 — footer simplification.** Removed the visible Bear Neo attribution and sitemap link from both language footers at the user's request; the localized RSS link remains, and sitemap generation is unchanged.
 
 **2026-08-09 — post-review reconciliation.** Recorded URL-decoded page-resource lookup with canonical default-language permalinks and raw query/fragment preservation; hidden-page `noindex` behavior without canonical or alternate advertisement; WCAG 4.5:1 effective tertiary/upvoted colors with preserved dark tokens and a solid-fill pressed cue; locale-neutral title matching; and the final 71-Python/35-Node verification totals.
 

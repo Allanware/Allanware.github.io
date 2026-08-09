@@ -8,10 +8,6 @@ other = "Switch language to {{ . }}"
 other = "Subscribe via"
 [rss]
 other = "RSS"
-[sitemap]
-other = "Sitemap"
-[madeWith]
-other = "Made with"
 [tableOfContents]
 other = "Table of contents"
 [zoomImage]

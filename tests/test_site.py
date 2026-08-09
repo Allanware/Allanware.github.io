@@ -1965,6 +1965,27 @@ interactionId = "resource-suffixes"
             self.assertIsNotNone(primary)
             self.assertNotIn("language-switcher", primary.group(1))
             self.assertIn('class="language-switcher"', english)
+            for language, html, rss_path, removed_text in (
+                (
+                    "en",
+                    english,
+                    "/index.xml",
+                    ("Made with", "Hugo Bear Neo", "Sitemap"),
+                ),
+                (
+                    "zh",
+                    chinese,
+                    "/zh/index.xml",
+                    ("网站主题", "Hugo Bear Neo", "网站地图"),
+                ),
+            ):
+                footer = re.search(r"<footer>(.*?)</footer>", html, re.DOTALL)
+                self.assertIsNotNone(footer)
+                with self.subTest(language=language):
+                    self.assertEqual(1, footer.group(1).count("<a "))
+                    self.assertIn(f'href="{rss_path}"', footer.group(1))
+                    for text in removed_text:
+                        self.assertNotIn(text, footer.group(1))
 
     def test_semantic_colors_meet_text_contrast_in_both_color_schemes(self):
         theme_css = (

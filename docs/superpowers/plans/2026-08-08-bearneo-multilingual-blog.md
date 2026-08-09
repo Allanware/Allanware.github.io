@@ -54,7 +54,7 @@ A Git worktree cannot be created before a repository exists. After an authorized
 - `layouts/404.html`: localized not-found page.
 - `layouts/_partials/header.html`: language-safe home/title link plus a separately labelled real-translation switcher.
 - `layouts/_partials/nav.html`: exactly the three localized Home, Posts, and Tags destinations.
-- `layouts/_partials/footer.html`: localized current-language RSS and base-safe sitemap links.
+- `layouts/_partials/footer.html`: one localized current-language RSS link, with no theme attribution or visible sitemap link.
 - `layouts/_partials/seo_tags.html`: visible-page canonical/real-only alternates plus hidden-page `robots` `noindex` isolation.
 - `layouts/_partials/toc.html`: localized accessible table of contents.
 - `layouts/_partials/post-list.html`: reusable localized post list/search.
@@ -772,10 +772,6 @@ other = "Switch language to {{ . }}"
 other = "Subscribe via"
 [rss]
 other = "RSS"
-[sitemap]
-other = "Sitemap"
-[madeWith]
-other = "Made with"
 [tableOfContents]
 other = "Table of contents"
 [zoomImage]
@@ -827,10 +823,6 @@ other = "切换语言至{{ . }}"
 other = "订阅"
 [rss]
 other = "RSS"
-[sitemap]
-other = "网站地图"
-[madeWith]
-other = "网站主题"
 [tableOfContents]
 other = "目录"
 [zoomImage]
@@ -931,11 +923,7 @@ other = "{{ . }}的最新文章"
 {{- /* Derived from rokcso/hugo-bearneo@f5c57c5ea39a091f0167af6312f4d4e385df2e6c: layouts/partials/footer.html */ -}}
 {{ with .Site.Home.OutputFormats.Get "RSS" }}
   {{ T "subscribeVia" }} <a href="{{ .RelPermalink }}">{{ T "rss" }}</a>.
-  <br>
 {{ end }}
-{{ T "madeWith" }} <a href="https://github.com/rokcso/hugo-bearneo">Hugo Bear Neo</a>.
-<br>
-<a href="{{ "sitemap.xml" | relURL }}">{{ T "sitemap" }}</a>.
 ```
 
 ```html

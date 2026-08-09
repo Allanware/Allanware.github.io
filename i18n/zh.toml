@@ -8,10 +8,6 @@ other = "切换语言至{{ . }}"
 other = "订阅"
 [rss]
 other = "RSS"
-[sitemap]
-other = "网站地图"
-[madeWith]
-other = "网站主题"
 [tableOfContents]
 other = "目录"
 [zoomImage]
