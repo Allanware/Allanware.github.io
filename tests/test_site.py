@@ -3,7 +3,9 @@ from pathlib import Path
 import re
 import subprocess
 from tempfile import TemporaryDirectory
+import tomllib
 import unittest
+import xml.etree.ElementTree as ET
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -150,6 +152,161 @@ class MarkupReviewParser(HTMLParser):
 
 
 class GeneratedSiteTests(unittest.TestCase):
+    def test_rss_is_separate_and_localized(self):
+        configuration = tomllib.loads((ROOT / "hugo.toml").read_text())
+        self.assertEqual(10, configuration["services"]["rss"]["limit"])
+        with TemporaryDirectory() as temporary:
+            public = Path(temporary) / "public"
+            build_site(public, "https://example.test/")
+            english = ET.parse(public / "index.xml").getroot().find("channel")
+            chinese = ET.parse(public / "zh/index.xml").getroot().find("channel")
+            self.assertIsNotNone(english)
+            self.assertIsNotNone(chinese)
+            self.assertEqual("en-US", english.findtext("language"))
+            self.assertEqual("zh-CN", chinese.findtext("language"))
+            english_titles = [
+                item.findtext("title") for item in english.findall("item")
+            ]
+            self.assertEqual(
+                [
+                    "Beyond the Cloud: A Perceptual Illusion in Overlaid Bar Charts",
+                    "Shapes and Functions of the Lekythos",
+                    "The Miracle of Istanbul",
+                ],
+                english_titles,
+            )
+            self.assertEqual([], chinese.findall("item"))
+            self.assertIn(
+                "Recent posts from Wenxuan Zhao",
+                english.findtext("description"),
+            )
+            self.assertIn("赵文轩的最新文章", chinese.findtext("description"))
+            self.assertIn("30 May 2024", english.findtext("lastBuildDate"))
+            zh_home = read_html(public, "zh/index.html")
+            self.assertIn('href="https://example.test/zh/index.xml"', zh_home)
+            self.assertIn('href="/zh/index.xml"', zh_home)
+
+            limited = Path(temporary) / "limited"
+            build_site(
+                limited,
+                "https://example.test/",
+                "--config",
+                "hugo.toml,tests/fixtures/rss-limit.toml",
+            )
+            limited_channel = ET.parse(limited / "index.xml").getroot().find(
+                "channel"
+            )
+            self.assertEqual(
+                [
+                    "Beyond the Cloud: A Perceptual Illusion in Overlaid Bar Charts",
+                    "Shapes and Functions of the Lekythos",
+                ],
+                [
+                    item.findtext("title")
+                    for item in limited_channel.findall("item")
+                ],
+            )
+
+            project = Path(temporary) / "project"
+            build_site(project, "https://example.test/project/")
+            project_channel = ET.parse(project / "index.xml").getroot().find(
+                "channel"
+            )
+            project_prefix = "https://example.test/project/"
+            self.assertEqual(project_prefix, project_channel.findtext("link"))
+            atom_self = project_channel.find(
+                "{http://www.w3.org/2005/Atom}link"
+            )
+            self.assertEqual(project_prefix + "index.xml", atom_self.get("href"))
+            for item in project_channel.findall("item"):
+                self.assertTrue(item.findtext("link").startswith(project_prefix))
+                self.assertTrue(item.findtext("guid").startswith(project_prefix))
+
+    def test_rss_excludes_hidden_posts_before_limiting_and_escapes_once(self):
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            content = temporary_root / "content"
+            fixtures = {
+                "blog/older/index.en.md": '''+++
+title = "Visible older post"
+date = 2024-01-01
+draft = false
+interactionId = "rss-visible-older"
++++
+
+Visible older body.
+''',
+                "blog/newer/index.en.md": '''+++
+title = "Visible newer post"
+date = 2025-06-01
+draft = false
+interactionId = "rss-visible-newer"
++++
+
+Visible newer body `p<.001 & "quoted"`.
+''',
+                "blog/hidden/index.en.md": '''+++
+title = "Hidden newest post"
+date = 2026-08-09
+draft = false
+hidden = true
+interactionId = "rss-hidden-newest"
++++
+
+Hidden body.
+''',
+            }
+            for relative, source in fixtures.items():
+                path = content / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(source, encoding="utf-8")
+
+            public = temporary_root / "public"
+            build_site(
+                public,
+                "https://example.test/",
+                "--contentDir",
+                str(content),
+            )
+            channel = ET.parse(public / "index.xml").getroot().find("channel")
+            items = channel.findall("item")
+            titles = [item.findtext("title") for item in items]
+            with self.subTest("hidden posts are omitted from the ordered feed"):
+                self.assertEqual(
+                    ["Visible newer post", "Visible older post"],
+                    titles,
+                )
+
+            newer = next(
+                item for item in items if item.findtext("title") == "Visible newer post"
+            )
+            description = newer.findtext("description")
+            with self.subTest("summary entities are decoded exactly once"):
+                self.assertIn('p<.001 & "quoted"', description)
+                self.assertNotIn("&lt;", description)
+                self.assertNotIn("&amp;", description)
+
+            limited = temporary_root / "limited"
+            build_site(
+                limited,
+                "https://example.test/",
+                "--contentDir",
+                str(content),
+                "--config",
+                "hugo.toml,tests/fixtures/rss-limit.toml",
+            )
+            limited_channel = ET.parse(limited / "index.xml").getroot().find(
+                "channel"
+            )
+            with self.subTest("hidden posts do not consume the RSS limit"):
+                self.assertEqual(
+                    ["Visible newer post", "Visible older post"],
+                    [
+                        item.findtext("title")
+                        for item in limited_channel.findall("item")
+                    ],
+                )
+
     def test_beyond_the_cloud_bundle_route_is_stable_across_base_urls(self):
         title_derived_route = (
             "p/beyond-the-cloud-a-perceptual-illusion-in-overlaid-bar-charts"
