@@ -1,0 +1,55 @@
+{{- /* Derived from rokcso/hugo-bearneo@f5c57c5ea39a091f0167af6312f4d4e385df2e6c: layouts/_default/single.html; site-local Kudos integration. */ -}}
+{{- $page := .Page -}}
+{{- $entity := .Entity -}}
+{{- $kudos := dict -}}
+{{- if isset $page.Site.Params "kudos" -}}
+  {{- $configured := index $page.Site.Params "kudos" -}}
+  {{- if reflect.IsMap $configured }}{{ $kudos = $configured }}{{ end -}}
+{{- end -}}
+
+{{- $enabled := false -}}
+{{- if isset $kudos "enabled" -}}
+  {{- $value := index $kudos "enabled" -}}
+  {{- if eq (printf "%T" $value) "bool" }}{{ $enabled = $value }}{{ end -}}
+{{- end -}}
+
+{{- $endpoint := "" -}}
+{{- if isset $kudos "endpoint" -}}
+  {{- $value := index $kudos "endpoint" -}}
+  {{- if eq (printf "%T" $value) "string" -}}
+    {{- $endpoint = strings.TrimSpace $value -}}
+  {{- end -}}
+{{- end -}}
+
+{{- $httpsPattern := `^https://([A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)(\.([A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?))*(:[0-9]{1,5})?/?$` -}}
+{{- $loopbackPattern := `^http://(127\.0\.0\.1|localhost)(:[0-9]{1,5})?/?$` -}}
+{{- $validHTTPS := gt (len (findRE $httpsPattern $endpoint)) 0 -}}
+{{- $validLoopback := gt (len (findRE $loopbackPattern $endpoint)) 0 -}}
+{{- $validPort := true -}}
+{{- if gt (len (findRE `:[0-9]{1,5}/?$` $endpoint)) 0 -}}
+  {{- $port := int (replaceRE `^.*:([0-9]{1,5})/?$` "$1" $endpoint) -}}
+  {{- $validPort = and (ge $port 1) (le $port 65535) -}}
+{{- end -}}
+
+{{- if and $entity $enabled $validPort (or $validHTTPS $validLoopback) -}}
+  <div class="upvote-container post-interaction" data-kudos
+    data-kudos-entity="{{ $entity }}" data-kudos-endpoint="{{ $endpoint }}"
+    data-add-label="{{ T "upvoteAdd" }}" data-remove-label="{{ T "upvoteRemove" }}"
+    data-loading-label="{{ T "upvoteLoading" }}"
+    data-unavailable-label="{{ T "upvoteUnavailable" }}"
+    data-update-failed-label="{{ T "upvoteUpdateFailed" }}"
+    data-kudos-state="loading" aria-busy="true" hidden>
+    <small class="upvote">
+      <button class="upvote-btn" type="button" data-kudos-button aria-label="{{ T "upvoteLoading" }}" disabled>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="17 11 12 6 7 11"></polyline>
+          <polyline points="17 18 12 13 7 18"></polyline>
+        </svg>
+        <span class="upvote-count" data-kudos-count aria-live="polite">—</span>
+      </button>
+      <span class="visually-hidden" data-kudos-status role="status">{{ T "upvoteLoading" }}</span>
+    </small>
+  </div>
+  {{- $script := resources.Get "js/kudos.mjs" | fingerprint "sha256" -}}
+  <script type="module" src="{{ $script.RelPermalink }}" integrity="{{ $script.Data.Integrity }}"></script>
+{{- end -}}

@@ -1,3 +1,5 @@
+import base64
+import hashlib
 from html.parser import HTMLParser
 from pathlib import Path
 import re
@@ -5,6 +7,7 @@ import subprocess
 from tempfile import TemporaryDirectory
 import tomllib
 import unittest
+from urllib.parse import urlsplit
 import xml.etree.ElementTree as ET
 
 
@@ -603,6 +606,198 @@ class GeneratedSiteTests(unittest.TestCase):
                 self.assertIn(f'data-lang="{locale}"', html)
                 self.assertNotIn("arbitrary-invalid-locale", html)
 
+    def test_kudos_uses_shared_entities_accessible_ssr_and_hashed_modules(self):
+        module_pattern = re.compile(
+            r'<script(?=[^>]*\btype="module")'
+            r'(?=[^>]*\bsrc="([^"]*kudos[^"]*)")'
+            r'(?=[^>]*\bintegrity="([^"]+)")[^>]*></script>'
+        )
+        root_pattern = re.compile(r'<div\b[^>]*\sdata-kudos(?:\s|>)')
+
+        def assert_one_widget(
+            public: Path,
+            relative: str,
+            entity: str,
+            expected_base_path: str,
+        ) -> str:
+            html = read_html(public, relative)
+            self.assertEqual(1, len(root_pattern.findall(html)))
+            self.assertEqual(
+                1,
+                html.count(f'data-kudos-entity="{entity}"'),
+            )
+            self.assertEqual(1, html.count("data-kudos-button"))
+            self.assertEqual(1, html.count('data-kudos-state="loading"'))
+            self.assertIn('aria-busy="true"', html)
+            self.assertRegex(
+                html,
+                r'<span[^>]*data-kudos-count[^>]*>—</span>',
+            )
+            self.assertNotIn('aria-pressed=', html)
+            self.assertRegex(html, r'<div[^>]*data-kudos[^>]*hidden')
+            self.assertRegex(
+                html,
+                r'<button[^>]*data-kudos-button[^>]*disabled',
+            )
+
+            modules = module_pattern.findall(html)
+            self.assertEqual(1, len(modules))
+            source, integrity = modules[0]
+            self.assertRegex(
+                source,
+                rf'^{re.escape(expected_base_path)}js/'
+                r'kudos\.[0-9a-f]{64}\.mjs$',
+            )
+            source_path = urlsplit(source).path
+            self.assertTrue(source_path.startswith(expected_base_path))
+            asset_relative = source_path[len(expected_base_path):]
+            asset = public / asset_relative
+            self.assertTrue(asset.is_file(), source)
+            expected_integrity = "sha256-" + base64.b64encode(
+                hashlib.sha256(asset.read_bytes()).digest()
+            ).decode("ascii")
+            self.assertEqual(expected_integrity, integrity)
+            return html
+
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            production = temporary_root / "production"
+            build_site(production, "https://example.test/")
+            production_post = read_html(
+                production,
+                "p/beyond-the-cloud/index.html",
+            )
+            self.assertNotIn("data-kudos", production_post)
+            self.assertNotIn("js/kudos.", production_post)
+
+            fixture = temporary_root / "fixture"
+            build_site(
+                fixture,
+                "https://example.test/",
+                "--config", "hugo.toml,tests/fixtures/interactions.toml",
+                "--contentDir", "tests/fixtures/content",
+            )
+            english = assert_one_widget(
+                fixture,
+                "p/shared-article/index.html",
+                "post:shared-article",
+                "/",
+            )
+            chinese = assert_one_widget(
+                fixture,
+                "zh/p/shared-article/index.html",
+                "post:shared-article",
+                "/",
+            )
+            chinese_only = assert_one_widget(
+                fixture,
+                "zh/p/chinese-only/index.html",
+                "post:chinese-only",
+                "/",
+            )
+            self.assertNotIn(
+                'data-kudos-entity="post:shared-article"',
+                chinese_only,
+            )
+            self.assertIn('data-add-label="Upvote this post"', english)
+            self.assertIn('data-add-label="赞同这篇文章"', chinese)
+
+            project = temporary_root / "project"
+            build_site(
+                project,
+                "https://example.test/example-blog/",
+                "--config", "hugo.toml,tests/fixtures/interactions.toml",
+                "--contentDir", "tests/fixtures/content",
+            )
+            assert_one_widget(
+                project,
+                "p/shared-article/index.html",
+                "post:shared-article",
+                "/example-blog/",
+            )
+            assert_one_widget(
+                project,
+                "zh/p/shared-article/index.html",
+                "post:shared-article",
+                "/example-blog/",
+            )
+
+    def test_kudos_endpoint_configuration_is_strict_and_graceful(self):
+        invalid_configs = (
+            "incomplete-interactions.toml",
+            "invalid-endpoint-relative.toml",
+            "invalid-endpoint-whitespace.toml",
+            "invalid-endpoint-http.toml",
+            "invalid-endpoint-path.toml",
+            "invalid-endpoint-query.toml",
+            "invalid-endpoint-fragment.toml",
+            "invalid-endpoint-port.toml",
+            "invalid-endpoint-port-zero.toml",
+            "invalid-endpoint-port-high.toml",
+            "invalid-endpoint-credentials.toml",
+            "invalid-endpoint-host.toml",
+            "invalid-endpoint-label.toml",
+            "invalid-endpoint-unicode-host.toml",
+            "invalid-kudos-enabled.toml",
+            "invalid-kudos-types.toml",
+            "invalid-kudos-container-scalar.toml",
+            "invalid-kudos-container-list.toml",
+            "disabled-kudos.toml",
+        )
+        valid_configs = {
+            "valid-endpoint-https.toml": "https://worker.example",
+            "valid-endpoint-port-min.toml": "https://worker.example:1",
+            "valid-endpoint-port-max.toml": "https://worker.example:65535/",
+            "trailing-slash-endpoint.toml": "https://worker.example/",
+            "valid-endpoint-whitespace.toml": "https://worker.example/",
+            "valid-endpoint-localhost.toml": "http://localhost:65535/",
+            "valid-endpoint-loopback.toml": "http://127.0.0.1/",
+        }
+
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            for index, config in enumerate(invalid_configs):
+                with self.subTest(invalid_config=config):
+                    destination = temporary_root / f"invalid-{index}"
+                    build_site(
+                        destination,
+                        "https://example.test/",
+                        "--config", f"hugo.toml,tests/fixtures/{config}",
+                        "--contentDir", "tests/fixtures/content",
+                    )
+                    html = read_html(
+                        destination,
+                        "p/shared-article/index.html",
+                    )
+                    self.assertNotIn("data-kudos", html)
+                    self.assertNotIn("js/kudos.", html)
+
+            for index, (config, endpoint) in enumerate(valid_configs.items()):
+                with self.subTest(valid_config=config):
+                    destination = temporary_root / f"valid-{index}"
+                    build_site(
+                        destination,
+                        "https://example.test/",
+                        "--config", f"hugo.toml,tests/fixtures/{config}",
+                        "--contentDir", "tests/fixtures/content",
+                    )
+                    html = read_html(
+                        destination,
+                        "p/shared-article/index.html",
+                    )
+                    self.assertEqual(
+                        1,
+                        html.count(f'data-kudos-endpoint="{endpoint}"'),
+                    )
+                    self.assertEqual(
+                        1,
+                        len(re.findall(
+                            r'<div\b[^>]*\sdata-kudos(?:\s|>)',
+                            html,
+                        )),
+                    )
+                    self.assertEqual(1, html.count("js/kudos."))
+
     def test_giscus_suppresses_incomplete_mistyped_and_malformed_configuration(self):
         static_configs = (
             "tests/fixtures/incomplete-interactions.toml",
@@ -881,13 +1076,20 @@ draft = true
         self.assertIn("$page.Translations", identity)
         self.assertNotIn("$page.AllTranslations", identity)
         self.assertEqual(1, page.count('partial "interaction-id.html" .'))
+        kudos_call = (
+            'partial "kudos.html" '
+            '(dict "Page" . "Entity" $interactionEntity)'
+        )
+        giscus_call = (
+            'partial "giscus.html" '
+            '(dict "Page" . "Entity" $interactionEntity)'
+        )
         self.assertEqual(
             1,
-            page.count(
-                'partial "giscus.html" '
-                '(dict "Page" . "Entity" $interactionEntity)'
-            ),
+            page.count(kudos_call),
         )
+        self.assertEqual(1, page.count(giscus_call))
+        self.assertLess(page.index(kudos_call), page.index(giscus_call))
 
     def test_hidden_translations_are_not_advertised(self):
         with TemporaryDirectory() as temporary:
