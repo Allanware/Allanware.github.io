@@ -2,17 +2,19 @@
 <a href="{{ .Site.Home.RelPermalink }}" class="title">
   <h1>{{ .Site.Title }}</h1>
 </a>
-<nav aria-label="{{ T "primaryNavigation" }}" data-primary-navigation>
-  {{ partial "nav.html" . }}
-</nav>
-{{- $currentPage := . -}}
-{{- $visibleTranslations := where .AllTranslations "Params.hidden" "ne" true -}}
-{{- if and (ge (len $visibleTranslations) 2) (ne .Kind "term") }}
-  <nav class="language-switcher" aria-label="{{ T "languageNavigation" }}">
-    {{- range $visibleTranslations }}
-      {{- if ne .RelPermalink $currentPage.RelPermalink }}
-        <a href="{{ .RelPermalink }}" hreflang="{{ .Language.Locale }}" lang="{{ .Language.Locale }}" aria-label="{{ T "switchLanguageTo" .Language.Label }}">{{ .Language.Label }}</a>
-      {{- end }}
-    {{- end }}
+<div class="header-navigation">
+  <nav aria-label="{{ T "primaryNavigation" }}" data-primary-navigation>
+    {{ partial "nav.html" . }}
   </nav>
-{{- end }}
+  {{- $currentPage := . -}}
+  {{- $visibleTranslations := where .AllTranslations "Params.hidden" "ne" true -}}
+  {{- if and (ge (len $visibleTranslations) 2) (ne .Kind "term") }}
+    <nav class="language-switcher" aria-label="{{ T "languageNavigation" }}">
+      {{- range $visibleTranslations }}
+        {{- if ne .RelPermalink $currentPage.RelPermalink }}
+          <a href="{{ .RelPermalink }}" hreflang="{{ .Language.Locale }}" lang="{{ .Language.Locale }}" aria-label="{{ T "switchLanguageTo" .Language.Label }}">{{ .Language.Label }}</a>
+        {{- end }}
+      {{- end }}
+    </nav>
+  {{- end }}
+</div>

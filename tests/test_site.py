@@ -352,6 +352,15 @@ class GeneratedSiteTests(unittest.TestCase):
                     )
                     beyond = read_html(public, "p/beyond-the-cloud/index.html")
                     self.assertNotIn("language-switcher", beyond)
+                    self.assertEqual(
+                        1,
+                        len(
+                            re.findall(
+                                r'<div class=(?:"header-navigation"|header-navigation)>',
+                                beyond,
+                            )
+                        ),
+                    )
                     self.assertNotIn('target="_blank"', beyond)
                     for archive_only in ("cover.png", "3-3.jpeg"):
                         self.assertEqual([], list(public.rglob(archive_only)))
@@ -1965,6 +1974,35 @@ interactionId = "resource-suffixes"
             self.assertIsNotNone(primary)
             self.assertNotIn("language-switcher", primary.group(1))
             self.assertIn('class="language-switcher"', english)
+            for language, html, alternate_label in (
+                ("en", english, "中文"),
+                ("zh", chinese, "English"),
+            ):
+                rows = re.findall(
+                    r'<div class="header-navigation">(.*?)</div>',
+                    html,
+                    re.DOTALL,
+                )
+                with self.subTest(language=language):
+                    self.assertEqual(1, len(rows))
+                    self.assertEqual(1, rows[0].count("data-primary-navigation"))
+                    self.assertEqual(1, rows[0].count('class="language-switcher"'))
+                    self.assertEqual(1, rows[0].count("hreflang="))
+                    self.assertIn(f">{alternate_label}</a>", rows[0])
+
+            configuration = tomllib.loads((ROOT / "hugo.toml").read_text())
+            self.assertEqual("中文", configuration["languages"]["zh"]["label"])
+            site_css = (ROOT / "assets/css/site.css").read_text(encoding="utf-8")
+            self.assertRegex(
+                site_css,
+                r"\.header-navigation\s*\{[^}]*display:\s*flex;"
+                r"[^}]*flex-wrap:\s*nowrap;[^}]*\}",
+            )
+            self.assertRegex(
+                site_css,
+                r"\.language-switcher\s*\{[^}]*display:\s*inline-flex;"
+                r"[^}]*white-space:\s*nowrap;[^}]*\}",
+            )
             for language, html, rss_path, removed_text in (
                 (
                     "en",

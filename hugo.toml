@@ -86,7 +86,7 @@ capitalizeListTitles = false
 [languages.zh]
   direction = "ltr"
   hasCJKLanguage = true
-  label = "简体中文"
+  label = "中文"
   locale = "zh-CN"
   title = "赵文轩"
   weight = 2
