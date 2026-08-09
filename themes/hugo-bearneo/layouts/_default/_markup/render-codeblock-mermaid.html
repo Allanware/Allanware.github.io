@@ -1,0 +1,5 @@
+{{/* Render Mermaid fenced code blocks as diagrams. */}}
+<pre class="mermaid">
+  {{- .Inner | safeHTML }}
+</pre>
+{{- /* Strip the trailing newline emitted by Hugo. */ -}}

@@ -1,0 +1,21 @@
+{{- $url := .Destination -}}
+{{- $text := .Text -}}
+{{- $title := .Title -}}
+{{- $page := .Page -}}
+{{- $newTabEnabled := $page.Site.Params.externalLinksNewTab | default false -}}
+{{- $isExternal := or (hasPrefix $url "http://") (hasPrefix $url "https://") -}}
+{{- $isInternal := and $isExternal (hasPrefix $url $page.Site.BaseURL) -}}
+{{- $attributes := printf "href=%q" $url | safeHTMLAttr -}}
+
+{{- if and $isExternal (not $isInternal) -}}
+  {{- if $newTabEnabled -}}
+    {{- $attributes = printf "%s target=\"_blank\"" $attributes | safeHTMLAttr -}}
+  {{- end -}}
+  {{- $attributes = printf "%s rel=\"noopener noreferrer\"" $attributes | safeHTMLAttr -}}
+{{- end -}}
+
+{{- with $title -}}
+  {{- $attributes = printf "%s title=%q" $attributes . | safeHTMLAttr -}}
+{{- end -}}
+
+<a {{ $attributes }}>{{ $text }}</a>
