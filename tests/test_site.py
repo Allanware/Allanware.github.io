@@ -144,6 +144,170 @@ class GeneratedSiteTests(unittest.TestCase):
                         article.read_text(encoding="utf-8"),
                     )
 
+    def test_lekythos_bundle_route_and_images_are_stable_across_base_urls(self):
+        stable_route = "p/lekythos-a-shape"
+        expected_images = (
+            ("front.jpeg", "Front view of the lekythos beside another vessel", 400),
+            ("detail.jpeg", "Detail of the painted scene", 400),
+            ("inner.jpg", "Interior vessel inside the lekythos", 200),
+        )
+
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            cases = (
+                ("root", "https://example.test/", "/p/lekythos-a-shape/"),
+                (
+                    "project",
+                    "https://example.test/project/",
+                    "/project/p/lekythos-a-shape/",
+                ),
+            )
+            for name, base_url, href_prefix in cases:
+                with self.subTest(base_url=name):
+                    public = temporary_root / name / "public"
+                    build_site(public, base_url)
+                    article_path = public / stable_route / "index.html"
+                    self.assertTrue(article_path.is_file(), article_path)
+                    article = article_path.read_text(encoding="utf-8")
+                    parser = MarkupReviewParser()
+                    parser.feed(article)
+                    self.assertEqual([False, False, False], parser.figures_in_paragraph)
+
+                    for image_name, alt, width in expected_images:
+                        resource = public / stable_route / image_name
+                        self.assertTrue(resource.is_file(), resource)
+                        self.assertRegex(
+                            article,
+                            rf'<img\s+src="{re.escape(href_prefix + image_name)}"'
+                            rf'\s+alt="{re.escape(alt)}"\s+width="{width}"',
+                        )
+
+    def test_bundle_image_shortcode_rejects_invalid_arguments(self):
+        fixtures = (
+            (
+                "omitted-src",
+                '{{< bundle-image alt="Diagram" width="400" >}}',
+                "bundle-image: resource.*not found",
+            ),
+            (
+                "omitted-alt",
+                '{{< bundle-image src="diagram.svg" width="400" >}}',
+                "bundle-image: alt must be non-empty",
+            ),
+            (
+                "omitted-width",
+                '{{< bundle-image src="diagram.svg" alt="Diagram" >}}',
+                "bundle-image: width.*positive integer",
+            ),
+            (
+                "missing-resource",
+                '{{< bundle-image src="missing.jpg" alt="Missing" width="400" >}}',
+                "bundle-image: resource.*missing.jpg.*not found",
+            ),
+            (
+                "empty-alt",
+                '{{< bundle-image src="diagram.svg" alt="  " width="400" >}}',
+                "bundle-image: alt must be non-empty",
+            ),
+            (
+                "zero-width",
+                '{{< bundle-image src="diagram.svg" alt="Diagram" width="0" >}}',
+                "bundle-image: width.*positive integer",
+            ),
+            (
+                "noninteger-width",
+                '{{< bundle-image src="diagram.svg" alt="Diagram" width="wide" >}}',
+                "bundle-image: width.*positive integer",
+            ),
+        )
+
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            for name, shortcode, message_pattern in fixtures:
+                with self.subTest(case=name):
+                    content = temporary_root / name / "content"
+                    bundle = content / "blog" / "invalid-bundle-image"
+                    bundle.mkdir(parents=True)
+                    (bundle / "index.en.md").write_text(
+                        f'''+++
+title = "Invalid bundle image"
+date = 2026-08-09
+draft = false
+interactionId = "invalid-bundle-image"
++++
+
+{shortcode}
+''',
+                        encoding="utf-8",
+                    )
+                    (bundle / "diagram.svg").write_text(
+                        '<svg xmlns="http://www.w3.org/2000/svg" '
+                        'viewBox="0 0 10 10"></svg>',
+                        encoding="utf-8",
+                    )
+                    result = subprocess.run(
+                        [
+                            "hugo",
+                            "--source", str(ROOT),
+                            "--destination", str(temporary_root / name / "public"),
+                            "--baseURL", "https://example.test/",
+                            "--contentDir", str(content),
+                            "--panicOnWarning",
+                            "--noBuildLock",
+                            "--cacheDir", str(temporary_root / name / "cache"),
+                        ],
+                        cwd=ROOT,
+                        check=False,
+                        capture_output=True,
+                        text=True,
+                    )
+                    self.assertNotEqual(result.returncode, 0)
+                    output = result.stderr + result.stdout
+                    self.assertRegex(output, message_pattern)
+                    self.assertNotRegex(
+                        output,
+                        r"(?i)nil pointer|index out of range|can't evaluate field",
+                    )
+
+    def test_markdown_and_bundle_image_controls_have_unique_ids(self):
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            content = temporary_root / "content"
+            bundle = content / "blog" / "mixed-image-renderers"
+            bundle.mkdir(parents=True)
+            (bundle / "index.en.md").write_text(
+                '''+++
+title = "Mixed image renderers"
+date = 2026-08-09
+draft = false
+interactionId = "mixed-image-renderers"
++++
+
+![Markdown diagram](diagram.svg)
+
+{{< bundle-image src="diagram.svg" alt="Shortcode diagram" width="400" >}}
+''',
+                encoding="utf-8",
+            )
+            (bundle / "diagram.svg").write_text(
+                '<svg xmlns="http://www.w3.org/2000/svg" '
+                'viewBox="0 0 10 10"></svg>',
+                encoding="utf-8",
+            )
+            public = temporary_root / "public"
+            build_site(
+                public,
+                "https://example.test/",
+                "--contentDir",
+                str(content),
+            )
+            article = read_html(public, "p/mixed-image-renderers/index.html")
+            parser = MarkupReviewParser()
+            parser.feed(article)
+
+            self.assertEqual(2, len(parser.zoom_control_ids))
+            self.assertEqual(2, len(set(parser.zoom_control_ids)))
+
     def test_localized_core_routes_exist(self):
         with TemporaryDirectory() as temporary:
             public = Path(temporary) / "public"

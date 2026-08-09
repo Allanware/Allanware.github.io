@@ -1,0 +1,33 @@
+{{- $src := strings.TrimSpace (printf "%v" (.Get "src")) -}}
+{{- $alt := strings.TrimSpace (printf "%v" (.Get "alt")) -}}
+{{- $width := strings.TrimSpace (printf "%v" (.Get "width")) -}}
+{{- $validAlt := ne $alt "" -}}
+{{- $validWidth := gt (len (findRE `^[1-9][0-9]*$` $width)) 0 -}}
+{{- $resource := .Page.Resources.Get $src -}}
+{{- if not $validAlt -}}
+  {{- errorf "bundle-image: alt must be non-empty for resource %q" $src -}}
+{{- end -}}
+{{- if not $validWidth -}}
+  {{- errorf "bundle-image: width %q must be a positive integer for resource %q" $width $src -}}
+{{- end -}}
+{{- if not $resource -}}
+  {{- errorf "bundle-image: resource %q not found in page bundle %q" $src .Page.RelPermalink -}}
+{{- end -}}
+{{- if and $resource $validAlt $validWidth -}}
+  {{- $controlKey := printf "%s|%s|%d" .Page.RelPermalink $src .Ordinal -}}
+  {{- $controlId := printf "bundle-img-%s" (substr (md5 $controlKey) 0 8) -}}
+  <figure class="image-caption{{ if .Page.Site.Params.imageZoom }} image-zoom-container{{ end }}">
+    {{ if .Page.Site.Params.imageZoom }}
+      <input type="checkbox" id="{{ $controlId }}" class="image-zoom-toggle" aria-label="{{ T "zoomImage" $alt }}">
+      <label for="{{ $controlId }}" class="image-zoom-label">
+        <img src="{{ $resource.RelPermalink }}" alt="{{ $alt }}" width="{{ $width }}" loading="lazy" class="zoomable-image">
+      </label>
+      <label for="{{ $controlId }}" class="image-zoom-overlay" aria-hidden="true">
+        <img src="{{ $resource.RelPermalink }}" alt="" width="{{ $width }}" class="zoomable-image">
+      </label>
+    {{ else }}
+      <img src="{{ $resource.RelPermalink }}" alt="{{ $alt }}" width="{{ $width }}" loading="lazy">
+    {{ end }}
+    <figcaption>{{ $alt }}</figcaption>
+  </figure>
+{{- end -}}
