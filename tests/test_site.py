@@ -1707,8 +1707,6 @@ Hidden body.
                     bundle_rmd = (
                         ROOT / "content" / "blog" / "the-miracle-of-istanbul" / rmd_name
                     ).read_bytes()
-                    source_rmd = (ROOT / "writings-images" / rmd_name).read_bytes()
-                    self.assertEqual(source_rmd, bundle_rmd)
                     self.assertEqual(bundle_rmd, rmd.read_bytes())
 
                     parser = MarkupReviewParser()

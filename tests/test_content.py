@@ -1,7 +1,9 @@
 import datetime
+import hashlib
 import re
 import unittest
 from pathlib import Path
+from types import MappingProxyType
 
 from scripts.validate_interaction_ids import read_front_matter
 
@@ -10,18 +12,39 @@ ROOT = Path(__file__).resolve().parents[1]
 BLOG = ROOT / "content" / "blog"
 BEYOND_THE_CLOUD = BLOG / "beyond-the-cloud"
 BEYOND_THE_CLOUD_POST = BEYOND_THE_CLOUD / "index.en.md"
-BEYOND_THE_CLOUD_SOURCE = ROOT / "beyond-the-cloud.md"
-BEYOND_THE_CLOUD_PDF = BEYOND_THE_CLOUD / "beyond_the_cloud.v5.pdf"
-BEYOND_THE_CLOUD_SOURCE_PDF = (
-    ROOT / "writings-images" / "beyond_the_cloud.v5.pdf"
+BEYOND_THE_CLOUD_BODY_SHA256 = (
+    "41f562021e10b1f920db5e759f53deb148e6ac1ac7e5e007944f8ccbf10315d4"
+)
+BEYOND_THE_CLOUD_RESOURCE_SHA256 = MappingProxyType(
+    {
+        "beyond_the_cloud.v5.pdf": (
+            "03b5d6396154e0af4953413c4ab3c45c6fd166536791c8d3c6af4dce48fc7ab1"
+        ),
+    }
 )
 LEKYTHOS = BLOG / "lekythos-a-shape"
 LEKYTHOS_POST = LEKYTHOS / "index.en.md"
-LEKYTHOS_SOURCE = ROOT / "lekythos-a-shape.md"
-LEKYTHOS_IMAGES = ("front.jpeg", "detail.jpeg", "inner.jpg")
+LEKYTHOS_BODY_SHA256 = (
+    "7cb9a015bf0169b413ba62cf2f71787a2a3904e214a88821b06da273a8f03ccd"
+)
+LEKYTHOS_RESOURCE_SHA256 = MappingProxyType(
+    {
+        "front.jpeg": (
+            "6d4061fafcffbbfc0ab32efb5bdbe8205ea8e807bcc045cfb7f30cfbbc58bbef"
+        ),
+        "detail.jpeg": (
+            "9b1c451ffe9a27a627a1b9928dea93acdd8b29a9ab4e336b01c1a92c3fbf619d"
+        ),
+        "inner.jpg": (
+            "cde5187ad3bb75c727bcc7c07af8f3551255b1f91ca32c66882df1b3e6e3137b"
+        ),
+    }
+)
 ISTANBUL = BLOG / "the-miracle-of-istanbul"
 ISTANBUL_POST = ISTANBUL / "index.en.md"
-ISTANBUL_SOURCE = ROOT / "the-miracle-of-istanbul.md"
+ISTANBUL_BODY_SHA256 = (
+    "36b1f8db990e41699b997f5c1fa678311452634ec421d1bc9be5adc248330a30"
+)
 ISTANBUL_IMAGE_ALTS = (
     (
         "unnamed-chunk-3-1.png",
@@ -86,10 +109,73 @@ ISTANBUL_IMAGE_ALTS = (
         "Picture 2: Liverpool average early second-half positions",
     ),
 )
-ISTANBUL_RESOURCES = {
-    "2021-03-04-The-Miracle-of-Istanbul.Rmd",
-    *(image for image, _alt in ISTANBUL_IMAGE_ALTS),
-}
+ISTANBUL_RESOURCE_SHA256 = MappingProxyType(
+    {
+        "2021-03-04-The-Miracle-of-Istanbul.Rmd": (
+            "d5121f097ef4d919da720446ef9b3731709b67ef4553bbea4bcfa19095822121"
+        ),
+        "unnamed-chunk-3-1.png": (
+            "81ca7666b1451017fddf2eab5296305ede3d04cebcac3d84eda59f915a595870"
+        ),
+        "unnamed-chunk-3-2.png": (
+            "0b8643a9d9b46d88b2da7ca77bd59de398d866db00ac44df1e924a6e1a587b39"
+        ),
+        "timeline.png": (
+            "c07bfcc78a936044936dcd66345ce68e760951587ea86b855ba94c98df77a570"
+        ),
+        "unnamed-chunk-9-1.png": (
+            "215f79c8a85d197bdfe76ee82d596cf44d52e990daedfc9090f21b18922d6563"
+        ),
+        "unnamed-chunk-10-1.png": (
+            "34d66e9c7c39fc5213144ed76e761d6a96d091ba8ba03f798f963a251e6db7d2"
+        ),
+        "unnamed-chunk-11-1.png": (
+            "05fe572bfd687468ec12381721bc3509dca1b4f98529b611e3d97f8d5474042e"
+        ),
+        "unnamed-chunk-12-1.png": (
+            "7aeeda8db92ab490edf0e5ea840f76e164bfeafbc89593efa8512631ee7472a9"
+        ),
+        "unnamed-chunk-12-2.png": (
+            "e9fef5bc7bfa2a8b9462e1a4f6043e12d27547d2990388b8cf31c4750ac37fd7"
+        ),
+        "unnamed-chunk-12-3.png": (
+            "0556a3c7f103f424cba0b9aed29ad41c7d410ecd49378d5557cf41d3b2cdee8f"
+        ),
+        "unnamed-chunk-12-4.png": (
+            "654b374d18eadafa2defde70e572576bc029c403785396b7d3a68194503c5f79"
+        ),
+        "unnamed-chunk-13-1.png": (
+            "ad6910dbe98ca71741087bf4d1e63ce853b7f8a083ecb8b72f79aedb4864d941"
+        ),
+        "unnamed-chunk-13-2.png": (
+            "925611c1ee5027d658c7b9ae2d3ad06b5744f21e97a77b28fd216dbb875238da"
+        ),
+        "unnamed-chunk-13-3.png": (
+            "a6f735c91fc8cb9ca7d64904ddea10d79839c798da5b48a780197ec05ba571ae"
+        ),
+        "unnamed-chunk-13-4.png": (
+            "b9dda389a13226920ba4613c3d68d60d7e2203bc070fdb2814ac096c75027969"
+        ),
+        "unnamed-chunk-14-1.png": (
+            "09f5006b83fb7ab5b16355181165bafc1f80dd77b4cf5ad31fd3114d413815e2"
+        ),
+        "unnamed-chunk-14-2.png": (
+            "d523adb64a9c07d9f4afc7efceab6ea790d5105e7af9e22aaa0bc317fe7e425f"
+        ),
+        "unnamed-chunk-15-1.png": (
+            "30c82e5816d56860cd923e09cf2a072f03e305e0675117cecf5b8183971dba08"
+        ),
+        "unnamed-chunk-15-2.png": (
+            "dacdf46524af7f8755c110b393c9ea4975f91312cc934198b56fd2d4088660d0"
+        ),
+        "unnamed-chunk-16-1.png": (
+            "d319136d3c3ada008f03720f8e52516437e9d85ef949fb1ffa8420ced5eed51a"
+        ),
+        "unnamed-chunk-16-2.png": (
+            "26796fdf5f730f699b35341e1489e876056edc12742d69bb700356643f63ad48"
+        ),
+    }
+)
 AUTO_CAPTION_LINE = re.compile(r"^> \*\[auto-caption\].*$", re.MULTILINE)
 UNTERMINATED_AUTO_CAPTION = re.compile(
     r"^> \*\[auto-caption\].*\n(?=[^\n])",
@@ -104,94 +190,8 @@ def body(path: Path) -> str:
     return source.split(delimiter, 2)[2]
 
 
-def expected_beyond_the_cloud_body() -> str:
-    expected = body(BEYOND_THE_CLOUD_SOURCE)
-    transformations = (
-        (
-            "# Beyond the Cloud: A Perceptual Illusion in Overlaid Bar Charts\n\n",
-            "",
-        ),
-        ("# Abstract", "## Abstract"),
-        ("# Poster", "## Poster"),
-        (
-            "![poster](../../_media/writings-images/beyond_the_cloud.v5.pdf)",
-            "[View or download the poster (PDF, 3.7 MB)]"
-            "(beyond_the_cloud.v5.pdf)",
-        ),
-    )
-    for original, replacement in transformations:
-        expected = expected.replace(original, replacement, 1)
-    return expected
-
-
-def expected_lekythos_body() -> str:
-    expected = body(LEKYTHOS_SOURCE)
-    transformations = (
-        ("# Shapes and Functions of the Lekythos\n\n", ""),
-        (
-            '<img src="front.jpeg" alt="front view" width="400"/>\n\n'
-            "__Front view (note its size from the other lekythos)__",
-            '\n{{< bundle-image src="front.jpeg" '
-            'alt="Front view of the lekythos beside another vessel" '
-            'width="400" >}}',
-        ),
-        (
-            '<img src="detail.jpeg" alt="detailed view" width="400"/>\n\n'
-            "__A detailed view on the painting__",
-            '{{< bundle-image src="detail.jpeg" '
-            'alt="Detail of the painted scene" width="400" >}}',
-        ),
-        (
-            '<img src="inner.jpg" alt="the innovation inside" width="200"/>',
-            '\n{{< bundle-image src="inner.jpg" '
-            'alt="Interior vessel inside the lekythos" width="200" >}}',
-        ),
-        ("http:/www.beazley.ox.ac.uk", "http://www.beazley.ox.ac.uk"),
-    )
-    for original, replacement in transformations:
-        expected = expected.replace(original, replacement, 1)
-    return expected
-
-
-def expected_istanbul_body() -> str:
-    expected = body(ISTANBUL_SOURCE)
-    expected = expected.replace("# The Miracle of Istanbul\n\n", "", 1)
-    expected = expected.replace("../../_media/writings-images/", "")
-    expected = expected.replace("<!-- -->\n\n", "\n\n")
-    expected = expected.replace("<!-- -->\n", "\n\n")
-    expected, separated_caption_count = UNTERMINATED_AUTO_CAPTION.subn(
-        lambda match: match.group(0) + "\n",
-        expected,
-    )
-    if separated_caption_count != 15:
-        raise AssertionError(
-            "expected exactly 15 auto-caption separators, "
-            f"found {separated_caption_count}"
-        )
-    expected, removed_picture_label_count = re.subn(
-        r"^_picture [1-4]_\n\n",
-        "",
-        expected,
-        flags=re.MULTILINE,
-    )
-    if removed_picture_label_count != 14:
-        raise AssertionError(
-            "expected exactly 14 redundant picture labels, "
-            f"found {removed_picture_label_count}"
-        )
-    for image_name, alt in ISTANBUL_IMAGE_ALTS:
-        expected = expected.replace(
-            f"![]({image_name})",
-            f"![{alt}]({image_name})",
-            1,
-        )
-    expected = expected.replace(
-        "- [code](2021-03-04-The-Miracle-of-Istanbul.Rmd)",
-        "- [Download the R Markdown source]"
-        "(2021-03-04-The-Miracle-of-Istanbul.Rmd)",
-        1,
-    )
-    return expected
+def sha256(content: bytes) -> str:
+    return hashlib.sha256(content).hexdigest()
 
 
 class MigratedContentTests(unittest.TestCase):
@@ -228,15 +228,19 @@ class MigratedContentTests(unittest.TestCase):
             "(beyond_the_cloud.v5.pdf)",
             article.splitlines(),
         )
-        self.assertEqual(article, expected_beyond_the_cloud_body())
+        self.assertEqual(
+            BEYOND_THE_CLOUD_BODY_SHA256,
+            sha256(article.encode("utf-8")),
+        )
 
         resources = {
             path.name for path in BEYOND_THE_CLOUD.iterdir() if path != BEYOND_THE_CLOUD_POST
         }
-        self.assertEqual(resources, {"beyond_the_cloud.v5.pdf"})
-        copied_pdf = BEYOND_THE_CLOUD_PDF.read_bytes()
-        self.assertGreater(len(copied_pdf), 0)
-        self.assertEqual(copied_pdf, BEYOND_THE_CLOUD_SOURCE_PDF.read_bytes())
+        self.assertEqual(resources, set(BEYOND_THE_CLOUD_RESOURCE_SHA256))
+        for resource_name, expected_sha256 in BEYOND_THE_CLOUD_RESOURCE_SHA256.items():
+            copied = (BEYOND_THE_CLOUD / resource_name).read_bytes()
+            self.assertGreater(len(copied), 0)
+            self.assertEqual(expected_sha256, sha256(copied))
 
     def test_lekythos_bundle(self):
         front_matter = read_front_matter(LEKYTHOS_POST)
@@ -271,18 +275,20 @@ class MigratedContentTests(unittest.TestCase):
         for call in shortcode_calls:
             self.assertEqual(article.count(call), 1)
         self.assertIn("http://www.beazley.ox.ac.uk", article)
-        self.assertEqual(article, expected_lekythos_body())
+        self.assertEqual(
+            LEKYTHOS_BODY_SHA256,
+            sha256(article.encode("utf-8")),
+        )
 
         resources = {
             path.name for path in LEKYTHOS.iterdir() if path != LEKYTHOS_POST
         }
-        self.assertEqual(resources, set(LEKYTHOS_IMAGES))
-        for image_name in LEKYTHOS_IMAGES:
+        self.assertEqual(resources, set(LEKYTHOS_RESOURCE_SHA256))
+        for image_name, expected_sha256 in LEKYTHOS_RESOURCE_SHA256.items():
             with self.subTest(image=image_name):
                 copied = (LEKYTHOS / image_name).read_bytes()
-                source = (ROOT / "writings-images" / image_name).read_bytes()
                 self.assertGreater(len(copied), 0)
-                self.assertEqual(copied, source)
+                self.assertEqual(expected_sha256, sha256(copied))
 
     def test_istanbul_bundle(self):
         front_matter = read_front_matter(ISTANBUL_POST)
@@ -306,20 +312,14 @@ class MigratedContentTests(unittest.TestCase):
         self.assertNotIn("../../_media", article)
         self.assertNotIn("<!-- -->", article)
         self.assertNotIn("![](", article)
-        source_article = body(ISTANBUL_SOURCE)
-        self.assertEqual(
-            15,
-            len(UNTERMINATED_AUTO_CAPTION.findall(source_article)),
-        )
-        self.assertEqual(
-            AUTO_CAPTION_LINE.findall(source_article),
-            AUTO_CAPTION_LINE.findall(article),
-        )
-        self.assertEqual(14, len(PICTURE_LABEL_LINE.findall(source_article)))
+        self.assertEqual(17, len(AUTO_CAPTION_LINE.findall(article)))
         with self.subTest("auto-caption blockquotes end before following content"):
             self.assertEqual([], UNTERMINATED_AUTO_CAPTION.findall(article))
         with self.subTest("redundant picture labels are removed"):
             self.assertEqual([], PICTURE_LABEL_LINE.findall(article))
+        for image_name, alt in ISTANBUL_IMAGE_ALTS:
+            with self.subTest(image=image_name):
+                self.assertEqual(article.count(f"![{alt}]({image_name})"), 1)
         self.assertEqual(
             article.count(
                 "[Download the R Markdown source]"
@@ -327,20 +327,22 @@ class MigratedContentTests(unittest.TestCase):
             ),
             1,
         )
-        self.assertEqual(article, expected_istanbul_body())
+        self.assertEqual(
+            ISTANBUL_BODY_SHA256,
+            sha256(article.encode("utf-8")),
+        )
 
         resources = {
             path.name for path in ISTANBUL.iterdir() if path != ISTANBUL_POST
         }
-        self.assertEqual(resources, ISTANBUL_RESOURCES)
+        self.assertEqual(resources, set(ISTANBUL_RESOURCE_SHA256))
         self.assertNotIn("cover.png", resources)
         self.assertNotIn("3-3.jpeg", resources)
-        for resource_name in ISTANBUL_RESOURCES:
+        for resource_name, expected_sha256 in ISTANBUL_RESOURCE_SHA256.items():
             with self.subTest(resource=resource_name):
                 copied = (ISTANBUL / resource_name).read_bytes()
-                source = (ROOT / "writings-images" / resource_name).read_bytes()
                 self.assertGreater(len(copied), 0)
-                self.assertEqual(copied, source)
+                self.assertEqual(expected_sha256, sha256(copied))
 
 
 if __name__ == "__main__":
