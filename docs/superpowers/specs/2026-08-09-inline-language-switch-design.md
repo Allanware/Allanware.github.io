@@ -11,7 +11,7 @@ Keep the single alternate-language link on the same visual row as the localized 
 
 The primary navigation and language navigation remain separate `<nav>` elements so their accessible labels and meanings stay distinct. A new presentational wrapper groups both elements into one navigation row.
 
-The row uses a non-wrapping flex layout with baseline alignment. The primary navigation is sized to its three links instead of growing to fill the available row width. The language navigation therefore begins immediately after Tags, separated only by the existing compact divider spacing. The language navigation continues to render only when the current page has a real visible translation and continues to contain exactly one link to that alternate translation. No current-language label or second language link is added.
+The row uses a non-wrapping flex layout with baseline alignment. The primary navigation is sized to its three links instead of growing to fill the available row width. The language navigation therefore begins immediately after Tags. Its vertical divider has equal `0.5rem` whitespace on both sides, preserving the previous total spacing while centering the divider between Tags and the language link. The language navigation continues to render only when the current page has a real visible translation and continues to contain exactly one link to that alternate translation. No current-language label or second language link is added.
 
 The existing separator before the language link remains. The Chinese language label changes from `简体中文` to the shorter `中文`; the English label remains `English`. Routes, `hreflang`, `lang`, and accessible-name behavior do not change.
 
@@ -29,7 +29,8 @@ Generated-site tests will require:
 - the Chinese alternate-language link is labelled exactly `中文`;
 - both navigation elements as direct children of the shared wrapper;
 - no language navigation for an untranslated post;
-- non-wrapping flex rules in the site stylesheet.
+- non-wrapping flex rules in the site stylesheet;
+- equal `0.5rem` margin and padding around the language-navigation divider.
 
 A browser check at desktop and 390-pixel mobile widths will confirm that the two navigation elements share a row, that the language link remains adjacent to Tags rather than being pushed to the far edge, and that the document has no horizontal overflow.
 

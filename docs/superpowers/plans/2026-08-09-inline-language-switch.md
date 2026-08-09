@@ -10,7 +10,7 @@
 
 ---
 
-**Current state:** Tasks 1 and 2 were completed in `e9b17c7` and `9be9e88`. Execute Task 3 for the approved spacing refinement.
+**Current state:** Tasks 1 and 2 were completed in `e9b17c7` and `9be9e88`. Task 3's content-sizing change was completed in `00492b2`; execute its balanced-divider additions next.
 
 ### Task 1: Render one semantic, non-wrapping navigation row
 
@@ -133,8 +133,8 @@ Extend `.language-switcher` without changing its separator:
   border-left: 1px solid var(--border-color);
   display: inline-flex;
   flex: 0 0 auto;
-  margin-left: 0.25rem;
-  padding-left: 0.75rem;
+  margin-left: 0.5rem;
+  padding-left: 0.5rem;
   white-space: nowrap;
 }
 ```
@@ -225,21 +225,32 @@ git add assets/css/site.css hugo.toml layouts/_partials/header.html tests/test_s
 git commit -m "style: keep language switch inline"
 ```
 
-### Task 3: Keep the language link adjacent to Tags
+### Task 3: Keep the language link adjacent to Tags with a balanced divider
 
 **Files:**
 - Modify: `tests/test_site.py`
 - Modify: `assets/css/site.css`
 
-- [ ] **Step 1: Add a failing primary-navigation sizing assertion**
+- [ ] **Step 1: Add a failing balanced-divider assertion**
 
-In `GeneratedSiteTests.test_chrome_is_localized_and_uses_browser_color_preference`, add this assertion after the existing primary-navigation flex assertion:
+Retain this existing primary-navigation sizing assertion in `GeneratedSiteTests.test_chrome_is_localized_and_uses_browser_color_preference`:
 
 ```python
             self.assertRegex(
                 site_css,
                 r"\[data-primary-navigation\]\s*\{[^}]*"
                 r"flex:\s*0\s+1\s+auto;[^}]*\}",
+            )
+```
+
+Extend the existing `.language-switcher` source assertion to require equal divider spacing:
+
+```python
+            self.assertRegex(
+                site_css,
+                r"\.language-switcher\s*\{[^}]*"
+                r"margin-left:\s*0\.5rem;[^}]*"
+                r"padding-left:\s*0\.5rem;[^}]*\}",
             )
 ```
 
@@ -252,9 +263,9 @@ python3 -m unittest -v \
   tests.test_site.GeneratedSiteTests.test_chrome_is_localized_and_uses_browser_color_preference
 ```
 
-Expected: FAIL because `[data-primary-navigation]` still uses `flex: 1 1 auto` and pushes the language navigation to the far edge.
+Expected: FAIL because the divider still uses unequal `0.25rem` and `0.75rem` spacing.
 
-- [ ] **Step 3: Stop the primary navigation from consuming remaining width**
+- [ ] **Step 3: Retain content-sized primary navigation and balance the divider**
 
 In `assets/css/site.css`, change only the flex shorthand in the existing primary-navigation block:
 
@@ -270,6 +281,20 @@ In `assets/css/site.css`, change only the flex shorthand in the existing primary
 ```
 
 Keep the separate navigation landmarks, divider, translation rules, and link labels unchanged.
+
+In the existing `.language-switcher` block, preserve the divider and its total spacing but distribute that space equally:
+
+```css
+.language-switcher {
+  align-items: baseline;
+  border-left: 1px solid var(--border-color);
+  display: inline-flex;
+  flex: 0 0 auto;
+  margin-left: 0.5rem;
+  padding-left: 0.5rem;
+  white-space: nowrap;
+}
+```
 
 - [ ] **Step 4: Run focused and complete automated verification**
 
@@ -288,7 +313,7 @@ Expected: 71 Python tests and 35 Node tests PASS.
 
 At 1280×900 and 390×844 on `/`, `/zh/`, `/example-blog/`, and `/example-blog/zh/`, compute `adjacencyGap` using the Task 2 geometry snippet.
 
-Expected: both navigation landmarks remain on the same row, `0 <= adjacencyGap <= 24` pixels, there is no document-level horizontal overflow, and each translated page contains exactly one alternate-language link. The untranslated Beyond post retains only the three primary links.
+Expected: both navigation landmarks remain on the same row, `0 <= adjacencyGap <= 24` pixels, computed left margin and padding are equal, there is no document-level horizontal overflow, and each translated page contains exactly one alternate-language link. The untranslated Beyond post retains only the three primary links.
 
 - [ ] **Step 6: Commit the refinement**
 
