@@ -1,0 +1,18 @@
+{{- /* Derived from rokcso/hugo-bearneo@f5c57c5ea39a091f0167af6312f4d4e385df2e6c: layouts/_default/single.html */ -}}
+{{ define "main" }}
+  <article data-word-count="{{ .WordCount }}">
+    <header>
+      <h2>{{ .Title }}</h2>
+      {{ if not .Date.IsZero }}
+        <p><time datetime="{{ .Date.Format "2006-01-02" }}">{{ T "publishedOn" (.Date | time.Format .Site.Params.dateFormat) }}</time></p>
+      {{ end }}
+    </header>
+    <content>{{ .Content }}</content>
+    {{ with .GetTerms "tags" }}
+      <p class="post-tags">
+        {{ range . }}<a href="{{ .RelPermalink }}">#{{ .LinkTitle }}</a> {{ end }}
+      </p>
+    {{ end }}
+    {{ if .Site.Params.toc }}<div class="toc">{{ partial "toc.html" . }}</div>{{ end }}
+  </article>
+{{ end }}

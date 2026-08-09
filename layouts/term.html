@@ -1,0 +1,8 @@
+{{- /* Site-local Hugo 0.164 term template. */ -}}
+{{ define "main" }}
+  <content>
+    <h2>{{ T "filteringFor" .Title }}</h2>
+    {{ with .Site.GetPage "/tags" }}<p><a href="{{ .RelPermalink }}">{{ T "allTags" }}</a></p>{{ end }}
+    {{ partial "post-list.html" (dict "Page" . "Pages" .Pages) }}
+  </content>
+{{ end }}

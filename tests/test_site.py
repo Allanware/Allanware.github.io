@@ -159,6 +159,194 @@ class GeneratedSiteTests(unittest.TestCase):
             self.assertNotIn("language-switcher", primary.group(1))
             self.assertIn('class="language-switcher"', english)
 
+    def test_initial_chinese_lists_are_valid_and_empty(self):
+        with TemporaryDirectory() as temporary:
+            public = Path(temporary) / "public"
+            build_site(public, "https://example.test/")
+            posts = read_html(public, "zh/blog/index.html")
+            tags = read_html(public, "zh/tags/index.html")
+            self.assertIn("暂无文章", posts)
+            self.assertIn("暂无标签", tags)
+            self.assertNotIn("No posts yet", posts)
+            self.assertNotIn("No tags yet", tags)
+
+    def test_post_search_has_localized_no_match_feedback(self):
+        with TemporaryDirectory() as temporary:
+            public = Path(temporary) / "public"
+            build_site(public, "https://example.test/")
+            english = read_html(public, "blog/index.html")
+            self.assertIn('data-search-empty', english)
+            self.assertIn("No matching posts", english)
+
+    def test_populated_multilingual_post_and_tag_pages(self):
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            content = temporary_root / "content"
+            fixtures = {
+                "blog/newer/index.en.md": """+++
+title = "Newer visible post"
+slug = "newer"
+date = 2026-08-09
+draft = false
+tags = ["MixedCase"]
+interactionId = "newer-visible-post"
++++
+
+Visible English content.
+
+## Article outline
+
+More article words for the word count.
+""",
+                "blog/newer/index.zh.md": """+++
+title = "中文可见文章"
+slug = "newer"
+date = 2026-08-09
+draft = false
+tags = ["MixedCase"]
+interactionId = "newer-visible-post"
++++
+
+中文可见内容。
+""",
+                "blog/older/index.en.md": """+++
+title = "Older visible post"
+date = 2024-01-02
+draft = false
+tags = ["MixedCase"]
+interactionId = "older-visible-post"
++++
+
+Older visible content.
+""",
+                "blog/hidden/index.en.md": """+++
+title = "Hidden post"
+date = 2025-03-04
+draft = false
+hidden = true
+tags = ["MixedCase"]
+interactionId = "hidden-post"
++++
+
+Hidden content.
+""",
+            }
+            for relative, source in fixtures.items():
+                path = content / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(source, encoding="utf-8")
+
+            public = temporary_root / "public"
+            build_site(
+                public,
+                "https://example.test/",
+                "--contentDir",
+                str(content),
+            )
+            english_blog = read_html(public, "blog/index.html")
+            chinese_blog = read_html(public, "zh/blog/index.html")
+            taxonomy = read_html(public, "tags/index.html")
+            term = read_html(public, "tags/mixedcase/index.html")
+            article = read_html(public, "p/newer/index.html")
+
+            with self.subTest("English list has search, module, and visible count"):
+                self.assertIn("data-post-search", english_blog)
+                self.assertRegex(
+                    english_blog,
+                    r'<script type="module" src="/js/post-search\.[^"]+\.mjs" integrity="sha256-[^"]+"></script>',
+                )
+                self.assertEqual(2, english_blog.count("data-post-item"))
+                self.assertIn("<p data-post-count>2 posts</p>", english_blog)
+                self.assertIn('data-count-one="{count} post"', english_blog)
+                self.assertIn('data-count-many="{count} posts"', english_blog)
+                self.assertNotIn("Hidden post", english_blog)
+
+            with self.subTest("English list is reverse chronological by year"):
+                self.assertLess(
+                    english_blog.index('<li class="post-year" data-post-year="2026">'),
+                    english_blog.index("Newer visible post"),
+                )
+                self.assertLess(
+                    english_blog.index("Newer visible post"),
+                    english_blog.index('<li class="post-year" data-post-year="2024">'),
+                )
+                self.assertLess(
+                    english_blog.index('<li class="post-year" data-post-year="2024">'),
+                    english_blog.index("Older visible post"),
+                )
+
+            with self.subTest("Chinese list uses invariant singular count"):
+                self.assertEqual(1, chinese_blog.count("data-post-item"))
+                self.assertIn("<p data-post-count>1 篇文章</p>", chinese_blog)
+
+            with self.subTest("taxonomy count excludes hidden posts"):
+                self.assertIn(
+                    '<a href="/tags/mixedcase/">#MixedCase</a>'
+                    '<span class="tag-list-count">2</span>',
+                    taxonomy,
+                )
+                self.assertNotIn(
+                    '<span class="tag-list-count">3</span>',
+                    taxonomy,
+                )
+
+            with self.subTest("term list excludes hidden posts"):
+                self.assertIn("Newer visible post", term)
+                self.assertIn("Older visible post", term)
+                self.assertNotIn("Hidden post", term)
+
+            with self.subTest("article renders content, tag, TOC, and word count"):
+                self.assertRegex(article, r'<article data-word-count="\d+">')
+                self.assertIn("Visible English content.", article)
+                self.assertIn('<a href="/tags/mixedcase/">#MixedCase</a>', article)
+                self.assertIn('class="toc-nav"', article)
+                self.assertIn("Article outline", article)
+
+            with self.subTest("search status is an atomic polite live region"):
+                self.assertIn("data-search-status", english_blog)
+                self.assertIn('role="status"', english_blog)
+                self.assertIn('aria-live="polite"', english_blog)
+                self.assertIn('aria-atomic="true"', english_blog)
+
+            css = (ROOT / "assets" / "css" / "site.css").read_text(encoding="utf-8")
+            with self.subTest("mobile search avoids automatic iOS zoom"):
+                self.assertRegex(
+                    css,
+                    r"(?s)@media\s*\(max-width:\s*\d+px\)\s*\{.*?"
+                    r"\[data-post-search\]\s*\{[^}]*font-size:\s*16px",
+                )
+
+    def test_taxonomy_with_only_hidden_posts_uses_empty_state(self):
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            content = temporary_root / "content"
+            bundle = content / "blog" / "hidden-only"
+            bundle.mkdir(parents=True)
+            (bundle / "index.en.md").write_text(
+                """+++
+title = "Hidden only post"
+date = 2026-08-09
+draft = false
+hidden = true
+tags = ["HiddenOnly"]
+interactionId = "hidden-only-post"
++++
+
+Hidden content.
+""",
+                encoding="utf-8",
+            )
+            public = temporary_root / "public"
+            build_site(
+                public,
+                "https://example.test/",
+                "--contentDir",
+                str(content),
+            )
+            taxonomy = read_html(public, "tags/index.html")
+            self.assertIn("No tags yet", taxonomy)
+            self.assertNotIn("HiddenOnly", taxonomy)
+
     def test_markdown_hooks_are_safe_valid_unique_and_keyboard_accessible(self):
         with TemporaryDirectory() as temporary:
             temporary_root = Path(temporary)

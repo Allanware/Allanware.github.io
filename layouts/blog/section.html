@@ -1,0 +1,7 @@
+{{- /* Derived from rokcso/hugo-bearneo@f5c57c5ea39a091f0167af6312f4d4e385df2e6c: layouts/_default/list.html */ -}}
+{{ define "main" }}
+  <content>
+    <h2>{{ .Title }}</h2>
+    {{ partial "post-list.html" (dict "Page" . "Pages" .Pages) }}
+  </content>
+{{ end }}

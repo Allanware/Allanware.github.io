@@ -1,0 +1,20 @@
+{{- /* Site-local tag-overview template; Bear Neo has no dedicated counterpart. */ -}}
+{{ define "main" }}
+  <content>
+    <h2>{{ .Title }}</h2>
+    <ul class="tag-list">
+      {{ $visibleTermCount := 0 }}
+      {{ range .Data.Terms.Alphabetical }}
+        {{ $pages := where .Pages "Params.hidden" "ne" true }}
+        {{ $count := len $pages }}
+        {{ if gt $count 0 }}
+          {{ $visibleTermCount = add $visibleTermCount 1 }}
+          <li><a href="{{ .Page.RelPermalink }}">#{{ .Page.LinkTitle }}</a><span class="tag-list-count">{{ $count }}</span></li>
+        {{ end }}
+      {{ end }}
+      {{ if eq $visibleTermCount 0 }}
+        <li>{{ T "noTags" }}</li>
+      {{ end }}
+    </ul>
+  </content>
+{{ end }}
