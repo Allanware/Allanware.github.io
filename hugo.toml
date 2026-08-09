@@ -45,8 +45,8 @@ capitalizeListTitles = false
   categoryId = "DIC_kwDOTzd2D84DDBer"
 
 [params.kudos]
-  enabled = false
-  endpoint = ""
+  enabled = true
+  endpoint = "https://allanware-kudos.xiaodoubizwx.workers.dev"
 
 # Keep the vendored RSS template on its supported params.author path.
 [params.author]

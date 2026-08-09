@@ -946,12 +946,23 @@ class GeneratedSiteTests(unittest.TestCase):
             temporary_root = Path(temporary)
             production = temporary_root / "production"
             build_site(production, "https://example.test/")
-            production_post = read_html(
+            production_post = assert_one_widget(
                 production,
                 "p/beyond-the-cloud/index.html",
+                "post:beyond-the-cloud",
+                "/",
             )
-            self.assertNotIn("data-kudos", production_post)
-            self.assertNotIn("js/kudos.", production_post)
+            production_endpoint = "https://allanware-kudos.xiaodoubizwx.workers.dev"
+            self.assertEqual(
+                1,
+                production_post.count(
+                    f'data-kudos-endpoint="{production_endpoint}"',
+                ),
+            )
+            self.assertNotIn(
+                "http://allanware-kudos.xiaodoubizwx.workers.dev",
+                production_post,
+            )
 
             fixture = temporary_root / "fixture"
             build_site(
