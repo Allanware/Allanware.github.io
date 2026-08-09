@@ -12,7 +12,8 @@ resources, tags, Giscus discussion, or Kudos identity.
 
 This change includes:
 
-- localized site titles: `Ramblings` in English and `闲扯` in Chinese;
+- localized site titles: `Where Was I` in English and `说哪儿了` in Chinese;
+- the supplied `drawing_hands.png` artwork as the browser-tab icon;
 - a one-sentence localized contact placeholder whose visible text contains the
   author's name and “Contact me”/“联系我,” while the email address appears only
   as the `mailto:` link target;
@@ -54,7 +55,7 @@ The introductory copy is:
 Only “Contact me”/“联系我” is linked. Its destination is
 `mailto:xiaodoubizwx@gmail.com`; the address is not rendered as visible text.
 The placeholder can be replaced later without changing the homepage template.
-The browser document title and header are exactly `Ramblings` or `闲扯` on the
+The browser document title and header are exactly `Where Was I` or `说哪儿了` on the
 respective homepage; they do not duplicate or append the author's name.
 
 Every list is language-local. English content does not appear as fallback on
@@ -174,7 +175,7 @@ project-specific search, count, and empty labels rather than calling projects
 
 ## Configuration, Localization, and Styling
 
-Set the language site titles in `hugo.toml` to `Ramblings` and `闲扯`. The
+Set the language site titles in `hugo.toml` to `Where Was I` and `说哪儿了`. The
 author's name remains in the localized introductory content, not in the site
 title.
 
@@ -187,6 +188,21 @@ Homepage title lists use a dedicated semantic list style rather than the
 date-oriented archive list. New CSS stays in `assets/css/site.css`; the vendored
 Bear Neo theme remains unchanged. Layout must remain readable without horizontal
 overflow in both color schemes and at mobile widths.
+
+## Browser-Tab Icon
+
+Use the user-supplied `drawing_hands.png` as the sole visual source for the
+site icon. Preserve its original 400×400 RGBA bytes unchanged in the repository
+as `assets/images/drawing-hands.png`; its reviewed SHA-256 is
+`8a1a3fb3abaca3e1cffdd110d203892c02052bd1196398730de6db6e3955c8e8`.
+Do not redraw, crop, recolor, or otherwise reinterpret the artwork.
+
+A site-local `favicon.html` override uses Hugo's image pipeline to downsample
+that source with Lanczos resampling into a 32×32 PNG browser icon and a 180×180
+PNG Apple touch icon. It emits explicit `type` and `sizes` attributes and uses
+each generated resource's `.RelPermalink`, so both icon links remain correct at
+the GitHub Pages root and in project-subpath test builds. The vendored theme
+favicon partial and theme files remain unchanged.
 
 ## Privacy and Performance
 
@@ -207,6 +223,8 @@ Use test-driven development. Generated-site tests must cover both a root base
 URL and a project-subpath base URL and assert:
 
 - localized site titles and contact link text;
+- exact favicon source integrity, generated dimensions, link metadata, and
+  root/project-subpath URLs;
 - exact homepage section order and `h2`/`h3` hierarchy;
 - language-local projects and empty project state;
 - latest-post reverse-date order, title-only markup, three-item limit, and
@@ -241,8 +259,8 @@ sources and `writings-images/` archive remain untouched and uncommitted.
 
 The work is complete when:
 
-1. `/` is titled `Ramblings`, `/zh/` is titled `闲扯`, and neither site title
-   uses the author's name.
+1. `/` is titled `Where Was I`, `/zh/` is titled `说哪儿了`, and neither site
+   title uses the author's name.
 2. Both homepages render the approved localized structure and contact link.
 3. “Beyond the Cloud” is absent from Posts, Latest posts, Popular posts, and
    RSS, but remains available at its existing URL with unchanged interactions
@@ -253,5 +271,7 @@ The work is complete when:
 6. Live popularity follows the exact ranking, validation, timeout, privacy, and
    failure contract above.
 7. A Worker outage never removes or disables unrelated homepage content.
-8. All automated and browser acceptance checks pass at root and project base
+8. The supplied drawing is the tab icon in both languages and at both tested
+   base paths, with no visual alteration beyond deterministic downsampling.
+9. All automated and browser acceptance checks pass at root and project base
    paths without modifying the vendored theme or migration archive.
