@@ -9,11 +9,11 @@ export function mountPostSearch(root) {
   const noResults = empty?.textContent ?? "";
 
   input.addEventListener("input", () => {
-    const query = input.value.trim().toLocaleLowerCase();
+    const query = input.value.trim().toLowerCase();
     const visibleYears = new Set();
     let visible = 0;
     for (const item of items) {
-      const matches = item.dataset.postTitle.toLocaleLowerCase().includes(query);
+      const matches = item.dataset.postTitle.toLowerCase().includes(query);
       item.hidden = !matches;
       if (matches) {
         visible += 1;

@@ -10,11 +10,15 @@
 <meta name="title" content="{{ with .Title }}{{ . }}{{ else }}{{ .Site.Title }}{{ end }}">
 <meta name="description" content="{{ $description }}">
 {{ with .Params.tags }}<meta name="keywords" content="{{ delimit . "," }}">{{ end }}
-<link rel="canonical" href="{{ .Permalink }}">
-{{ $visibleTranslations := where .AllTranslations "Params.hidden" "ne" true }}
-{{ if and (ge (len $visibleTranslations) 2) (ne .Kind "term") }}
-  {{ range $visibleTranslations }}<link rel="alternate" hreflang="{{ .Language.Locale }}" href="{{ .Permalink }}">{{ end }}
-  {{ range where $visibleTranslations "Language.Name" "en" }}<link rel="alternate" hreflang="x-default" href="{{ .Permalink }}">{{ end }}
+{{ if .Params.hidden }}
+  <meta name="robots" content="noindex">
+{{ else }}
+  <link rel="canonical" href="{{ .Permalink }}">
+  {{ $visibleTranslations := where .AllTranslations "Params.hidden" "ne" true }}
+  {{ if and (ge (len $visibleTranslations) 2) (ne .Kind "term") }}
+    {{ range $visibleTranslations }}<link rel="alternate" hreflang="{{ .Language.Locale }}" href="{{ .Permalink }}">{{ end }}
+    {{ range where $visibleTranslations "Language.Name" "en" }}<link rel="alternate" hreflang="x-default" href="{{ .Permalink }}">{{ end }}
+  {{ end }}
 {{ end }}
 {{ partial "opengraph.html" . }}
 {{ partial "twitter_cards.html" . }}

@@ -9,6 +9,13 @@
     sans-serif;
 }
 
+@media (prefers-color-scheme: light) {
+  :root {
+    --text-color-tertiary: #707070;
+    --upvoted-color: #b9473a;
+  }
+}
+
 html:lang(zh-CN) body {
   line-height: 1.65;
 }
@@ -95,6 +102,10 @@ input:focus-visible,
 
 .post-interaction {
   margin-top: 2rem;
+}
+
+button.upvoted svg {
+  fill: currentColor;
 }
 
 [data-kudos-state="loading"] button.upvote-btn:disabled,

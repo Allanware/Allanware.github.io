@@ -102,6 +102,25 @@ test("rendered dates do not match and localized no-results text is announced", (
   assert.equal(status.textContent, "No matching posts");
 });
 
+test("title matching does not depend on the reader runtime locale", () => {
+  const { input, items, root } = createPostList();
+  items[0].dataset.postTitle = "The Miracle of Istanbul";
+  const localeLowerCase = String.prototype.toLocaleLowerCase;
+  String.prototype.toLocaleLowerCase = function localeSensitiveLowerCase() {
+    return localeLowerCase.call(this, "tr");
+  };
+
+  try {
+    mountPostSearch(root);
+    input.value = "istanbul";
+    input.dispatch("input");
+  } finally {
+    String.prototype.toLocaleLowerCase = localeLowerCase;
+  }
+
+  assert.deepEqual(items.map((item) => item.hidden), [false, true]);
+});
+
 test("a post list without a search input is ignored", () => {
   assert.doesNotThrow(() => mountPostSearch({ querySelector: () => null }));
 });

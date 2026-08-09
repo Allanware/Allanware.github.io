@@ -101,6 +101,60 @@ def alternate_links(html: str) -> set[tuple[str, str]]:
     return set(alternate_link_entries(html))
 
 
+def css_root_custom_properties(
+    css: str,
+    *,
+    scheme: str | None = None,
+) -> dict[str, str]:
+    if scheme is None:
+        search_area = css.split("@media", 1)[0]
+        match = re.search(r":root\s*\{([^}]*)\}", search_area, re.DOTALL)
+    else:
+        match = re.search(
+            rf"@media\s*\(prefers-color-scheme:\s*{re.escape(scheme)}\)"
+            r"\s*\{(?:\s|/\*.*?\*/)*:root\s*\{([^}]*)\}",
+            css,
+            re.DOTALL,
+        )
+    if match is None:
+        return {}
+    return {
+        name: value.strip().lower()
+        for name, value in re.findall(
+            r"(--[a-z0-9-]+)\s*:\s*([^;]+);",
+            match.group(1),
+        )
+    }
+
+
+def wcag_relative_luminance(color: str) -> float:
+    match = re.fullmatch(r"#([0-9a-fA-F]{6})", color)
+    if match is None:
+        raise ValueError(f"expected a six-digit hex color, got {color!r}")
+    channels = [
+        int(match.group(1)[offset : offset + 2], 16) / 255
+        for offset in (0, 2, 4)
+    ]
+    linear = [
+        channel / 12.92
+        if channel <= 0.04045
+        else ((channel + 0.055) / 1.055) ** 2.4
+        for channel in channels
+    ]
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+
+def wcag_contrast_ratio(foreground: str, background: str) -> float:
+    luminances = sorted(
+        (
+            wcag_relative_luminance(foreground),
+            wcag_relative_luminance(background),
+        ),
+        reverse=True,
+    )
+    return (luminances[0] + 0.05) / (luminances[1] + 0.05)
+
+
 class MetadataParser(HTMLParser):
     DESCRIPTION_SELECTORS = {
         ("name", "description"): "description",
@@ -1288,6 +1342,20 @@ interactionId = "visible-with-hidden"
                 public,
                 "zh/p/visible-with-hidden/index.html",
             )
+            self.assertIn(
+                '<link rel="canonical" '
+                'href="https://example.test/p/visible-with-hidden/">',
+                english,
+            )
+            self.assertNotIn('<meta name="robots" content="noindex">', english)
+            self.assertNotIn('<link rel="canonical"', chinese)
+            self.assertEqual(
+                1,
+                chinese.count(
+                    '<meta name="robots" content="noindex">'
+                ),
+            )
+            self.assertNotIn('<link rel="alternate" hreflang=', chinese)
             for html in [english, chinese]:
                 self.assertEqual([], alternate_link_entries(html))
                 self.assertNotIn('class="language-switcher"', html)
@@ -1758,6 +1826,99 @@ interactionId = "mixed-image-renderers"
             self.assertEqual(2, len(parser.zoom_control_ids))
             self.assertEqual(2, len(set(parser.zoom_control_ids)))
 
+    def test_markdown_bundle_resources_resolve_encoded_paths_and_preserve_suffixes(self):
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            content = temporary_root / "content"
+            bundle = content / "blog" / "resource-suffixes"
+            bundle.mkdir(parents=True)
+            for language, title, body in (
+                (
+                    "en",
+                    "Resource suffixes",
+                    "![Diagram](my%20diagram.svg?mode=print#preview)\n\n"
+                    "![Mini diagram](diagram.svg#minipic)\n\n"
+                    "[Notes](my%20notes.txt?download=1#details)",
+                ),
+                (
+                    "zh",
+                    "资源后缀",
+                    "![图表](my%20diagram.svg?mode=print#preview)\n\n"
+                    "![小图](diagram.svg#minipic)\n\n"
+                    "[说明](my%20notes.txt?download=1#details)",
+                ),
+            ):
+                (bundle / f"index.{language}.md").write_text(
+                    f'''+++
+title = "{title}"
+date = 2026-08-09
+draft = false
+interactionId = "resource-suffixes"
++++
+
+{body}
+''',
+                    encoding="utf-8",
+                )
+            svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"/>'
+            (bundle / "my diagram.svg").write_text(
+                svg,
+                encoding="utf-8",
+            )
+            (bundle / "diagram.svg").write_text(
+                svg,
+                encoding="utf-8",
+            )
+            (bundle / "my notes.txt").write_text(
+                "Fixture notes.\n",
+                encoding="utf-8",
+            )
+
+            for name, base_url, base_path in (
+                ("root", "https://example.test/", "/"),
+                (
+                    "project",
+                    "https://example.test/example-blog/",
+                    "/example-blog/",
+                ),
+            ):
+                public = temporary_root / name / "public"
+                build_site(
+                    public,
+                    base_url,
+                    "--contentDir",
+                    str(content),
+                )
+                expected_image = (
+                    f'{base_path}p/resource-suffixes/my%20diagram.svg'
+                    "?mode=print#preview"
+                )
+                expected_minipic = (
+                    f'{base_path}p/resource-suffixes/diagram.svg#minipic'
+                )
+                expected_link = (
+                    f'{base_path}p/resource-suffixes/my%20notes.txt'
+                    "?download=1#details"
+                )
+                for language_path in ("", "zh/"):
+                    html = read_html(
+                        public,
+                        f"{language_path}p/resource-suffixes/index.html",
+                    )
+                    with self.subTest(build=name, language=language_path or "en"):
+                        self.assertIn(f'src="{expected_image}"', html)
+                        self.assertIn(f'src="{expected_minipic}"', html)
+                        self.assertIn(f'href="{expected_link}"', html)
+                self.assertTrue(
+                    (public / "p/resource-suffixes/my diagram.svg").is_file()
+                )
+                self.assertTrue(
+                    (public / "p/resource-suffixes/diagram.svg").is_file()
+                )
+                self.assertTrue(
+                    (public / "p/resource-suffixes/my notes.txt").is_file()
+                )
+
     def test_localized_core_routes_exist(self):
         with TemporaryDirectory() as temporary:
             public = Path(temporary) / "public"
@@ -1804,6 +1965,54 @@ interactionId = "mixed-image-renderers"
             self.assertIsNotNone(primary)
             self.assertNotIn("language-switcher", primary.group(1))
             self.assertIn('class="language-switcher"', english)
+
+    def test_semantic_colors_meet_text_contrast_in_both_color_schemes(self):
+        theme_css = (
+            ROOT / "themes/hugo-bearneo/layouts/partials/style.html"
+        ).read_text(encoding="utf-8")
+        site_css = (ROOT / "assets/css/site.css").read_text(encoding="utf-8")
+        theme_base = css_root_custom_properties(theme_css)
+        site_base = css_root_custom_properties(site_css)
+        site_light = css_root_custom_properties(site_css, scheme="light")
+        self.assertEqual("#707070", site_light.get("--text-color-tertiary"))
+        self.assertEqual("#b9473a", site_light.get("--upvoted-color"))
+        for token in ("--text-color-tertiary", "--upvoted-color"):
+            self.assertNotIn(token, site_base)
+
+        schemes = {
+            "light": {
+                **theme_base,
+                **site_base,
+                **site_light,
+            },
+            "dark": {
+                **theme_base,
+                **css_root_custom_properties(theme_css, scheme="dark"),
+                **site_base,
+                **css_root_custom_properties(site_css, scheme="dark"),
+            },
+        }
+        self.assertEqual("#a0a0a0", schemes["dark"]["--text-color-tertiary"])
+        self.assertEqual("#ff6b6b", schemes["dark"]["--upvoted-color"])
+        for scheme, properties in schemes.items():
+            for token in ("--text-color-tertiary", "--upvoted-color"):
+                with self.subTest(scheme=scheme, token=token):
+                    ratio = wcag_contrast_ratio(
+                        properties[token],
+                        properties["--bg-color-primary"],
+                    )
+                    self.assertGreaterEqual(ratio, 4.5)
+
+    def test_upvoted_icon_adds_a_non_color_pressed_cue(self):
+        kudos = (ROOT / "layouts/_partials/kudos.html").read_text(
+            encoding="utf-8"
+        )
+        css = (ROOT / "assets/css/site.css").read_text(encoding="utf-8")
+        self.assertIn('fill="none"', kudos)
+        self.assertRegex(
+            css,
+            r"button\.upvoted\s+svg\s*\{[^}]*fill:\s*currentColor;[^}]*\}",
+        )
 
     def test_initial_chinese_lists_are_valid_and_empty(self):
         with TemporaryDirectory() as temporary:
