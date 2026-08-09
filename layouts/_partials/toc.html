@@ -1,0 +1,6 @@
+{{- /* Derived from rokcso/hugo-bearneo@f5c57c5ea39a091f0167af6312f4d4e385df2e6c: layouts/partials/toc.html */ -}}
+{{ if and .TableOfContents (ne .TableOfContents "<nav id=\"TableOfContents\"></nav>") }}
+  <aside class="toc-nav" role="navigation" aria-label="{{ T "tableOfContents" }}">
+    {{ .TableOfContents }}
+  </aside>
+{{ end }}

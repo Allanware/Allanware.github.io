@@ -1,0 +1,4 @@
+{{- /* Derived from rokcso/hugo-bearneo@f5c57c5ea39a091f0167af6312f4d4e385df2e6c: layouts/partials/nav.html */ -}}
+{{- range .Site.Menus.main }}
+  <a data-primary-link href="{{ .URL }}"{{ if $.IsMenuCurrent "main" . }} aria-current="page"{{ end }}>{{ .Name }}</a>
+{{- end }}

@@ -1,0 +1,14 @@
+{{- /* Derived from rokcso/hugo-bearneo@f5c57c5ea39a091f0167af6312f4d4e385df2e6c: layouts/partials/header.html */ -}}
+<a href="{{ .Site.Home.RelPermalink }}" class="title">
+  <h1>{{ .Site.Title }}</h1>
+</a>
+<nav aria-label="{{ T "primaryNavigation" }}" data-primary-navigation>
+  {{ partial "nav.html" . }}
+</nav>
+{{- if and .IsTranslated (ne .Kind "term") }}
+  <nav class="language-switcher" aria-label="{{ T "languageNavigation" }}">
+    {{- range .Translations }}
+      <a href="{{ .RelPermalink }}" hreflang="{{ .Language.Locale }}" lang="{{ .Language.Locale }}" aria-label="{{ T "switchLanguageTo" .Language.Label }}">{{ .Language.Label }}</a>
+    {{- end }}
+  </nav>
+{{- end }}

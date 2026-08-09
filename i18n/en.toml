@@ -1,0 +1,51 @@
+[primaryNavigation]
+other = "Primary navigation"
+[languageNavigation]
+other = "Language navigation"
+[switchLanguageTo]
+other = "Switch language to {{ . }}"
+[subscribeVia]
+other = "Subscribe via"
+[rss]
+other = "RSS"
+[sitemap]
+other = "Sitemap"
+[madeWith]
+other = "Made with"
+[tableOfContents]
+other = "Table of contents"
+[zoomImage]
+other = "Enlarge image: {{ . }}"
+[notFound]
+other = "Page not found"
+[publishedOn]
+other = "Published {{ . }}"
+[searchPosts]
+other = "Search posts"
+[noSearchResults]
+other = "No matching posts"
+[postCount]
+one = "{{ . }} post"
+other = "{{ . }} posts"
+[noPosts]
+other = "No posts yet"
+[noTags]
+other = "No tags yet"
+[filteringFor]
+other = "Posts tagged “{{ . }}”"
+[allTags]
+other = "All tags"
+[upvoteAdd]
+other = "Upvote this post"
+[upvoteRemove]
+other = "Remove your upvote"
+[upvoteLoading]
+other = "Loading upvotes"
+[upvoteUnavailable]
+other = "Upvotes are unavailable"
+[upvoteUpdateFailed]
+other = "The upvote could not be saved; try again"
+[comments]
+other = "Comments"
+[rssDescription]
+other = "Recent posts from {{ . }}"

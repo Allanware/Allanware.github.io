@@ -1,0 +1,115 @@
+baseURL = "https://example.org/"
+theme = "hugo-bearneo"
+defaultContentLanguage = "en"
+defaultContentLanguageInSubdir = false
+enableRobotsTXT = true
+enableGitInfo = false
+capitalizeListTitles = false
+
+[taxonomies]
+  tag = "tags"
+
+[permalinks.page]
+  blog = "/p/:slug/"
+
+[outputs]
+  home = ["HTML", "RSS"]
+  page = ["HTML"]
+  section = ["HTML"]
+  taxonomy = ["HTML"]
+  term = ["HTML"]
+
+[services.rss]
+  limit = 10
+
+[markup.goldmark.parser]
+  wrapStandAloneImageWithinParagraph = false
+
+[markup.tableOfContents]
+  startLevel = 2
+  endLevel = 3
+
+[params]
+  groupByYear = true
+  showPostCount = true
+  postSearch = true
+  toc = true
+  imageZoom = true
+  externalLinksNewTab = false
+
+[params.giscus]
+  enabled = false
+  repo = ""
+  repoId = ""
+  category = ""
+  categoryId = ""
+
+[params.kudos]
+  enabled = false
+  endpoint = ""
+
+# Keep the vendored RSS template on its supported params.author path.
+[params.author]
+  name = ""
+  email = ""
+
+[languages.en]
+  direction = "ltr"
+  label = "English"
+  locale = "en-US"
+  title = "Wenxuan Zhao"
+  weight = 1
+
+  [languages.en.params]
+    description = "Posts by Wenxuan Zhao"
+    giscusLanguage = "en"
+    dateFormat = ":date_long"
+
+  [[languages.en.menus.main]]
+    identifier = "home"
+    name = "Home"
+    pageRef = "/"
+    weight = 10
+
+  [[languages.en.menus.main]]
+    identifier = "posts"
+    name = "Posts"
+    pageRef = "/blog"
+    weight = 20
+
+  [[languages.en.menus.main]]
+    identifier = "tags"
+    name = "Tags"
+    pageRef = "/tags"
+    weight = 30
+
+[languages.zh]
+  direction = "ltr"
+  hasCJKLanguage = true
+  label = "简体中文"
+  locale = "zh-CN"
+  title = "赵文轩"
+  weight = 2
+
+  [languages.zh.params]
+    description = "赵文轩的文章"
+    giscusLanguage = "zh-CN"
+    dateFormat = ":date_long"
+
+  [[languages.zh.menus.main]]
+    identifier = "home"
+    name = "首页"
+    pageRef = "/"
+    weight = 10
+
+  [[languages.zh.menus.main]]
+    identifier = "posts"
+    name = "文章"
+    pageRef = "/blog"
+    weight = 20
+
+  [[languages.zh.menus.main]]
+    identifier = "tags"
+    name = "标签"
+    pageRef = "/tags"
+    weight = 30

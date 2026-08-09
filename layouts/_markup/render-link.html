@@ -1,0 +1,9 @@
+{{- /* Derived from rokcso/hugo-bearneo@f5c57c5ea39a091f0167af6312f4d4e385df2e6c: layouts/_default/_markup/render-link.html */ -}}
+{{- $href := .Destination -}}
+{{- with .Page.Resources.Get .Destination -}}
+  {{- $href = .RelPermalink -}}
+{{- end -}}
+{{- $newTabEnabled := .Page.Site.Params.externalLinksNewTab | default false -}}
+{{- $isExternal := or (hasPrefix $href "http://") (hasPrefix $href "https://") -}}
+{{- $isInternal := and $isExternal (hasPrefix $href .Page.Site.BaseURL) -}}
+<a href="{{ $href }}"{{ if and $isExternal (not $isInternal) }}{{ if $newTabEnabled }} target="_blank"{{ end }} rel="noopener noreferrer"{{ end }}{{ with .Title }} title="{{ . }}"{{ end }}>{{ .Text | safeHTML }}</a>

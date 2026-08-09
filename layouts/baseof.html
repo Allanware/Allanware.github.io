@@ -1,0 +1,24 @@
+{{- /* Derived from rokcso/hugo-bearneo@f5c57c5ea39a091f0167af6312f4d4e385df2e6c: layouts/_default/baseof.html */ -}}
+<!doctype html>
+<html lang="{{ .Language.Locale }}" dir="{{ .Language.Direction }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta http-equiv="X-Clacks-Overhead" content="GNU Terry Pratchett">
+  {{ partial "favicon.html" . }}
+  <title>{{ block "title" . }}{{ with .Title }}{{ . }} | {{ end }}{{ .Site.Title }}{{ end }}</title>
+  {{ partial "seo_tags.html" . }}
+  {{ with .Site.Home.OutputFormats.Get "RSS" }}
+    <link rel="alternate" type="{{ .MediaType.Type }}" href="{{ .Permalink }}" title="{{ $.Site.Title }}">
+  {{ end }}
+  {{ partial "style.html" . }}
+  {{ partial "custom_head.html" . }}
+</head>
+<body>
+  <header>{{ partial "header.html" . }}</header>
+  <main>{{ block "main" . }}{{ end }}</main>
+  <footer>{{ partial "footer.html" . }}</footer>
+  {{ partial "custom_body.html" . }}
+</body>
+</html>

@@ -1,0 +1,8 @@
+{{- /* Derived from rokcso/hugo-bearneo@f5c57c5ea39a091f0167af6312f4d4e385df2e6c: layouts/partials/footer.html */ -}}
+{{ with .Site.Home.OutputFormats.Get "RSS" }}
+  {{ T "subscribeVia" }} <a href="{{ .RelPermalink }}">{{ T "rss" }}</a>.
+  <br>
+{{ end }}
+{{ T "madeWith" }} <a href="https://github.com/rokcso/hugo-bearneo">Hugo Bear Neo</a>.
+<br>
+<a href="{{ "sitemap.xml" | relURL }}">{{ T "sitemap" }}</a>.

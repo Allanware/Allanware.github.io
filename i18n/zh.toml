@@ -1,0 +1,51 @@
+[primaryNavigation]
+other = "主导航"
+[languageNavigation]
+other = "语言导航"
+[switchLanguageTo]
+other = "切换语言至{{ . }}"
+[subscribeVia]
+other = "订阅"
+[rss]
+other = "RSS"
+[sitemap]
+other = "网站地图"
+[madeWith]
+other = "网站主题"
+[tableOfContents]
+other = "目录"
+[zoomImage]
+other = "放大图片：{{ . }}"
+[notFound]
+other = "页面未找到"
+[publishedOn]
+other = "发布于{{ . }}"
+[searchPosts]
+other = "搜索文章"
+[noSearchResults]
+other = "没有匹配的文章"
+[postCount]
+one = "{{ . }} 篇文章"
+other = "{{ . }} 篇文章"
+[noPosts]
+other = "暂无文章"
+[noTags]
+other = "暂无标签"
+[filteringFor]
+other = "标签“{{ . }}”下的文章"
+[allTags]
+other = "全部标签"
+[upvoteAdd]
+other = "赞同这篇文章"
+[upvoteRemove]
+other = "取消赞同"
+[upvoteLoading]
+other = "正在加载赞同数"
+[upvoteUnavailable]
+other = "赞同功能暂不可用"
+[upvoteUpdateFailed]
+other = "未能保存赞同，请重试"
+[comments]
+other = "评论"
+[rssDescription]
+other = "{{ . }}的最新文章"

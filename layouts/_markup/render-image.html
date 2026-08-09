@@ -1,0 +1,25 @@
+{{- /* Derived from rokcso/hugo-bearneo@f5c57c5ea39a091f0167af6312f4d4e385df2e6c: layouts/_default/_markup/render-image.html */ -}}
+{{- $src := .Destination -}}
+{{- with .Page.Resources.Get .Destination -}}
+  {{- $src = .RelPermalink -}}
+{{- end -}}
+{{- if .IsBlock -}}
+  <figure class="image-caption{{ if .Page.Site.Params.imageZoom }} image-zoom-container{{ end }}">
+    {{ if .Page.Site.Params.imageZoom }}
+      {{ $controlKey := printf "%s|%s|%d" .Page.RelPermalink .Destination .Ordinal }}
+      {{ $controlId := printf "img-%s" (substr (md5 $controlKey) 0 8) }}
+      <input type="checkbox" id="{{ $controlId }}" class="image-zoom-toggle" aria-label="{{ T "zoomImage" .Text }}">
+      <label for="{{ $controlId }}" class="image-zoom-label">
+        <img src="{{ $src }}" alt="{{ .Text }}" loading="lazy" class="zoomable-image">
+      </label>
+      <label for="{{ $controlId }}" class="image-zoom-overlay" aria-hidden="true">
+        <img src="{{ $src }}" alt="" class="zoomable-image">
+      </label>
+    {{ else }}
+      <img src="{{ $src }}" alt="{{ .Text }}" loading="lazy">
+    {{ end }}
+    {{ with .Text }}<figcaption>{{ . }}</figcaption>{{ end }}
+  </figure>
+{{- else -}}
+  <img src="{{ $src }}" alt="{{ .Text }}" loading="lazy" class="inline-image">
+{{- end -}}
