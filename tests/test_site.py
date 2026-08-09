@@ -804,7 +804,21 @@ class GeneratedSiteTests(unittest.TestCase):
                 production,
                 "p/beyond-the-cloud/index.html",
             )
-            self.assertNotIn("giscus.app/client.js", production_post)
+            self.assertEqual(1, production_post.count("https://giscus.app/client.js"))
+            self.assertNotIn("http://giscus.app/client.js", production_post)
+            for attribute in (
+                'data-repo="Allanware/Allanware.github.io"',
+                'data-repo-id="R_kgDOTzd2Dw"',
+                'data-category="Announcements"',
+                'data-category-id="DIC_kwDOTzd2D84DDBer"',
+                'data-mapping="specific"',
+                'data-term="post:beyond-the-cloud"',
+                'data-strict="1"',
+                'data-lang="en"',
+            ):
+                self.assertIn(attribute, production_post)
+            self.assertNotIn('data-mapping="pathname"', production_post)
+            self.assertNotIn('data-strict="0"', production_post)
 
             fixture = temporary_root / "fixture"
             build_site(

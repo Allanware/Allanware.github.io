@@ -38,11 +38,11 @@ capitalizeListTitles = false
   externalLinksNewTab = false
 
 [params.giscus]
-  enabled = false
-  repo = ""
-  repoId = ""
-  category = ""
-  categoryId = ""
+  enabled = true
+  repo = "Allanware/Allanware.github.io"
+  repoId = "R_kgDOTzd2Dw"
+  category = "Announcements"
+  categoryId = "DIC_kwDOTzd2D84DDBer"
 
 [params.kudos]
   enabled = false
