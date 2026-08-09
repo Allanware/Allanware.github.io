@@ -2067,6 +2067,11 @@ interactionId = "resource-suffixes"
             )
             self.assertRegex(
                 site_css,
+                r"\[data-primary-navigation\]\s*\{[^}]*"
+                r"flex:\s*0\s+1\s+auto;[^}]*\}",
+            )
+            self.assertRegex(
+                site_css,
                 r"\.language-switcher\s*\{[^}]*align-items:\s*baseline;"
                 r"[^}]*border-left:\s*1px\s+solid\s+var\(--border-color\);"
                 r"[^}]*display:\s*inline-flex;"
