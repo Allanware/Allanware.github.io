@@ -7,8 +7,11 @@ import subprocess
 from tempfile import TemporaryDirectory
 import tomllib
 import unittest
+from unittest.mock import patch
 from urllib.parse import urlsplit
 import xml.etree.ElementTree as ET
+
+from scripts.check_site import check_site
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -48,6 +51,7 @@ def build_site(destination: Path, base_url: str, *extra_arguments: str) -> None:
         "--noBuildLock",
         "--cacheDir", str(destination.parent / "cache"),
         "--gc",
+        "--environment", "production",
         *extra_arguments,
     ]
     subprocess.run(command, cwd=ROOT, check=True, capture_output=True, text=True)
@@ -232,6 +236,154 @@ class MarkupReviewParser(HTMLParser):
 
 
 class GeneratedSiteTests(unittest.TestCase):
+    def test_build_site_requests_the_production_environment(self):
+        with TemporaryDirectory() as temporary, patch.object(subprocess, "run") as run:
+            build_site(
+                Path(temporary) / "public",
+                "https://example.test/example-blog/",
+                "--minify",
+            )
+
+        command = run.call_args.args[0]
+        environment_index = command.index("--environment")
+        self.assertEqual("production", command[environment_index + 1])
+
+    def test_root_and_project_subpath_production_matrix_is_complete(self):
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            matrix = (
+                ("root", "https://example.github.io/", "/"),
+                (
+                    "project",
+                    "https://example.github.io/example-blog/",
+                    "/example-blog/",
+                ),
+            )
+            for name, base_url, base_path in matrix:
+                with self.subTest(build=name, content="production"):
+                    public = temporary_root / name / "production"
+                    build_site(public, base_url, "--minify")
+                    self.assertEqual([], check_site(public, base_url))
+
+                    html_documents = sorted(public.rglob("*.html"))
+                    xml_documents = sorted(public.rglob("*.xml"))
+                    self.assertTrue(html_documents)
+                    self.assertTrue(xml_documents)
+                    generated_markup = "\n".join(
+                        document.read_text(encoding="utf-8")
+                        for document in [*html_documents, *xml_documents]
+                    )
+                    self.assertNotIn("srcset=", generated_markup)
+
+                    for slug in (
+                        "beyond-the-cloud",
+                        "lekythos-a-shape",
+                        "the-miracle-of-istanbul",
+                    ):
+                        self.assertTrue((public / "p" / slug / "index.html").is_file())
+                        self.assertFalse((public / "zh" / "p" / slug / "index.html").exists())
+                    self.assertIn(
+                        '<p data-post-count>3 posts</p>',
+                        read_html(public, "blog/index.html"),
+                    )
+                    self.assertTrue((public / ".nojekyll").is_file())
+                    self.assertTrue(
+                        (public / "p/beyond-the-cloud/beyond_the_cloud.v5.pdf").is_file()
+                    )
+                    self.assertTrue(
+                        (
+                            public
+                            / "p/the-miracle-of-istanbul/2021-03-04-The-Miracle-of-Istanbul.Rmd"
+                        ).is_file()
+                    )
+                    beyond = read_html(public, "p/beyond-the-cloud/index.html")
+                    self.assertNotIn("language-switcher", beyond)
+                    self.assertNotIn('target="_blank"', beyond)
+                    for archive_only in ("cover.png", "3-3.jpeg"):
+                        self.assertEqual([], list(public.rglob(archive_only)))
+
+                    self.assertIn("#visualization", read_html(public, "tags/index.html"))
+                    self.assertIn(
+                        "Beyond the Cloud",
+                        read_html(public, "tags/visualization/index.html"),
+                    )
+                    for output in (
+                        "index.xml",
+                        "zh/index.xml",
+                        "sitemap.xml",
+                        "en/sitemap.xml",
+                        "zh/sitemap.xml",
+                    ):
+                        output_path = public / output
+                        self.assertTrue(output_path.is_file(), output_path)
+                        ET.parse(output_path)
+
+                    expected_navigation = [
+                        (f"{base_path}", "Home"),
+                        (f"{base_path}blog/", "Posts"),
+                        (f"{base_path}tags/", "Tags"),
+                    ]
+                    self.assertEqual(
+                        expected_navigation,
+                        primary_navigation(read_html(public, "index.html")),
+                    )
+
+                with self.subTest(build=name, content="interactions"):
+                    fixture_public = temporary_root / name / "interactions"
+                    build_site(
+                        fixture_public,
+                        base_url,
+                        "--minify",
+                        "--config",
+                        "hugo.toml,tests/fixtures/interactions.toml",
+                        "--contentDir",
+                        "tests/fixtures/content",
+                    )
+                    self.assertEqual([], check_site(fixture_public, base_url))
+                    fixture_markup = "\n".join(
+                        document.read_text(encoding="utf-8")
+                        for document in sorted(
+                            [
+                                *fixture_public.rglob("*.html"),
+                                *fixture_public.rglob("*.xml"),
+                            ]
+                        )
+                    )
+                    self.assertNotIn("srcset=", fixture_markup)
+                    self.assertIn(
+                        f"{base_path}zh/tags/%E6%B5%8B%E8%AF%95/",
+                        fixture_markup,
+                    )
+                    self.assertTrue((fixture_public / "zh/tags/测试/index.html").is_file())
+                    shared_zh = read_html(
+                        fixture_public,
+                        "zh/p/shared-article/index.html",
+                    )
+                    self.assertIn(
+                        f"src={base_path}p/shared-article/diagram.svg",
+                        shared_zh,
+                    )
+                    self.assertIn(
+                        f"href={base_path}p/shared-article/notes.txt",
+                        shared_zh,
+                    )
+                    self.assertTrue(
+                        (fixture_public / "p/shared-article/diagram.svg").is_file()
+                    )
+                    self.assertTrue(
+                        (fixture_public / "p/shared-article/notes.txt").is_file()
+                    )
+                    for output in (
+                        "index.xml",
+                        "zh/index.xml",
+                        "sitemap.xml",
+                        "en/sitemap.xml",
+                        "zh/sitemap.xml",
+                    ):
+                        output_path = fixture_public / output
+                        self.assertTrue(output_path.is_file(), output_path)
+                        ET.parse(output_path)
+
     def test_seo_uses_only_real_translations(self):
         with TemporaryDirectory() as temporary:
             public = Path(temporary) / "public"
