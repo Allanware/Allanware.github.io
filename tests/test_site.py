@@ -227,6 +227,64 @@ def primary_navigation(html: str) -> list[tuple[str, str]]:
     return parser.links
 
 
+class HeaderNavigationParser(HTMLParser):
+    VOID_ELEMENTS = {
+        "area",
+        "base",
+        "br",
+        "col",
+        "embed",
+        "hr",
+        "img",
+        "input",
+        "link",
+        "meta",
+        "source",
+        "track",
+        "wbr",
+    }
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.stack: list[tuple[str, int | None]] = []
+        self.rows: list[list[tuple[str, bool, tuple[str, ...]]]] = []
+
+    def handle_starttag(
+        self,
+        tag: str,
+        attributes: list[tuple[str, str | None]],
+    ) -> None:
+        values = dict(attributes)
+        classes = tuple(sorted((values.get("class") or "").split()))
+        if self.stack:
+            _, parent_row = self.stack[-1]
+            if parent_row is not None:
+                self.rows[parent_row].append(
+                    (tag, "data-primary-navigation" in values, classes)
+                )
+
+        row_index = None
+        if tag == "div" and "header-navigation" in classes:
+            row_index = len(self.rows)
+            self.rows.append([])
+        if tag not in self.VOID_ELEMENTS:
+            self.stack.append((tag, row_index))
+
+    def handle_endtag(self, tag: str) -> None:
+        tags = [entry[0] for entry in self.stack]
+        if tag in tags:
+            reverse_index = tags[::-1].index(tag)
+            del self.stack[len(self.stack) - reverse_index - 1 :]
+
+
+def header_navigation_signatures(
+    html: str,
+) -> list[list[tuple[str, bool, tuple[str, ...]]]]:
+    parser = HeaderNavigationParser()
+    parser.feed(html)
+    return parser.rows
+
+
 class MarkupReviewParser(HTMLParser):
     VOID_ELEMENTS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
 
@@ -350,16 +408,17 @@ class GeneratedSiteTests(unittest.TestCase):
                             / "p/the-miracle-of-istanbul/2021-03-04-The-Miracle-of-Istanbul.Rmd"
                         ).is_file()
                     )
+                    expected_navigation = [
+                        (f"{base_path}", "Home"),
+                        (f"{base_path}blog/", "Posts"),
+                        (f"{base_path}tags/", "Tags"),
+                    ]
                     beyond = read_html(public, "p/beyond-the-cloud/index.html")
+                    self.assertEqual(expected_navigation, primary_navigation(beyond))
                     self.assertNotIn("language-switcher", beyond)
                     self.assertEqual(
-                        1,
-                        len(
-                            re.findall(
-                                r'<div class=(?:"header-navigation"|header-navigation)>',
-                                beyond,
-                            )
-                        ),
+                        [[("nav", True, ())]],
+                        header_navigation_signatures(beyond),
                     )
                     self.assertNotIn('target="_blank"', beyond)
                     for archive_only in ("cover.png", "3-3.jpeg"):
@@ -381,11 +440,6 @@ class GeneratedSiteTests(unittest.TestCase):
                         self.assertTrue(output_path.is_file(), output_path)
                         ET.parse(output_path)
 
-                    expected_navigation = [
-                        (f"{base_path}", "Home"),
-                        (f"{base_path}blog/", "Posts"),
-                        (f"{base_path}tags/", "Tags"),
-                    ]
                     self.assertEqual(
                         expected_navigation,
                         primary_navigation(read_html(public, "index.html")),
@@ -1984,9 +2038,16 @@ interactionId = "resource-suffixes"
                     re.DOTALL,
                 )
                 with self.subTest(language=language):
+                    self.assertEqual(
+                        [
+                            [
+                                ("nav", True, ()),
+                                ("nav", False, ("language-switcher",)),
+                            ]
+                        ],
+                        header_navigation_signatures(html),
+                    )
                     self.assertEqual(1, len(rows))
-                    self.assertEqual(1, rows[0].count("data-primary-navigation"))
-                    self.assertEqual(1, rows[0].count('class="language-switcher"'))
                     self.assertEqual(1, rows[0].count("hreflang="))
                     self.assertIn(f">{alternate_label}</a>", rows[0])
 
@@ -1995,12 +2056,20 @@ interactionId = "resource-suffixes"
             site_css = (ROOT / "assets/css/site.css").read_text(encoding="utf-8")
             self.assertRegex(
                 site_css,
-                r"\.header-navigation\s*\{[^}]*display:\s*flex;"
+                r"\.header-navigation\s*\{[^}]*align-items:\s*baseline;"
+                r"[^}]*display:\s*flex;"
                 r"[^}]*flex-wrap:\s*nowrap;[^}]*\}",
             )
             self.assertRegex(
                 site_css,
-                r"\.language-switcher\s*\{[^}]*display:\s*inline-flex;"
+                r"\[data-primary-navigation\]\s*\{[^}]*display:\s*flex;"
+                r"[^}]*flex-wrap:\s*nowrap;[^}]*\}",
+            )
+            self.assertRegex(
+                site_css,
+                r"\.language-switcher\s*\{[^}]*align-items:\s*baseline;"
+                r"[^}]*border-left:\s*1px\s+solid\s+var\(--border-color\);"
+                r"[^}]*display:\s*inline-flex;"
                 r"[^}]*white-space:\s*nowrap;[^}]*\}",
             )
             for language, html, rss_path, removed_text in (
