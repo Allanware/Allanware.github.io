@@ -80,8 +80,8 @@ input:focus-visible,
   border-left: 1px solid var(--border-color);
   display: inline-flex;
   flex: 0 0 auto;
-  margin-left: 0.25rem;
-  padding-left: 0.75rem;
+  margin-left: 0.5rem;
+  padding-left: 0.5rem;
   white-space: nowrap;
 }
 

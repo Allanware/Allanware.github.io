@@ -2077,6 +2077,11 @@ interactionId = "resource-suffixes"
                 r"[^}]*display:\s*inline-flex;"
                 r"[^}]*white-space:\s*nowrap;[^}]*\}",
             )
+            self.assertRegex(
+                site_css,
+                r"\.language-switcher\s*\{[^}]*margin-left:\s*0\.5rem;"
+                r"[^}]*padding-left:\s*0\.5rem;[^}]*\}",
+            )
             for language, html, rss_path, removed_text in (
                 (
                     "en",
