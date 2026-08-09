@@ -7,6 +7,28 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
+ISTANBUL_IMAGE_ALTS = (
+    ("unnamed-chunk-3-1.png", "Starting-eleven market values for AC Milan and Liverpool"),
+    ("unnamed-chunk-3-2.png", "Ten highest-valued players across both starting elevens"),
+    ("timeline.png", "Timeline of the 2005 Champions League final"),
+    ("unnamed-chunk-9-1.png", "First-half shot map for AC Milan and Liverpool"),
+    ("unnamed-chunk-10-1.png", "Second-half shot map for Liverpool and AC Milan"),
+    ("unnamed-chunk-11-1.png", "Extra-time shot map for Liverpool and AC Milan"),
+    ("unnamed-chunk-12-1.png", "Picture 1: AC Milan passing map for minutes 1 through 24"),
+    ("unnamed-chunk-12-2.png", "Picture 2: AC Milan passing map after minute 24"),
+    ("unnamed-chunk-12-3.png", "Picture 3: Liverpool passing map for minutes 1 through 24"),
+    ("unnamed-chunk-12-4.png", "Picture 4: Liverpool passing map after minute 24"),
+    ("unnamed-chunk-13-1.png", "Picture 1: AC Milan passing network during the six-minute spell"),
+    ("unnamed-chunk-13-2.png", "Picture 2: AC Milan individual passes during the six-minute spell"),
+    ("unnamed-chunk-13-3.png", "Picture 3: Liverpool passing network during the six-minute spell"),
+    ("unnamed-chunk-13-4.png", "Picture 4: Liverpool individual passes during the six-minute spell"),
+    ("unnamed-chunk-14-1.png", "Picture 1: Liverpool defensive actions during the six-minute spell"),
+    ("unnamed-chunk-14-2.png", "Picture 2: AC Milan defensive actions during the six-minute spell"),
+    ("unnamed-chunk-15-1.png", "Picture 1: AC Milan average first-half positions"),
+    ("unnamed-chunk-15-2.png", "Picture 2: Liverpool average first-half positions"),
+    ("unnamed-chunk-16-1.png", "Picture 1: AC Milan average early second-half positions"),
+    ("unnamed-chunk-16-2.png", "Picture 2: Liverpool average early second-half positions"),
+)
 
 
 def build_site(destination: Path, base_url: str, *extra_arguments: str) -> None:
@@ -76,11 +98,20 @@ class MarkupReviewParser(HTMLParser):
         self.links: list[tuple[str, dict[str, str | None]]] = []
         self.inline_images: list[tuple[bool, bool]] = []
         self.figures_in_paragraph: list[bool] = []
+        self.figure_images: list[list[dict[str, str | None]]] = []
         self.zoom_control_ids: list[str] = []
+        self.paragraph_texts: list[list[str]] = []
+        self.paragraphs_in_blockquote: list[bool] = []
+        self.emphasis_texts: list[list[str]] = []
 
     def handle_starttag(self, tag: str, attributes: list[tuple[str, str | None]]) -> None:
         values = dict(attributes)
         classes = set((values.get("class") or "").split())
+        if tag == "p":
+            self.paragraph_texts.append([])
+            self.paragraphs_in_blockquote.append("blockquote" in self.stack)
+        elif tag == "em":
+            self.emphasis_texts.append([])
         if tag == "a":
             self.active_link_attributes = values
             self.active_link_text = []
@@ -88,6 +119,9 @@ class MarkupReviewParser(HTMLParser):
             self.inline_images.append(("p" in self.stack, "figure" in self.stack))
         elif tag == "figure":
             self.figures_in_paragraph.append("p" in self.stack)
+            self.figure_images.append([])
+        elif tag == "img" and "figure" in self.stack:
+            self.figure_images[-1].append(values)
         elif tag == "input" and "image-zoom-toggle" in classes:
             control_id = values.get("id")
             if control_id is not None:
@@ -96,6 +130,10 @@ class MarkupReviewParser(HTMLParser):
             self.stack.append(tag)
 
     def handle_data(self, data: str) -> None:
+        if "p" in self.stack:
+            self.paragraph_texts[-1].append(data)
+        if "em" in self.stack:
+            self.emphasis_texts[-1].append(data)
         if self.active_link_attributes is not None:
             self.active_link_text.append(data)
 
@@ -181,6 +219,90 @@ class GeneratedSiteTests(unittest.TestCase):
                             rf'<img\s+src="{re.escape(href_prefix + image_name)}"'
                             rf'\s+alt="{re.escape(alt)}"\s+width="{width}"',
                         )
+
+    def test_istanbul_bundle_route_and_resources_are_stable_across_base_urls(self):
+        stable_route = "p/the-miracle-of-istanbul"
+        rmd_name = "2021-03-04-The-Miracle-of-Istanbul.Rmd"
+
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            cases = (
+                ("root", "https://example.test/", "/p/the-miracle-of-istanbul/"),
+                (
+                    "project",
+                    "https://example.test/project/",
+                    "/project/p/the-miracle-of-istanbul/",
+                ),
+            )
+            for name, base_url, href_prefix in cases:
+                with self.subTest(base_url=name):
+                    public = temporary_root / name / "public"
+                    build_site(public, base_url)
+                    article_path = public / stable_route / "index.html"
+                    self.assertTrue(article_path.is_file(), article_path)
+                    article = article_path.read_text(encoding="utf-8")
+
+                    rmd = public / stable_route / rmd_name
+                    self.assertTrue(rmd.is_file(), rmd)
+                    self.assertIn(f'href="{href_prefix}{rmd_name}"', article)
+                    bundle_rmd = (
+                        ROOT / "content" / "blog" / "the-miracle-of-istanbul" / rmd_name
+                    ).read_bytes()
+                    source_rmd = (ROOT / "writings-images" / rmd_name).read_bytes()
+                    self.assertEqual(source_rmd, bundle_rmd)
+                    self.assertEqual(bundle_rmd, rmd.read_bytes())
+
+                    parser = MarkupReviewParser()
+                    parser.feed(article)
+                    self.assertEqual(20, len(parser.figures_in_paragraph))
+                    self.assertEqual([False] * 20, parser.figures_in_paragraph)
+                    self.assertEqual(20, len(parser.figure_images))
+
+                    paragraphs = [
+                        ("".join(text), in_blockquote)
+                        for text, in_blockquote in zip(
+                            parser.paragraph_texts,
+                            parser.paragraphs_in_blockquote,
+                            strict=True,
+                        )
+                    ]
+                    for analysis_opening in ("In the 2nd half", "Surprisingly"):
+                        with self.subTest(analysis_opening=analysis_opening):
+                            matches = [
+                                in_blockquote
+                                for text, in_blockquote in paragraphs
+                                if analysis_opening in text
+                            ]
+                            self.assertEqual([False], matches)
+                    visible_picture_labels = [
+                        "".join(text).strip()
+                        for text in parser.emphasis_texts
+                        if re.fullmatch(
+                            r"picture [1-4]",
+                            "".join(text).strip(),
+                            re.IGNORECASE,
+                        )
+                    ]
+                    with self.subTest("redundant picture labels are not visible"):
+                        self.assertEqual([], visible_picture_labels)
+
+                    for index, (image_name, alt) in enumerate(ISTANBUL_IMAGE_ALTS):
+                        resource = public / stable_route / image_name
+                        self.assertTrue(resource.is_file(), resource)
+                        self.assertIn(f'src="{href_prefix}{image_name}"', article)
+                        nonempty_alts = [
+                            image.get("alt")
+                            for image in parser.figure_images[index]
+                            if image.get("alt")
+                        ]
+                        self.assertEqual([alt], nonempty_alts)
+
+                    for archive_only in ("cover.png", "3-3.jpeg"):
+                        self.assertFalse(
+                            (public / stable_route / archive_only).exists(),
+                            archive_only,
+                        )
+                        self.assertNotIn(href_prefix + archive_only, article)
 
     def test_bundle_image_shortcode_rejects_invalid_arguments(self):
         fixtures = (
