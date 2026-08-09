@@ -10,7 +10,7 @@ capitalizeListTitles = false
   tag = "tags"
 
 [permalinks.page]
-  blog = "/p/:slug/"
+  blog = "/p/:contentbasename/"
 
 [outputs]
   home = ["HTML", "RSS"]

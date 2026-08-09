@@ -112,6 +112,38 @@ class MarkupReviewParser(HTMLParser):
 
 
 class GeneratedSiteTests(unittest.TestCase):
+    def test_beyond_the_cloud_bundle_route_is_stable_across_base_urls(self):
+        title_derived_route = (
+            "p/beyond-the-cloud-a-perceptual-illusion-in-overlaid-bar-charts"
+        )
+        stable_route = "p/beyond-the-cloud"
+        pdf_name = "beyond_the_cloud.v5.pdf"
+
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            cases = (
+                ("root", "https://example.test/", "/p/beyond-the-cloud/"),
+                (
+                    "project",
+                    "https://example.test/project/",
+                    "/project/p/beyond-the-cloud/",
+                ),
+            )
+            for name, base_url, href_prefix in cases:
+                with self.subTest(base_url=name):
+                    public = temporary_root / name / "public"
+                    build_site(public, base_url)
+
+                    article = public / stable_route / "index.html"
+                    pdf = public / stable_route / pdf_name
+                    self.assertTrue(article.is_file(), article)
+                    self.assertTrue(pdf.is_file(), pdf)
+                    self.assertFalse((public / title_derived_route).exists())
+                    self.assertIn(
+                        f'href="{href_prefix}{pdf_name}"',
+                        article.read_text(encoding="utf-8"),
+                    )
+
     def test_localized_core_routes_exist(self):
         with TemporaryDirectory() as temporary:
             public = Path(temporary) / "public"
