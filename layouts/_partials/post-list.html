@@ -1,20 +1,29 @@
 {{- /* Derived from rokcso/hugo-bearneo@f5c57c5ea39a091f0167af6312f4d4e385df2e6c: layouts/_default/list.html */ -}}
 {{ $page := .Page }}
+{{ $countKey := default "postCount" .CountKey }}
+{{ $searchKey := default "searchPosts" .SearchKey }}
+{{ $emptyKey := default "noPosts" .EmptyKey }}
+{{ $searchEmptyKey := default "noSearchResults" .SearchEmptyKey }}
+{{ $searchMinimum := default 1 .SearchMinimum }}
+{{ $includeScript := true }}
+{{ if isset . "IncludeScript" }}
+  {{ $includeScript = .IncludeScript }}
+{{ end }}
 {{ $pages := (where .Pages "Params.hidden" "ne" true).ByDate.Reverse }}
 {{ $count := len $pages }}
 <section class="post-list" data-post-list
-  data-count-one="{{ replace (T "postCount" 1) "1" "{count}" }}"
-  data-count-many="{{ replace (T "postCount" 2) "2" "{count}" }}">
-  {{ if and $page.Site.Params.postSearch (gt $count 0) }}
+  data-count-one="{{ replace (T $countKey 1) "1" "{count}" }}"
+  data-count-many="{{ replace (T $countKey 2) "2" "{count}" }}">
+  {{ if and $page.Site.Params.postSearch (ge $count $searchMinimum) }}
     <label>
-      <span class="visually-hidden">{{ T "searchPosts" }}</span>
-      <input type="search" data-post-search placeholder="{{ T "searchPosts" }}" autocomplete="off">
+      <span class="visually-hidden">{{ T $searchKey }}</span>
+      <input type="search" data-post-search placeholder="{{ T $searchKey }}" autocomplete="off">
     </label>
   {{ end }}
   {{ if $page.Site.Params.showPostCount }}
-    <p data-post-count>{{ T "postCount" $count }}</p>
+    <p data-post-count>{{ T $countKey $count }}</p>
   {{ end }}
-  <p data-search-empty hidden>{{ T "noSearchResults" }}</p>
+  <p data-search-empty hidden>{{ T $searchEmptyKey }}</p>
   <p class="visually-hidden" data-search-status role="status" aria-live="polite" aria-atomic="true"></p>
   <ul class="blog-posts">
     {{ range $pages.GroupByDate "2006" }}
@@ -28,11 +37,11 @@
         </li>
       {{ end }}
     {{ else }}
-      <li data-empty-state>{{ T "noPosts" }}</li>
+      <li data-empty-state>{{ T $emptyKey }}</li>
     {{ end }}
   </ul>
 </section>
-{{ if and $page.Site.Params.postSearch (gt $count 0) }}
+{{ if and $includeScript $page.Site.Params.postSearch (ge $count $searchMinimum) }}
   {{ $search := resources.Get "js/post-search.mjs" | fingerprint }}
   <script type="module" src="{{ $search.RelPermalink }}" integrity="{{ $search.Data.Integrity }}"></script>
 {{ end }}

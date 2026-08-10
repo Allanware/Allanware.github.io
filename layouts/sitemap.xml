@@ -3,8 +3,8 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
   {{ $pages := where .Pages "Params.hidden" "ne" true }}
   {{ range $pages }}
-    {{ $includePage := true }}
-    {{ if eq .Kind "term" }}
+    {{ $includePage := ne .Permalink "" }}
+    {{ if and $includePage (eq .Kind "term") }}
       {{ $includePage = gt (len (where .Pages "Params.hidden" "ne" true)) 0 }}
     {{ end }}
     {{ if $includePage }}

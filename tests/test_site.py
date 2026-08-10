@@ -4,6 +4,7 @@ from html import unescape
 from html.parser import HTMLParser
 from pathlib import Path
 import re
+import shutil
 import subprocess
 from tempfile import TemporaryDirectory
 import tomllib
@@ -2911,6 +2912,353 @@ interactionId = "resource-suffixes"
             english = read_html(public, "blog/index.html")
             self.assertIn('data-search-empty', english)
             self.assertIn("No matching posts", english)
+
+    def test_tag_results_group_projects_before_posts(self):
+        with TemporaryDirectory() as temporary:
+            for name, base_url, base_path in (
+                ("root", "https://example.test/", "/"),
+                (
+                    "project",
+                    "https://example.test/example-blog/",
+                    "/example-blog/",
+                ),
+            ):
+                public = Path(temporary) / name
+                build_site(
+                    public,
+                    base_url,
+                    "--config",
+                    "hugo.toml,tests/fixtures/interactions.toml",
+                    "--contentDir",
+                    "tests/fixtures/content",
+                )
+                english = read_html(public, "tags/fixture/index.html")
+                chinese = read_html(public, "zh/tags/测试/index.html")
+                english_home = read_html(public, "index.html")
+                chinese_home = read_html(public, "zh/index.html")
+                self.assertIn("Shared project", english_home)
+                self.assertIn("Older project", english_home)
+                self.assertIn("共享项目", chinese_home)
+                self.assertNotIn("共享项目", english_home)
+                self.assertNotIn("Shared project", chinese_home)
+                self.assertNotIn("Older project", chinese_home)
+                self.assertIn(">Projects</h3>", english)
+                self.assertIn(">Posts</h3>", english)
+                self.assertLess(
+                    english.index(">Projects</h3>"),
+                    english.index(">Posts</h3>"),
+                )
+                self.assertLess(
+                    english.index("Shared project"),
+                    english.index("Shared article"),
+                )
+                self.assertIn(">项目</h3>", chinese)
+                self.assertIn(">文章</h3>", chinese)
+                self.assertLess(
+                    chinese.index(">项目</h3>"),
+                    chinese.index(">文章</h3>"),
+                )
+                self.assertLess(
+                    chinese.index("共享项目"),
+                    chinese.index("共享文章"),
+                )
+
+                english_projects = re.search(
+                    r'<section data-tag-group="projects">(.*?)</section>',
+                    english,
+                    re.DOTALL,
+                ).group(1)
+                english_posts = re.search(
+                    r'<section data-tag-group="posts">(.*?)</section>',
+                    english,
+                    re.DOTALL,
+                ).group(1)
+                chinese_projects = re.search(
+                    r'<section data-tag-group="projects">(.*?)</section>',
+                    chinese,
+                    re.DOTALL,
+                ).group(1)
+                chinese_posts = re.search(
+                    r'<section data-tag-group="posts">(.*?)</section>',
+                    chinese,
+                    re.DOTALL,
+                ).group(1)
+
+                self.assertIn("2 projects", english_projects)
+                self.assertIn("Shared project", english_projects)
+                self.assertIn("Older project", english_projects)
+                self.assertNotIn("Shared article", english_projects)
+                self.assertIn(
+                    'placeholder="Search projects"',
+                    english_projects,
+                )
+                self.assertIn("No matching projects", english_projects)
+                self.assertEqual(1, english_projects.count("data-post-search"))
+                self.assertIn("1 post", english_posts)
+                self.assertIn("Shared article", english_posts)
+                self.assertNotIn("Shared project", english_posts)
+                self.assertNotIn("Older project", english_posts)
+                self.assertEqual(0, english_posts.count("data-post-search"))
+                self.assertIn("1 个项目", chinese_projects)
+                self.assertIn("共享项目", chinese_projects)
+                self.assertNotIn("共享文章", chinese_projects)
+                self.assertEqual(0, chinese_projects.count("data-post-search"))
+                self.assertIn("2 篇文章", chinese_posts)
+                self.assertIn("共享文章", chinese_posts)
+                self.assertIn("仅中文文章", chinese_posts)
+                self.assertNotIn("共享项目", chinese_posts)
+                self.assertIn('placeholder="搜索文章"', chinese_posts)
+                self.assertEqual(1, chinese_posts.count("data-post-search"))
+                self.assertEqual(1, english.count("js/post-search."))
+                self.assertEqual(1, chinese.count("js/post-search."))
+
+                for path in (
+                    "p/shared-project/",
+                    "p/older-project/",
+                    "p/shared-article/",
+                ):
+                    self.assertIn(f'href="{base_path}{path}"', english)
+                self.assertIn(
+                    f'href="{base_path}zh/p/shared-project/"',
+                    chinese,
+                )
+                self.assertIn(
+                    f'href="{base_path}zh/p/shared-article/"',
+                    chinese,
+                )
+                overview = read_html(public, "tags/index.html")
+                chinese_overview = read_html(public, "zh/tags/index.html")
+                self.assertRegex(
+                    overview,
+                    r"#fixture</a><span[^>]*>3</span>",
+                )
+                self.assertRegex(
+                    chinese_overview,
+                    r"#测试</a><span[^>]*>3</span>",
+                )
+
+                english_sitemap = ET.parse(
+                    public / "en/sitemap.xml"
+                ).getroot()
+                chinese_sitemap = ET.parse(
+                    public / "zh/sitemap.xml"
+                ).getroot()
+                english_locations = [
+                    node.findtext("{*}loc")
+                    for node in english_sitemap.findall("{*}url")
+                ]
+                chinese_locations = [
+                    node.findtext("{*}loc")
+                    for node in chinese_sitemap.findall("{*}url")
+                ]
+                self.assertTrue(all(english_locations))
+                self.assertTrue(all(chinese_locations))
+                self.assertNotIn(
+                    f"{base_url}projects/",
+                    english_locations,
+                )
+                self.assertNotIn(
+                    f"{base_url}zh/projects/",
+                    chinese_locations,
+                )
+                self.assertIn(
+                    f"{base_url}p/shared-project/",
+                    english_locations,
+                )
+                self.assertIn(
+                    f"{base_url}p/older-project/",
+                    english_locations,
+                )
+                self.assertNotIn(
+                    f"{base_url}zh/p/shared-project/",
+                    english_locations,
+                )
+                self.assertIn(
+                    f"{base_url}zh/p/shared-project/",
+                    chinese_locations,
+                )
+                self.assertNotIn(
+                    f"{base_url}p/shared-project/",
+                    chinese_locations,
+                )
+                self.assertNotIn(
+                    f"{base_url}p/older-project/",
+                    chinese_locations,
+                )
+                self.assertNotIn(
+                    f"{base_url}zh/p/older-project/",
+                    chinese_locations,
+                )
+
+                production = Path(temporary) / f"{name}-production"
+                build_site(production, base_url)
+                visualization = read_html(
+                    production,
+                    "tags/visualization/index.html",
+                )
+                self.assertIn(">Projects</h3>", visualization)
+                self.assertIn("Beyond the Cloud", visualization)
+                self.assertIn(
+                    f'href="{base_path}p/beyond-the-cloud/"',
+                    visualization,
+                )
+                self.assertNotIn(
+                    'data-tag-group="posts"',
+                    visualization,
+                )
+                self.assertNotIn("data-post-search", visualization)
+                self.assertNotIn("js/post-search.", visualization)
+
+                english_blog = read_html(public, "blog/index.html")
+                self.assertIn("1 post", english_blog)
+                self.assertEqual(1, english_blog.count("data-post-search"))
+                self.assertEqual(1, english_blog.count("js/post-search."))
+
+    def test_searchable_tag_groups_share_one_module(self):
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            content = temporary_root / "content"
+            shutil.copytree(ROOT / "tests/fixtures/content", content)
+
+            second_article = content / "blog/second-article"
+            second_article.mkdir()
+            (second_article / "index.en.md").write_text(
+                """+++
+title = "Second article"
+date = 2026-08-06
+lastmod = 2026-08-06
+draft = false
+tags = ["fixture"]
+interactionId = "second-article"
++++
+
+Second English article.
+""",
+                encoding="utf-8",
+            )
+            second_project = content / "projects/second-project"
+            second_project.mkdir()
+            (second_project / "index.zh.md").write_text(
+                """+++
+title = "第二个项目"
+date = 2026-08-06
+lastmod = 2026-08-06
+draft = false
+tags = ["测试"]
+interactionId = "second-project"
+projectStatus = "past"
++++
+
+第二个中文项目。
+""",
+                encoding="utf-8",
+            )
+
+            public = temporary_root / "public"
+            build_site(
+                public,
+                "https://example.test/",
+                "--config",
+                "hugo.toml,tests/fixtures/interactions.toml",
+                "--contentDir",
+                str(content),
+            )
+            english = read_html(public, "tags/fixture/index.html")
+            chinese = read_html(public, "zh/tags/测试/index.html")
+            module_pattern = re.compile(
+                r'<script type="module" src="/js/post-search\.[^"]+\.mjs" '
+                r'integrity="sha256-[^"]+"></script>'
+            )
+
+            for language, html, groups in (
+                (
+                    "en",
+                    english,
+                    (
+                        (
+                            "projects",
+                            "2 projects",
+                            "{count} project",
+                            "{count} projects",
+                            "Search projects",
+                            "No matching projects",
+                        ),
+                        (
+                            "posts",
+                            "2 posts",
+                            "{count} post",
+                            "{count} posts",
+                            "Search posts",
+                            "No matching posts",
+                        ),
+                    ),
+                ),
+                (
+                    "zh",
+                    chinese,
+                    (
+                        (
+                            "projects",
+                            "2 个项目",
+                            "{count} 个项目",
+                            "{count} 个项目",
+                            "搜索项目",
+                            "没有匹配的项目",
+                        ),
+                        (
+                            "posts",
+                            "2 篇文章",
+                            "{count} 篇文章",
+                            "{count} 篇文章",
+                            "搜索文章",
+                            "没有匹配的文章",
+                        ),
+                    ),
+                ),
+            ):
+                with self.subTest(language=language, contract="shared module"):
+                    self.assertEqual(2, html.count("data-post-search"))
+                    self.assertEqual(1, len(module_pattern.findall(html)))
+
+                for (
+                    group_name,
+                    count,
+                    count_one,
+                    count_many,
+                    placeholder,
+                    no_match,
+                ) in groups:
+                    with self.subTest(language=language, group=group_name):
+                        match = re.search(
+                            rf'<section data-tag-group="{group_name}">'
+                            r"(.*?)</section>",
+                            html,
+                            re.DOTALL,
+                        )
+                        self.assertIsNotNone(match)
+                        group = match.group(1)
+                        self.assertEqual(1, group.count("data-post-list"))
+                        self.assertEqual(1, group.count("data-post-search"))
+                        self.assertEqual(2, group.count("data-post-item"))
+                        self.assertIn(f">{count}</p>", group)
+                        self.assertIn(
+                            f'data-count-one="{count_one}"',
+                            group,
+                        )
+                        self.assertIn(
+                            f'data-count-many="{count_many}"',
+                            group,
+                        )
+                        self.assertIn(
+                            f'placeholder="{placeholder}"',
+                            group,
+                        )
+                        self.assertIn(no_match, group)
+                        self.assertIn("data-search-empty", group)
+                        self.assertIn("data-search-status", group)
+                        self.assertIn('role="status"', group)
+                        self.assertIn('aria-live="polite"', group)
+                        self.assertIn('aria-atomic="true"', group)
 
     def test_populated_multilingual_post_and_tag_pages(self):
         with TemporaryDirectory() as temporary:

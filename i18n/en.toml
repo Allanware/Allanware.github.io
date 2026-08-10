@@ -18,17 +18,26 @@ other = "Page not found"
 other = "Published {{ . }}"
 [searchPosts]
 other = "Search posts"
+[searchProjects]
+other = "Search projects"
 [noSearchResults]
 other = "No matching posts"
+[noProjectSearchResults]
+other = "No matching projects"
 [postCount]
 one = "{{ . }} post"
 other = "{{ . }} posts"
+[projectCount]
+one = "{{ . }} project"
+other = "{{ . }} projects"
 [noPosts]
 other = "No posts yet"
+[noTaggedContent]
+other = "No tagged content yet"
 [noTags]
 other = "No tags yet"
 [filteringFor]
-other = "Posts tagged “{{ . }}”"
+other = "Tagged “{{ . }}”"
 [allTags]
 other = "All tags"
 [upvoteAdd]
@@ -47,6 +56,8 @@ other = "Comments"
 other = "Recent posts from {{ . }}"
 [projects]
 other = "Projects"
+[posts]
+other = "Posts"
 [pastProjects]
 other = "Past projects"
 [noPastProjects]

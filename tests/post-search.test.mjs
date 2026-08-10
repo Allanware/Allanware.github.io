@@ -124,3 +124,21 @@ test("title matching does not depend on the reader runtime locale", () => {
 test("a post list without a search input is ignored", () => {
   assert.doesNotThrow(() => mountPostSearch({ querySelector: () => null }));
 });
+
+test("project and post groups filter independently", () => {
+  const projects = createPostList();
+  const posts = createPostList();
+  projects.root.dataset.countOne = "{count} project";
+  projects.root.dataset.countMany = "{count} projects";
+  projects.count.textContent = "2 projects";
+  mountPostSearch(projects.root);
+  mountPostSearch(posts.root);
+
+  projects.input.value = "newer";
+  projects.input.dispatch("input");
+
+  assert.equal(projects.count.textContent, "1 project");
+  assert.deepEqual(projects.items.map((item) => item.hidden), [false, true]);
+  assert.equal(posts.count.textContent, "2 posts");
+  assert.deepEqual(posts.items.map((item) => item.hidden), [false, false]);
+});

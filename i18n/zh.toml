@@ -18,17 +18,26 @@ other = "页面未找到"
 other = "发布于{{ . }}"
 [searchPosts]
 other = "搜索文章"
+[searchProjects]
+other = "搜索项目"
 [noSearchResults]
 other = "没有匹配的文章"
+[noProjectSearchResults]
+other = "没有匹配的项目"
 [postCount]
 one = "{{ . }} 篇文章"
 other = "{{ . }} 篇文章"
+[projectCount]
+one = "{{ . }} 个项目"
+other = "{{ . }} 个项目"
 [noPosts]
 other = "暂无文章"
+[noTaggedContent]
+other = "暂无相关内容"
 [noTags]
 other = "暂无标签"
 [filteringFor]
-other = "标签“{{ . }}”下的文章"
+other = "标签“{{ . }}”下的内容"
 [allTags]
 other = "全部标签"
 [upvoteAdd]
@@ -47,6 +56,8 @@ other = "评论"
 other = "{{ . }}的最新文章"
 [projects]
 other = "项目"
+[posts]
+other = "文章"
 [pastProjects]
 other = "过往项目"
 [noPastProjects]

@@ -3,6 +3,36 @@
   <content>
     <h2>{{ T "filteringFor" .Title }}</h2>
     {{ with .Site.GetPage "/tags" }}<p><a href="{{ .RelPermalink }}">{{ T "allTags" }}</a></p>{{ end }}
-    {{ partial "post-list.html" (dict "Page" . "Pages" .Pages) }}
+    {{- $visible := where .Pages "Params.hidden" "ne" true -}}
+    {{- $projects := where $visible "Section" "projects" -}}
+    {{- $posts := where $visible "Section" "blog" -}}
+    {{- if gt (len $projects) 0 }}
+      <section data-tag-group="projects">
+        <h3>{{ T "projects" }}</h3>
+        {{ partial "post-list.html" (dict
+          "Page" . "Pages" $projects
+          "CountKey" "projectCount" "SearchKey" "searchProjects"
+          "SearchEmptyKey" "noProjectSearchResults"
+          "SearchMinimum" 2
+          "IncludeScript" false
+        ) }}
+      </section>
+    {{- end }}
+    {{- if gt (len $posts) 0 }}
+      <section data-tag-group="posts">
+        <h3>{{ T "posts" }}</h3>
+        {{ partial "post-list.html" (dict
+          "Page" . "Pages" $posts "SearchMinimum" 2
+          "IncludeScript" false
+        ) }}
+      </section>
+    {{- end }}
+    {{- if and .Site.Params.postSearch (or (ge (len $projects) 2) (ge (len $posts) 2)) }}
+      {{ $search := resources.Get "js/post-search.mjs" | fingerprint }}
+      <script type="module" src="{{ $search.RelPermalink }}" integrity="{{ $search.Data.Integrity }}"></script>
+    {{- end }}
+    {{- if and (eq (len $projects) 0) (eq (len $posts) 0) }}
+      <p>{{ T "noTaggedContent" }}</p>
+    {{- end }}
   </content>
 {{ end }}
