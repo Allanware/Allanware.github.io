@@ -2934,6 +2934,10 @@ interactionId = "resource-suffixes"
                 chinese = read_html(public, "zh/tags/测试/index.html")
                 english_home = read_html(public, "index.html")
                 chinese_home = read_html(public, "zh/index.html")
+                self.assertIn("<h2>Tag: fixture</h2>", english)
+                self.assertIn("<h2>标签：测试</h2>", chinese)
+                self.assertNotIn(">All tags</a>", english)
+                self.assertNotIn(">全部标签</a>", chinese)
                 self.assertIn("Shared project", english_home)
                 self.assertIn("Older project", english_home)
                 self.assertIn("共享项目", chinese_home)
@@ -2982,7 +2986,14 @@ interactionId = "resource-suffixes"
                     re.DOTALL,
                 ).group(1)
 
-                self.assertIn("2 projects", english_projects)
+                for group in (
+                    english_projects,
+                    english_posts,
+                    chinese_projects,
+                    chinese_posts,
+                ):
+                    self.assertNotIn("data-post-count", group)
+
                 self.assertIn("Shared project", english_projects)
                 self.assertIn("Older project", english_projects)
                 self.assertNotIn("Shared article", english_projects)
@@ -2992,16 +3003,13 @@ interactionId = "resource-suffixes"
                 )
                 self.assertIn("No matching projects", english_projects)
                 self.assertEqual(1, english_projects.count("data-post-search"))
-                self.assertIn("1 post", english_posts)
                 self.assertIn("Shared article", english_posts)
                 self.assertNotIn("Shared project", english_posts)
                 self.assertNotIn("Older project", english_posts)
                 self.assertEqual(0, english_posts.count("data-post-search"))
-                self.assertIn("1 个项目", chinese_projects)
                 self.assertIn("共享项目", chinese_projects)
                 self.assertNotIn("共享文章", chinese_projects)
                 self.assertEqual(0, chinese_projects.count("data-post-search"))
-                self.assertIn("2 篇文章", chinese_posts)
                 self.assertIn("共享文章", chinese_posts)
                 self.assertIn("仅中文文章", chinese_posts)
                 self.assertNotIn("共享项目", chinese_posts)
@@ -3094,6 +3102,12 @@ interactionId = "resource-suffixes"
                     production,
                     "tags/visualization/index.html",
                 )
+                self.assertIn(
+                    "<h2>Tag: visualization</h2>",
+                    visualization,
+                )
+                self.assertNotIn(">All tags</a>", visualization)
+                self.assertNotIn("data-post-count", visualization)
                 self.assertIn(">Projects</h3>", visualization)
                 self.assertIn("Beyond the Cloud", visualization)
                 self.assertIn(
@@ -3108,7 +3122,7 @@ interactionId = "resource-suffixes"
                 self.assertNotIn("js/post-search.", visualization)
 
                 english_blog = read_html(public, "blog/index.html")
-                self.assertIn("1 post", english_blog)
+                self.assertIn("<p data-post-count>1 post</p>", english_blog)
                 self.assertEqual(1, english_blog.count("data-post-search"))
                 self.assertEqual(1, english_blog.count("js/post-search."))
 
@@ -3175,7 +3189,6 @@ projectStatus = "past"
                     (
                         (
                             "projects",
-                            "2 projects",
                             "{count} project",
                             "{count} projects",
                             "Search projects",
@@ -3183,7 +3196,6 @@ projectStatus = "past"
                         ),
                         (
                             "posts",
-                            "2 posts",
                             "{count} post",
                             "{count} posts",
                             "Search posts",
@@ -3197,7 +3209,6 @@ projectStatus = "past"
                     (
                         (
                             "projects",
-                            "2 个项目",
                             "{count} 个项目",
                             "{count} 个项目",
                             "搜索项目",
@@ -3205,7 +3216,6 @@ projectStatus = "past"
                         ),
                         (
                             "posts",
-                            "2 篇文章",
                             "{count} 篇文章",
                             "{count} 篇文章",
                             "搜索文章",
@@ -3220,7 +3230,6 @@ projectStatus = "past"
 
                 for (
                     group_name,
-                    count,
                     count_one,
                     count_many,
                     placeholder,
@@ -3238,7 +3247,7 @@ projectStatus = "past"
                         self.assertEqual(1, group.count("data-post-list"))
                         self.assertEqual(1, group.count("data-post-search"))
                         self.assertEqual(2, group.count("data-post-item"))
-                        self.assertIn(f">{count}</p>", group)
+                        self.assertNotIn("data-post-count", group)
                         self.assertIn(
                             f'data-count-one="{count_one}"',
                             group,

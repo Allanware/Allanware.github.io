@@ -1,5 +1,9 @@
 {{- /* Derived from rokcso/hugo-bearneo@f5c57c5ea39a091f0167af6312f4d4e385df2e6c: layouts/_default/list.html */ -}}
 {{ $page := .Page }}
+{{ $showCount := $page.Site.Params.showPostCount }}
+{{ if isset . "ShowCount" }}
+  {{ $showCount = .ShowCount }}
+{{ end }}
 {{ $countKey := default "postCount" .CountKey }}
 {{ $searchKey := default "searchPosts" .SearchKey }}
 {{ $emptyKey := default "noPosts" .EmptyKey }}
@@ -20,7 +24,7 @@
       <input type="search" data-post-search placeholder="{{ T $searchKey }}" autocomplete="off">
     </label>
   {{ end }}
-  {{ if $page.Site.Params.showPostCount }}
+  {{ if $showCount }}
     <p data-post-count>{{ T $countKey $count }}</p>
   {{ end }}
   <p data-search-empty hidden>{{ T $searchEmptyKey }}</p>

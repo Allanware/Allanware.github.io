@@ -37,9 +37,7 @@ other = "暂无相关内容"
 [noTags]
 other = "暂无标签"
 [filteringFor]
-other = "标签“{{ . }}”下的内容"
-[allTags]
-other = "全部标签"
+other = "标签：{{ . }}"
 [upvoteAdd]
 other = "赞同这篇文章"
 [upvoteRemove]

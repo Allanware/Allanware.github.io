@@ -37,9 +37,7 @@ other = "No tagged content yet"
 [noTags]
 other = "No tags yet"
 [filteringFor]
-other = "Tagged “{{ . }}”"
-[allTags]
-other = "All tags"
+other = "Tag: {{ . }}"
 [upvoteAdd]
 other = "Upvote this post"
 [upvoteRemove]

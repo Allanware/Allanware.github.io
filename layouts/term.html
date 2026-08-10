@@ -2,7 +2,6 @@
 {{ define "main" }}
   <content>
     <h2>{{ T "filteringFor" .Title }}</h2>
-    {{ with .Site.GetPage "/tags" }}<p><a href="{{ .RelPermalink }}">{{ T "allTags" }}</a></p>{{ end }}
     {{- $visible := where .Pages "Params.hidden" "ne" true -}}
     {{- $projects := where $visible "Section" "projects" -}}
     {{- $posts := where $visible "Section" "blog" -}}
@@ -14,6 +13,7 @@
           "CountKey" "projectCount" "SearchKey" "searchProjects"
           "SearchEmptyKey" "noProjectSearchResults"
           "SearchMinimum" 2
+          "ShowCount" false
           "IncludeScript" false
         ) }}
       </section>
@@ -23,6 +23,7 @@
         <h3>{{ T "posts" }}</h3>
         {{ partial "post-list.html" (dict
           "Page" . "Pages" $posts "SearchMinimum" 2
+          "ShowCount" false
           "IncludeScript" false
         ) }}
       </section>
