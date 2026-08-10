@@ -3,7 +3,7 @@ title = "Beyond the Cloud: A Perceptual Illusion in Overlaid Bar Charts"
 date = 2024-05-30
 lastmod = 2024-05-30
 draft = false
-tags = ["visualization", "perception", "research"]
+tags = ["data visualization", "perception", "research"]
 interactionId = "beyond-the-cloud"
 projectStatus = "past"
 +++

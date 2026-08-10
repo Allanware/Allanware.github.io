@@ -1,0 +1,18 @@
+{{- $src := strings.TrimSpace (printf "%v" (.Get "src" | default (.Get 0))) -}}
+{{- $width := strings.TrimSpace (printf "%v" (.Get "width" | default "100%")) -}}
+{{- $height := strings.TrimSpace (printf "%v" (.Get "height" | default "700px")) -}}
+
+{{- $url := $src -}}
+{{- $resource := .Page.Resources.Get $src -}}
+{{- if $resource -}}
+  {{- $url = $resource.RelPermalink -}}
+{{- end -}}
+
+<div class="pdf-preview-container" style="margin: 1.5rem 0; width: 100%;">
+  <object data="{{ $url }}" type="application/pdf" width="{{ $width }}" height="{{ $height }}" style="border: 1px solid #ddd; border-radius: 6px; width: 100%;">
+    <embed src="{{ $url }}" type="application/pdf" width="{{ $width }}" height="{{ $height }}" />
+    <p style="font-size: 0.9em; margin-top: 0.5rem;">
+      Your browser does not support inline PDFs. <a href="{{ $url }}" target="_blank" rel="noopener">Click here to view or download the PDF</a>.
+    </p>
+  </object>
+</div>
