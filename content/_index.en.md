@@ -1,5 +1,5 @@
 +++
-title = "Wenxuan Zhao"
+title = "Where Was I"
 +++
 
-[Browse posts]({{< relref "/blog" >}}) · [Browse tags]({{< relref "/tags" >}})
+Wenxuan Zhao. [Contact me](mailto:xiaodoubizwx@gmail.com).

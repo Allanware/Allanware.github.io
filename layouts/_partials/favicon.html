@@ -1,0 +1,8 @@
+{{- $source := resources.Get "images/drawing-hands.png" -}}
+{{- if not $source -}}
+  {{- errorf "required favicon source assets/images/drawing-hands.png is missing" -}}
+{{- end -}}
+{{- $icon := $source.Resize "32x32 Lanczos" -}}
+{{- $touch := $source.Resize "180x180 Lanczos" -}}
+<link rel="icon" type="image/png" sizes="32x32" href="{{ $icon.RelPermalink }}">
+<link rel="apple-touch-icon" type="image/png" sizes="180x180" href="{{ $touch.RelPermalink }}">

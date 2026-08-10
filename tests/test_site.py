@@ -90,6 +90,13 @@ def read_html(public: Path, relative: str) -> str:
     return (public / relative).read_text(encoding="utf-8")
 
 
+def png_dimensions(path: Path) -> tuple[int, int]:
+    payload = path.read_bytes()
+    if payload[:8] != b"\x89PNG\r\n\x1a\n" or payload[12:16] != b"IHDR":
+        raise AssertionError(f"not a PNG: {path}")
+    return tuple(int.from_bytes(payload[offset : offset + 4], "big") for offset in (16, 20))
+
+
 def alternate_link_entries(html: str) -> list[tuple[str, str]]:
     return re.findall(
         r'<link[^>]+rel="alternate"[^>]+hreflang="([^"]+)"[^>]+href="([^"]+)"',
@@ -1504,10 +1511,10 @@ interactionId = "visible-with-hidden"
             )
             self.assertEqual([], chinese.findall("item"))
             self.assertIn(
-                "Recent posts from Wenxuan Zhao",
+                "Recent posts from Where Was I",
                 english.findtext("description"),
             )
-            self.assertIn("赵文轩的最新文章", chinese.findtext("description"))
+            self.assertIn("说哪儿了的最新文章", chinese.findtext("description"))
             self.assertIn("30 May 2024", english.findtext("lastBuildDate"))
             zh_home = read_html(public, "zh/index.html")
             self.assertIn('href="https://example.test/zh/index.xml"', zh_home)
@@ -2004,6 +2011,101 @@ interactionId = "resource-suffixes"
                 self.assertTrue(
                     (public / "p/resource-suffixes/my notes.txt").is_file()
                 )
+
+    def test_localized_brand_contact_and_generated_favicons(self):
+        source = ROOT / "assets/images/drawing-hands.png"
+        self.assertTrue(source.is_file())
+        self.assertEqual(
+            "8a1a3fb3abaca3e1cffdd110d203892c02052bd1196398730de6db6e3955c8e8",
+            hashlib.sha256(source.read_bytes()).hexdigest(),
+        )
+        self.assertEqual((400, 400), png_dimensions(source))
+
+        configuration = tomllib.loads(
+            (ROOT / "hugo.toml").read_text(encoding="utf-8")
+        )
+        self.assertEqual("Where Was I", configuration["languages"]["en"]["title"])
+        self.assertEqual("说哪儿了", configuration["languages"]["zh"]["title"])
+
+        expected_favicon_keys = {
+            ("icon", "32x32"),
+            ("apple-touch-icon", "180x180"),
+        }
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            for name, base_url, base_path in (
+                ("root", "https://example.test/", "/"),
+                (
+                    "project",
+                    "https://example.test/example-blog/",
+                    "/example-blog/",
+                ),
+            ):
+                public = temporary_root / name / "public"
+                build_site(public, base_url)
+                english = read_html(public, "index.html")
+                chinese = read_html(public, "zh/index.html")
+
+                self.assertIn("<title>Where Was I</title>", english)
+                self.assertIn("<h1>Where Was I</h1>", english)
+                # Render hooks may terminate their fragment with whitespace, so
+                # keep the intro assertion semantic at that single boundary.
+                self.assertRegex(
+                    english,
+                    r'<p>Wenxuan Zhao\. <a href="mailto:xiaodoubizwx@gmail\.com">Contact me</a>\s*\.</p>',
+                )
+                self.assertIn("<title>说哪儿了</title>", chinese)
+                self.assertIn("<h1>说哪儿了</h1>", chinese)
+                self.assertRegex(
+                    chinese,
+                    r'<p>赵文轩。<a href="mailto:xiaodoubizwx@gmail\.com">联系我</a>\s*。</p>',
+                )
+
+                favicon_links: dict[str, dict[tuple[str, str], str]] = {}
+                for language, html in (("en", english), ("zh", chinese)):
+                    with self.subTest(build=name, language=language):
+                        self.assertNotRegex(
+                            html,
+                            rf">[^<]*xiaodoubizwx@gmail\.com[^<]*<",
+                        )
+                        png_link_tags = [
+                            tag
+                            for tag in re.findall(r"<link\b[^>]*>", html)
+                            if 'type="image/png"' in tag
+                        ]
+                        self.assertEqual(2, len(png_link_tags))
+
+                        entries: dict[tuple[str, str], str] = {}
+                        for tag in png_link_tags:
+                            attributes = dict(
+                                re.findall(r'([:\w-]+)="([^"]*)"', tag)
+                            )
+                            key = (attributes.get("rel"), attributes.get("sizes"))
+                            href = attributes.get("href")
+                            self.assertIsNotNone(href)
+                            entries[key] = href
+
+                        self.assertEqual(expected_favicon_keys, set(entries))
+                        for (_, sizes), href in entries.items():
+                            parsed = urlsplit(href)
+                            self.assertEqual("", parsed.scheme)
+                            self.assertEqual("", parsed.netloc)
+                            self.assertTrue(parsed.path.startswith(base_path), href)
+                            relative_asset = parsed.path.removeprefix(base_path)
+                            self.assertNotIn("..", Path(relative_asset).parts)
+                            generated_asset = public / relative_asset
+                            self.assertTrue(generated_asset.is_file(), generated_asset)
+                            expected_dimensions = tuple(
+                                int(value) for value in sizes.split("x")
+                            )
+                            self.assertEqual(
+                                expected_dimensions,
+                                png_dimensions(generated_asset),
+                            )
+
+                        favicon_links[language] = entries
+
+                self.assertEqual(favicon_links["en"], favicon_links["zh"])
 
     def test_localized_core_routes_exist(self):
         with TemporaryDirectory() as temporary:

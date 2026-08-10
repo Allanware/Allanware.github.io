@@ -57,7 +57,7 @@ capitalizeListTitles = false
   direction = "ltr"
   label = "English"
   locale = "en-US"
-  title = "Wenxuan Zhao"
+  title = "Where Was I"
   weight = 1
 
   [languages.en.params]
@@ -88,7 +88,7 @@ capitalizeListTitles = false
   hasCJKLanguage = true
   label = "中文"
   locale = "zh-CN"
-  title = "赵文轩"
+  title = "说哪儿了"
   weight = 2
 
   [languages.zh.params]
