@@ -12,8 +12,8 @@ The English primary-navigation label and English blog archive title will read
 `Blog`. Because the archive content title supplies Hugo's page metadata, the
 English document title and social metadata title will also use `Blog`.
 
-The Chinese primary-navigation label will read `博客`. The Chinese archive title
-will remain `文章`.
+The Chinese primary-navigation label and Chinese blog archive title will both
+read `博客`. The individual tag-page post-group label will remain `文章`.
 
 Every visible year group will use a heading aligned with the left edge of its
 date column. The heading will have the reference layout's heading size and
@@ -28,9 +28,9 @@ and the list's localized count strings will remain available to the existing
 search script. Individual tag pages already suppress their visible group counts
 and will retain that behavior.
 
-The following text will not be renamed: tag-page `Posts` group headings,
-`Latest posts`, `Popular posts`, search placeholders and states, count strings,
-empty states, and prose descriptions such as `Posts by Wenxuan Zhao`.
+The following text will not be renamed: tag-page `Posts` and `文章` group
+headings, `Latest posts`, `Popular posts`, search placeholders and states, count
+strings, empty states, and prose descriptions such as `Posts by Wenxuan Zhao`.
 
 ## Implementation
 
@@ -54,16 +54,17 @@ This uses the partial's existing caller override rather than disabling
 `showPostCount` globally or changing tag-page behavior.
 
 The English archive content title and English menu label will change to `Blog`.
-The Chinese menu label will change to `博客`, while its content title remains
-unchanged. Repository documentation that names the three navigation items will
-be updated to match.
+The Chinese archive content title and menu label will change to `博客`.
+Repository documentation that names the three navigation items will be updated
+to match.
 
 ## Verification
 
 Generated-site tests will cover root and project-subpath builds and assert:
 
 - English navigation and archive page/document titles use `Blog`;
-- Chinese navigation uses `博客` while the archive heading remains `文章`;
+- Chinese navigation and archive page/document titles use `博客` while
+  individual tag-page post-group headings remain `文章`;
 - unrelated post-oriented labels remain unchanged;
 - archive and individual tag lists render each year as an `h3` inside the
   existing `li.post-year[data-post-year]` marker;
