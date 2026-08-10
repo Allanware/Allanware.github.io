@@ -152,6 +152,10 @@ ul.blog-posts li.post-year h3 {
   text-indent: -0.08em;
 }
 
+ul.blog-posts li[hidden] {
+  display: none !important;
+}
+
 @media (max-width: 800px) {
   [data-post-search] {
     font-size: 16px;
