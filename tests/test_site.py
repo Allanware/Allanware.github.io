@@ -3433,6 +3433,17 @@ projectStatus = "past"
         self.assertIsNotNone(rule)
         self.assertRegex(rule.group(1), r"text-indent:\s*-0\.08em;")
 
+    def test_tag_group_headings_are_larger_than_year_headings(self):
+        site_css = (ROOT / "assets/css/site.css").read_text(encoding="utf-8")
+        group_rule = re.search(
+            r"\[data-tag-group\]\s*>\s*h3\s*\{([^}]*)\}",
+            site_css,
+            re.DOTALL,
+        )
+
+        self.assertIsNotNone(group_rule)
+        self.assertRegex(group_rule.group(1), r"font-size:\s*1\.25em;")
+
     def test_filtered_post_rows_override_list_display_rules(self):
         site_css = (ROOT / "assets/css/site.css").read_text(encoding="utf-8")
         hidden_rule = re.search(

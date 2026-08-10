@@ -142,6 +142,10 @@ button.upvoted svg {
   width: 1px;
 }
 
+[data-tag-group] > h3 {
+  font-size: 1.25em;
+}
+
 ul.blog-posts li.post-year {
   display: block;
 }
