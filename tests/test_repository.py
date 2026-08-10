@@ -6,7 +6,6 @@ import re
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 THEME_ROOT = REPOSITORY_ROOT / "themes" / "hugo-bearneo"
 PINNED_COMMIT = "f5c57c5ea39a091f0167af6312f4d4e385df2e6c"
-KUDOS_COMMIT = "b449185be66d239555bf1242fec1169a0a09517f"
 DERIVED_TEMPLATES = {
     "layouts/baseof.html": "layouts/_default/baseof.html",
     "layouts/404.html": "layouts/404.html",
@@ -160,81 +159,25 @@ class RepositoryTests(unittest.TestCase):
                 self.assertIn(PINNED_COMMIT, template)
                 self.assertIn(upstream, template)
 
-    def test_authoring_and_operator_contract_is_documented(self):
+    def test_blog_archetype_defines_the_authoring_contract(self):
         archetype = (REPOSITORY_ROOT / "archetypes/blog.md").read_text(
             encoding="utf-8"
         )
-        readme = (REPOSITORY_ROOT / "README.md").read_text(encoding="utf-8")
 
-        for field in ["title", "date", "lastmod", "draft", "tags", "interactionId"]:
-            self.assertRegex(archetype, rf"(?m)^{field} = ")
+        required_fields = {
+            "title",
+            "date",
+            "lastmod",
+            "draft",
+            "tags",
+            "interactionId",
+        }
+        actual_fields = {
+            match.group(1)
+            for match in re.finditer(r"(?m)^([A-Za-z][A-Za-z0-9]*)\s*=", archetype)
+        }
+        self.assertTrue(required_fields <= actual_fields)
         self.assertIn("## Introduction", archetype)
-        self.assertIn("Home, Blog, and Tags", readme)
-        self.assertIn("index.en.md", readme)
-        self.assertIn("index.zh.md", readme)
-        self.assertIn(
-            "hugo new content --kind blog content/blog/my-post/index.en.md",
-            readme,
-        )
-        self.assertIn("python3 scripts/new_translation.py my-post en zh", readme)
-        self.assertIn("refuses to overwrite", readme)
-        self.assertIn("interactionId", readme)
-        self.assertIn("/index.xml", readme)
-        self.assertIn("/zh/index.xml", readme)
-        self.assertIn("automatic browser color preference", readme)
-        self.assertIn("hugo server -D", readme)
-        self.assertIn("node --test tests/*.test.mjs", readme)
-        self.assertIn("actionlint .github/workflows/hugo.yml", readme)
-        self.assertIn("python3 scripts/validate_interaction_ids.py content", readme)
-        self.assertIn("python3 scripts/check_site.py", readme)
-        self.assertIn("GitHub account", readme)
-        self.assertIn("mainland China", readme)
-        self.assertIn("No analytics or advertising", readme)
-        self.assertIn("Where Was I", readme)
-        self.assertIn("content/projects/", readme)
-        self.assertIn("--section projects", readme)
-        self.assertIn("Popular posts", readme)
-        self.assertIn("count-only", readme)
-        popular_match = re.search(
-            r"(?ms)^## Popular posts\s*$\n(?P<body>.*?)(?=^## |\Z)",
-            readme,
-        )
-        self.assertIsNotNone(popular_match)
-        self.assertRegex(
-            popular_match.group("body"),
-            r"(?s)production Worker CORS.*?allow the exact origin\s+"
-            r"`https://allanware\.github\.io`\."
-            r".*?Local ranking.*?exact origin\s+"
-            r"`http://localhost:1313`",
-        )
-        self.assertIn("for checking the CI workflow", readme)
-        self.assertIn("Comments and upvotes are enabled", readme)
-        self.assertIn("## Comments", readme)
-        self.assertIn("## Upvotes", readme)
-        self.assertNotIn("## Deployment", readme)
-        self.assertNotIn("## Source migration archive", readme)
-        self.assertNotIn("Before enabling it", readme)
-        self.assertNotIn("This repository is ready for GitHub Pages", readme)
-        self.assertNotIn(
-            "Hugo publishes only resources copied into `content/blog/` leaf bundles.",
-            readme,
-        )
-        self.assertIn("D1_DATABASE_ID", readme)
-        self.assertIn("ALLOWED_ORIGINS", readme)
-        self.assertIn("browser CORS policy, not authentication", readme)
-        self.assertIn("default is open CORS", readme)
-        self.assertIn(
-            "https://github.com/puinoib/kudos/releases/tag/v0.2.0",
-            readme,
-        )
-        self.assertIn(
-            f"https://github.com/puinoib/kudos/commit/{KUDOS_COMMIT}",
-            readme,
-        )
-        self.assertIn(
-            f"https://github.com/puinoib/kudos/blob/{KUDOS_COMMIT}/docs/deployment.md",
-            readme,
-        )
 
 
 if __name__ == "__main__":

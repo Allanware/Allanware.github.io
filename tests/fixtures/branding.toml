@@ -1,0 +1,21 @@
+[params]
+  contactEmail = "editor@example.test"
+  githubURL = "https://github.example.test/fixture"
+  scholarURL = "https://scholar.example.test/fixture"
+
+[params.giscus]
+  enabled = true
+  repo = "fixture-owner/fixture-repository"
+  repoId = "R_fixture"
+  category = "Fixture category"
+  categoryId = "DIC_fixture"
+
+[params.kudos]
+  enabled = true
+  endpoint = "https://kudos.example.test"
+
+[languages.en]
+  title = "Fixture Site"
+
+[languages.zh]
+  title = "测试站点"

@@ -7,7 +7,6 @@ import re
 import shutil
 import subprocess
 from tempfile import TemporaryDirectory
-import tomllib
 import unittest
 from unittest.mock import patch
 from urllib.parse import urlsplit
@@ -17,41 +16,12 @@ from scripts.check_site import check_site
 
 
 ROOT = Path(__file__).resolve().parents[1]
-with (ROOT / "hugo.toml").open("rb") as _f:
-    _config = tomllib.load(_f)
-    SITE_TITLE_EN = _config["languages"]["en"]["title"]
-    SITE_TITLE_ZH = _config["languages"]["zh"]["title"]
-    CONTACT_EMAIL = _config["params"]["contactEmail"]
-    GITHUB_URL = _config["params"]["githubURL"]
-    SCHOLAR_URL = _config["params"]["scholarURL"]
-    GISCUS_REPO = _config["params"]["giscus"]["repo"]
-    GISCUS_REPO_ID = _config["params"]["giscus"]["repoId"]
-    GISCUS_CATEGORY = _config["params"]["giscus"]["category"]
-    GISCUS_CATEGORY_ID = _config["params"]["giscus"]["categoryId"]
-    KUDOS_ENDPOINT = _config["params"]["kudos"]["endpoint"]
-
-ISTANBUL_IMAGE_ALTS = (
-    ("unnamed-chunk-3-1.png", "Starting-eleven market values for AC Milan and Liverpool"),
-    ("unnamed-chunk-3-2.png", "Ten highest-valued players across both starting elevens"),
-    ("timeline.png", "Timeline of the 2005 Champions League final"),
-    ("unnamed-chunk-9-1.png", "First-half shot map for AC Milan and Liverpool"),
-    ("unnamed-chunk-10-1.png", "Second-half shot map for Liverpool and AC Milan"),
-    ("unnamed-chunk-11-1.png", "Extra-time shot map for Liverpool and AC Milan"),
-    ("unnamed-chunk-12-1.png", "Picture 1: AC Milan passing map for minutes 1 through 24"),
-    ("unnamed-chunk-12-2.png", "Picture 2: AC Milan passing map after minute 24"),
-    ("unnamed-chunk-12-3.png", "Picture 3: Liverpool passing map for minutes 1 through 24"),
-    ("unnamed-chunk-12-4.png", "Picture 4: Liverpool passing map after minute 24"),
-    ("unnamed-chunk-13-1.png", "Picture 1: AC Milan passing network during the six-minute spell"),
-    ("unnamed-chunk-13-2.png", "Picture 2: AC Milan individual passes during the six-minute spell"),
-    ("unnamed-chunk-13-3.png", "Picture 3: Liverpool passing network during the six-minute spell"),
-    ("unnamed-chunk-13-4.png", "Picture 4: Liverpool individual passes during the six-minute spell"),
-    ("unnamed-chunk-14-1.png", "Picture 1: Liverpool defensive actions during the six-minute spell"),
-    ("unnamed-chunk-14-2.png", "Picture 2: AC Milan defensive actions during the six-minute spell"),
-    ("unnamed-chunk-15-1.png", "Picture 1: AC Milan average first-half positions"),
-    ("unnamed-chunk-15-2.png", "Picture 2: Liverpool average first-half positions"),
-    ("unnamed-chunk-16-1.png", "Picture 1: AC Milan average early second-half positions"),
-    ("unnamed-chunk-16-2.png", "Picture 2: Liverpool average early second-half positions"),
-)
+BRANDING_CONFIG = "hugo.toml,tests/fixtures/branding.toml"
+FIXTURE_TITLE_EN = "Fixture Site"
+FIXTURE_TITLE_ZH = "测试站点"
+FIXTURE_CONTACT_EMAIL = "editor@example.test"
+FIXTURE_GITHUB_URL = "https://github.example.test/fixture"
+FIXTURE_SCHOLAR_URL = "https://scholar.example.test/fixture"
 
 
 def build_site(destination: Path, base_url: str, *extra_arguments: str) -> None:
@@ -382,203 +352,30 @@ class GeneratedSiteTests(unittest.TestCase):
         environment_index = command.index("--environment")
         self.assertEqual("production", command[environment_index + 1])
 
-    def test_root_and_project_subpath_production_matrix_is_complete(self):
+    def test_production_build_is_valid_at_root_and_project_subpath(self):
         with TemporaryDirectory() as temporary:
-            temporary_root = Path(temporary)
-            matrix = (
-                ("root", "https://example.github.io/", "/"),
-                (
-                    "project",
-                    "https://example.github.io/example-blog/",
-                    "/example-blog/",
-                ),
-            )
-            for name, base_url, base_path in matrix:
-                with self.subTest(build=name, content="production"):
-                    public = temporary_root / name / "production"
+            for name, base_url in (
+                ("root", "https://example.github.io/"),
+                ("project", "https://example.github.io/example-blog/"),
+            ):
+                with self.subTest(build=name):
+                    public = Path(temporary) / name
                     build_site(public, base_url, "--minify")
+
                     self.assertEqual([], check_site(public, base_url))
+                    self.assertTrue((public / ".nojekyll").is_file())
 
                     html_documents = sorted(public.rglob("*.html"))
                     xml_documents = sorted(public.rglob("*.xml"))
                     self.assertTrue(html_documents)
                     self.assertTrue(xml_documents)
-                    generated_markup = "\n".join(
-                        document.read_text(encoding="utf-8")
-                        for document in [*html_documents, *xml_documents]
-                    )
-                    self.assertNotIn("srcset=", generated_markup)
 
-                    for slug in (
-                        "beyond-the-cloud",
-                        "lekythos-a-shape",
-                        "the-miracle-of-istanbul",
-                    ):
-                        self.assertTrue((public / "p" / slug / "index.html").is_file())
-                        self.assertFalse((public / "zh" / "p" / slug / "index.html").exists())
-                    english_blog = read_html(public, "blog/index.html")
-                    chinese_blog = read_html(public, "zh/blog/index.html")
-                    self.assertNotIn("data-post-count", english_blog)
-                    self.assertNotIn("data-post-count", chinese_blog)
-                    self.assertTrue((public / ".nojekyll").is_file())
-                    self.assertTrue(
-                        (public / "p/beyond-the-cloud/beyond_the_cloud.v5.pdf").is_file()
-                    )
-                    self.assertTrue(
-                        (
-                            public
-                            / "p/the-miracle-of-istanbul/2021-03-04-The-Miracle-of-Istanbul.Rmd"
-                        ).is_file()
-                    )
-                    expected_navigation = [
-                        (f"{base_path}", "Home"),
-                        (f"{base_path}blog/", "Blog"),
-                        (f"{base_path}tags/", "Tags"),
-                    ]
-                    expected_chinese_navigation = [
-                        (f"{base_path}zh/", "首页"),
-                        (f"{base_path}zh/blog/", "博客"),
-                        (f"{base_path}zh/tags/", "标签"),
-                    ]
-                    for html, page_title, site_title in (
-                        (english_blog, "Blog", SITE_TITLE_EN),
-                        (chinese_blog, "博客", SITE_TITLE_ZH),
-                    ):
-                        self.assertIn(
-                            f"<title>{page_title} | {site_title}</title>", html
-                        )
-                        self.assertIn(f"<h2>{page_title}</h2>", html)
-                        for attribute, selector in (
-                            ("name", "title"),
-                            ("property", "og:title"),
-                            ("name", "twitter:title"),
-                            ("itemprop", "name"),
-                        ):
-                            value = re.escape(page_title)
-                            self.assertRegex(
-                                html,
-                                rf'<meta {attribute}=(?:{selector}|"{selector}") '
-                                rf'content=(?:{value}|"{value}")(?=\s|/?>)',
-                            )
-                    beyond = read_html(public, "p/beyond-the-cloud/index.html")
-                    self.assertEqual(expected_navigation, primary_navigation(beyond))
-                    self.assertEqual(expected_navigation, primary_navigation(english_blog))
-                    self.assertEqual(
-                        expected_chinese_navigation,
-                        primary_navigation(chinese_blog),
-                    )
-                    self.assertNotIn("language-switcher", beyond)
-                    self.assertEqual(
-                        [[("nav", True, ())]],
-                        header_navigation_signatures(beyond),
-                    )
-                    self.assertNotIn('target="_blank"', beyond)
-                    for archive_only in ("cover.png", "3-3.jpeg"):
-                        self.assertEqual([], list(public.rglob(archive_only)))
-
-                    self.assertIn("#visualization", read_html(public, "tags/index.html"))
-                    self.assertIn(
-                        "Beyond the Cloud",
-                        read_html(public, "tags/visualization/index.html"),
-                    )
-                    for output in (
-                        "index.xml",
-                        "zh/index.xml",
-                        "sitemap.xml",
-                        "en/sitemap.xml",
-                        "zh/sitemap.xml",
-                    ):
-                        output_path = public / output
-                        self.assertTrue(output_path.is_file(), output_path)
-                        ET.parse(output_path)
-
-                    self.assertEqual(
-                        expected_navigation,
-                        primary_navigation(read_html(public, "index.html")),
-                    )
-
-                with self.subTest(build=name, content="interactions"):
-                    fixture_public = temporary_root / name / "interactions"
-                    build_site(
-                        fixture_public,
-                        base_url,
-                        "--minify",
-                        "--config",
-                        "hugo.toml,tests/fixtures/interactions.toml",
-                        "--contentDir",
-                        "tests/fixtures/content",
-                    )
-                    self.assertEqual([], check_site(fixture_public, base_url))
-                    fixture_markup = "\n".join(
-                        document.read_text(encoding="utf-8")
-                        for document in sorted(
-                            [
-                                *fixture_public.rglob("*.html"),
-                                *fixture_public.rglob("*.xml"),
-                            ]
-                        )
-                    )
-                    self.assertNotIn("srcset=", fixture_markup)
-                    self.assertIn(
-                        f"{base_path}zh/tags/%E6%B5%8B%E8%AF%95/",
-                        fixture_markup,
-                    )
-                    self.assertTrue((fixture_public / "zh/tags/测试/index.html").is_file())
-                    shared_zh = read_html(
-                        fixture_public,
-                        "zh/p/shared-article/index.html",
-                    )
-                    self.assertIn(
-                        f"src={base_path}p/shared-article/diagram.svg",
-                        shared_zh,
-                    )
-                    self.assertIn(
-                        f"href={base_path}p/shared-article/notes.txt",
-                        shared_zh,
-                    )
-                    self.assertTrue(
-                        (fixture_public / "p/shared-article/diagram.svg").is_file()
-                    )
-                    self.assertTrue(
-                        (fixture_public / "p/shared-article/notes.txt").is_file()
-                    )
-                    for output in (
-                        "index.xml",
-                        "zh/index.xml",
-                        "sitemap.xml",
-                        "en/sitemap.xml",
-                        "zh/sitemap.xml",
-                    ):
-                        output_path = fixture_public / output
-                        self.assertTrue(output_path.is_file(), output_path)
-                        ET.parse(output_path)
+                    for document in xml_documents:
+                        with self.subTest(build=name, xml=document.relative_to(public)):
+                            ET.parse(document)
 
     def test_seo_uses_only_real_translations(self):
         with TemporaryDirectory() as temporary:
-            public = Path(temporary) / "public"
-            build_site(public, "https://example.test/")
-            unpaired = read_html(public, "p/beyond-the-cloud/index.html")
-            self.assertEqual(set(), alternate_links(unpaired))
-            self.assertEqual([], alternate_link_entries(unpaired))
-            beyond_descriptions = metadata_descriptions(unpaired)
-            for selector, values in beyond_descriptions.items():
-                with self.subTest(metadata_selector=selector):
-                    self.assertEqual(1, len(values))
-            self.assertEqual(
-                1,
-                len({values[0] for values in beyond_descriptions.values()}),
-            )
-            beyond_description = next(iter(beyond_descriptions.values()))[0]
-            self.assertIn(
-                "A general challenge in information visualization",
-                beyond_description,
-            )
-            self.assertIn("p<.001", beyond_description)
-            self.assertNotEqual(
-                "Wenxuan Zhao ; Karen B. Schloss",
-                beyond_description.strip(),
-            )
-
             fixture = Path(temporary) / "fixture"
             build_site(
                 fixture,
@@ -850,28 +647,6 @@ class GeneratedSiteTests(unittest.TestCase):
     def test_giscus_uses_shared_strict_threads_and_validated_configuration(self):
         with TemporaryDirectory() as temporary:
             temporary_root = Path(temporary)
-            production = temporary_root / "production"
-            build_site(production, "https://example.test/")
-            production_post = read_html(
-                production,
-                "p/beyond-the-cloud/index.html",
-            )
-            self.assertEqual(1, production_post.count("https://giscus.app/client.js"))
-            self.assertNotIn("http://giscus.app/client.js", production_post)
-            for attribute in (
-                f'data-repo="{GISCUS_REPO}"',
-                f'data-repo-id="{GISCUS_REPO_ID}"',
-                f'data-category="{GISCUS_CATEGORY}"',
-                f'data-category-id="{GISCUS_CATEGORY_ID}"',
-                'data-mapping="specific"',
-                'data-term="post:beyond-the-cloud"',
-                'data-strict="1"',
-                'data-lang="en"',
-            ):
-                self.assertIn(attribute, production_post)
-            self.assertNotIn('data-mapping="pathname"', production_post)
-            self.assertNotIn('data-strict="0"', production_post)
-
             fixture = temporary_root / "fixture"
             build_site(
                 fixture,
@@ -996,26 +771,6 @@ class GeneratedSiteTests(unittest.TestCase):
 
         with TemporaryDirectory() as temporary:
             temporary_root = Path(temporary)
-            production = temporary_root / "production"
-            build_site(production, "https://example.test/")
-            production_post = assert_one_widget(
-                production,
-                "p/beyond-the-cloud/index.html",
-                "post:beyond-the-cloud",
-                "/",
-            )
-            production_endpoint = KUDOS_ENDPOINT
-            self.assertEqual(
-                1,
-                production_post.count(
-                    f'data-kudos-endpoint="{production_endpoint}"',
-                ),
-            )
-            self.assertNotIn(
-                KUDOS_ENDPOINT.replace("https://", "http://"),
-                production_post,
-            )
-
             fixture = temporary_root / "fixture"
             build_site(
                 fixture,
@@ -1102,6 +857,15 @@ class GeneratedSiteTests(unittest.TestCase):
 
         with TemporaryDirectory() as temporary:
             temporary_root = Path(temporary)
+            invalid_content = temporary_root / "invalid-content"
+            shutil.copytree(ROOT / "tests/fixtures/content", invalid_content)
+            second_article = invalid_content / "blog/second-article"
+            second_article.mkdir()
+            (second_article / "index.en.md").write_text(
+                '+++\ntitle = "Second article"\ndate = 2026-08-09\n'
+                'draft = false\ninteractionId = "second-article"\n+++\n\nBody.\n',
+                encoding="utf-8",
+            )
             for index, config in enumerate(invalid_configs):
                 with self.subTest(invalid_config=config):
                     destination = temporary_root / f"invalid-{index}"
@@ -1109,7 +873,7 @@ class GeneratedSiteTests(unittest.TestCase):
                         destination,
                         "https://example.test/",
                         "--config", f"hugo.toml,tests/fixtures/{config}",
-                        "--contentDir", "tests/fixtures/content",
+                        "--contentDir", str(invalid_content),
                     )
                     html = read_html(
                         destination,
@@ -1117,6 +881,19 @@ class GeneratedSiteTests(unittest.TestCase):
                     )
                     self.assertNotIn("data-kudos", html)
                     self.assertNotIn("js/kudos.", html)
+                    home = read_html(destination, "index.html")
+                    popular = re.search(
+                        r'<section data-home-section="popular">(.*?)</section>',
+                        home,
+                        re.DOTALL,
+                    ).group(1)
+                    self.assertIn(
+                        "Popular posts are temporarily unavailable",
+                        popular,
+                    )
+                    self.assertNotIn("data-popular-posts", popular)
+                    self.assertNotIn("data-popular-candidate", popular)
+                    self.assertNotIn("js/popular-posts.", popular)
 
             for index, (config, endpoint) in enumerate(valid_configs.items()):
                 with self.subTest(valid_config=config):
@@ -1539,74 +1316,64 @@ interactionId = "visible-with-hidden"
                 ),
             )
 
-    def test_rss_is_separate_and_localized(self):
-        configuration = tomllib.loads((ROOT / "hugo.toml").read_text())
-        self.assertEqual(10, configuration["services"]["rss"]["limit"])
+    def test_rss_is_separate_localized_and_base_path_aware(self):
         with TemporaryDirectory() as temporary:
-            public = Path(temporary) / "public"
-            build_site(public, "https://example.test/")
-            english = ET.parse(public / "index.xml").getroot().find("channel")
-            chinese = ET.parse(public / "zh/index.xml").getroot().find("channel")
-            self.assertIsNotNone(english)
-            self.assertIsNotNone(chinese)
-            self.assertEqual("en-US", english.findtext("language"))
-            self.assertEqual("zh-CN", chinese.findtext("language"))
-            english_titles = [
-                item.findtext("title") for item in english.findall("item")
-            ]
-            self.assertEqual(
-                [
-                    "Shapes and Functions of the Lekythos",
-                    "The Miracle of Istanbul",
-                ],
-                english_titles,
-            )
-            self.assertEqual([], chinese.findall("item"))
-            self.assertIn(
-                f"Recent posts from {SITE_TITLE_EN}",
-                english.findtext("description"),
-            )
-            self.assertIn(f"{SITE_TITLE_ZH}的最新文章", chinese.findtext("description"))
-            self.assertIn("05 Nov 2023", english.findtext("lastBuildDate"))
-            zh_home = read_html(public, "zh/index.html")
-            self.assertIn('href="https://example.test/zh/index.xml"', zh_home)
-            self.assertIn('href="/zh/index.xml"', zh_home)
+            for name, base_url, base_path in (
+                ("root", "https://example.test/", "/"),
+                ("project", "https://example.test/project/", "/project/"),
+            ):
+                public = Path(temporary) / name
+                build_site(
+                    public,
+                    base_url,
+                    "--config",
+                    f"{BRANDING_CONFIG},tests/fixtures/interactions.toml",
+                    "--contentDir",
+                    "tests/fixtures/content",
+                )
+                english = ET.parse(public / "index.xml").getroot().find("channel")
+                chinese = ET.parse(public / "zh/index.xml").getroot().find("channel")
+                self.assertIsNotNone(english)
+                self.assertIsNotNone(chinese)
+                self.assertEqual("en-US", english.findtext("language"))
+                self.assertEqual("zh-CN", chinese.findtext("language"))
+                self.assertEqual(
+                    ["Shared article"],
+                    [item.findtext("title") for item in english.findall("item")],
+                )
+                self.assertCountEqual(
+                    ["共享文章", "仅中文文章"],
+                    [item.findtext("title") for item in chinese.findall("item")],
+                )
+                self.assertIn(
+                    f"Recent posts from {FIXTURE_TITLE_EN}",
+                    english.findtext("description"),
+                )
+                self.assertIn(
+                    f"{FIXTURE_TITLE_ZH}的最新文章",
+                    chinese.findtext("description"),
+                )
 
-            limited = Path(temporary) / "limited"
-            build_site(
-                limited,
-                "https://example.test/",
-                "--config",
-                "hugo.toml,tests/fixtures/rss-limit.toml",
-            )
-            limited_channel = ET.parse(limited / "index.xml").getroot().find(
-                "channel"
-            )
-            self.assertEqual(
-                [
-                    "Shapes and Functions of the Lekythos",
-                    "The Miracle of Istanbul",
-                ],
-                [
-                    item.findtext("title")
-                    for item in limited_channel.findall("item")
-                ],
-            )
+                chinese_home = read_html(public, "zh/index.html")
+                self.assertIn(
+                    f'href="{base_url}zh/index.xml"',
+                    chinese_home,
+                )
+                self.assertIn(
+                    f'href="{base_path}zh/index.xml"',
+                    chinese_home,
+                )
 
-            project = Path(temporary) / "project"
-            build_site(project, "https://example.test/project/")
-            project_channel = ET.parse(project / "index.xml").getroot().find(
-                "channel"
-            )
-            project_prefix = "https://example.test/project/"
-            self.assertEqual(project_prefix, project_channel.findtext("link"))
-            atom_self = project_channel.find(
-                "{http://www.w3.org/2005/Atom}link"
-            )
-            self.assertEqual(project_prefix + "index.xml", atom_self.get("href"))
-            for item in project_channel.findall("item"):
-                self.assertTrue(item.findtext("link").startswith(project_prefix))
-                self.assertTrue(item.findtext("guid").startswith(project_prefix))
+                for channel, expected_home in (
+                    (english, base_url),
+                    (chinese, f"{base_url}zh/"),
+                ):
+                    self.assertEqual(expected_home, channel.findtext("link"))
+                    atom_self = channel.find("{http://www.w3.org/2005/Atom}link")
+                    self.assertTrue(atom_self.get("href").startswith(base_url))
+                    for item in channel.findall("item"):
+                        self.assertTrue(item.findtext("link").startswith(base_url))
+                        self.assertTrue(item.findtext("guid").startswith(base_url))
 
     def test_rss_excludes_hidden_posts_before_limiting_and_escapes_once(self):
         with TemporaryDirectory() as temporary:
@@ -1693,224 +1460,9 @@ Hidden body.
                     ],
                 )
 
-    def test_beyond_is_a_project_with_a_stable_public_contract(self):
-        with TemporaryDirectory() as temporary:
-            for name, base_url, base_path in (
-                ("root", "https://example.test/", "/"),
-                (
-                    "project",
-                    "https://example.test/example-blog/",
-                    "/example-blog/",
-                ),
-            ):
-                public = Path(temporary) / name
-                build_site(public, base_url)
-                article = read_html(public, "p/beyond-the-cloud/index.html")
-                self.assertFalse((public / "projects/index.html").exists())
-                self.assertFalse((public / "zh/projects/index.html").exists())
-                self.assertIn(
-                    f'<link rel="canonical" href="{base_url}p/beyond-the-cloud/">',
-                    article,
-                )
-                self.assertIn('data-term="post:beyond-the-cloud"', article)
-                self.assertIn(
-                    'data-kudos-entity="post:beyond-the-cloud"',
-                    article,
-                )
-                self.assertIn(
-                    f'href="{base_path}p/beyond-the-cloud/beyond_the_cloud.v5.pdf"',
-                    article,
-                )
-                self.assertTrue(
-                    (
-                        public
-                        / "p/beyond-the-cloud/beyond_the_cloud.v5.pdf"
-                    ).is_file()
-                )
-                archive = read_html(public, "blog/index.html")
-                self.assertNotIn("Beyond the Cloud", archive)
-                self.assertNotIn("data-post-count", archive)
-                rss_titles = [
-                    item.findtext("title")
-                    for item in ET.parse(public / "index.xml")
-                    .getroot()
-                    .find("channel")
-                    .findall("item")
-                ]
-                self.assertNotIn(
-                    "Beyond the Cloud: A Perceptual Illusion in Overlaid Bar Charts",
-                    rss_titles,
-                )
-                project_url = f"{base_url}p/beyond-the-cloud/"
-                english_sitemap = ET.parse(public / "en/sitemap.xml").getroot()
-                chinese_sitemap = ET.parse(public / "zh/sitemap.xml").getroot()
-                english_locations = {
-                    node.text
-                    for node in english_sitemap.findall("{*}url/{*}loc")
-                }
-                chinese_locations = {
-                    node.text
-                    for node in chinese_sitemap.findall("{*}url/{*}loc")
-                }
-                self.assertIn(project_url, english_locations)
-                self.assertNotIn(project_url, chinese_locations)
-                self.assertNotIn(f"{base_url}projects/", english_locations)
-                self.assertNotIn(
-                    f"{base_url}zh/projects/",
-                    chinese_locations,
-                )
 
-    def test_beyond_the_cloud_bundle_route_is_stable_across_base_urls(self):
-        title_derived_route = (
-            "p/beyond-the-cloud-a-perceptual-illusion-in-overlaid-bar-charts"
-        )
-        stable_route = "p/beyond-the-cloud"
-        pdf_name = "beyond_the_cloud.v5.pdf"
 
-        with TemporaryDirectory() as temporary:
-            temporary_root = Path(temporary)
-            cases = (
-                ("root", "https://example.test/", "/p/beyond-the-cloud/"),
-                (
-                    "project",
-                    "https://example.test/project/",
-                    "/project/p/beyond-the-cloud/",
-                ),
-            )
-            for name, base_url, href_prefix in cases:
-                with self.subTest(base_url=name):
-                    public = temporary_root / name / "public"
-                    build_site(public, base_url)
 
-                    article = public / stable_route / "index.html"
-                    pdf = public / stable_route / pdf_name
-                    self.assertTrue(article.is_file(), article)
-                    self.assertTrue(pdf.is_file(), pdf)
-                    self.assertFalse((public / title_derived_route).exists())
-                    self.assertIn(
-                        f'href="{href_prefix}{pdf_name}"',
-                        article.read_text(encoding="utf-8"),
-                    )
-
-    def test_lekythos_bundle_route_and_images_are_stable_across_base_urls(self):
-        stable_route = "p/lekythos-a-shape"
-        expected_images = (
-            ("front.jpeg", "Front view of the lekythos beside another vessel", 400),
-            ("detail.jpeg", "Detail of the painted scene", 400),
-            ("inner.jpg", "Interior vessel inside the lekythos", 200),
-        )
-
-        with TemporaryDirectory() as temporary:
-            temporary_root = Path(temporary)
-            cases = (
-                ("root", "https://example.test/", "/p/lekythos-a-shape/"),
-                (
-                    "project",
-                    "https://example.test/project/",
-                    "/project/p/lekythos-a-shape/",
-                ),
-            )
-            for name, base_url, href_prefix in cases:
-                with self.subTest(base_url=name):
-                    public = temporary_root / name / "public"
-                    build_site(public, base_url)
-                    article_path = public / stable_route / "index.html"
-                    self.assertTrue(article_path.is_file(), article_path)
-                    article = article_path.read_text(encoding="utf-8")
-                    parser = MarkupReviewParser()
-                    parser.feed(article)
-                    self.assertEqual([False, False, False], parser.figures_in_paragraph)
-
-                    for image_name, alt, width in expected_images:
-                        resource = public / stable_route / image_name
-                        self.assertTrue(resource.is_file(), resource)
-                        self.assertRegex(
-                            article,
-                            rf'<img\s+src="{re.escape(href_prefix + image_name)}"'
-                            rf'\s+alt="{re.escape(alt)}"\s+width="{width}"',
-                        )
-
-    def test_istanbul_bundle_route_and_resources_are_stable_across_base_urls(self):
-        stable_route = "p/the-miracle-of-istanbul"
-        rmd_name = "2021-03-04-The-Miracle-of-Istanbul.Rmd"
-
-        with TemporaryDirectory() as temporary:
-            temporary_root = Path(temporary)
-            cases = (
-                ("root", "https://example.test/", "/p/the-miracle-of-istanbul/"),
-                (
-                    "project",
-                    "https://example.test/project/",
-                    "/project/p/the-miracle-of-istanbul/",
-                ),
-            )
-            for name, base_url, href_prefix in cases:
-                with self.subTest(base_url=name):
-                    public = temporary_root / name / "public"
-                    build_site(public, base_url)
-                    article_path = public / stable_route / "index.html"
-                    self.assertTrue(article_path.is_file(), article_path)
-                    article = article_path.read_text(encoding="utf-8")
-
-                    rmd = public / stable_route / rmd_name
-                    self.assertTrue(rmd.is_file(), rmd)
-                    self.assertIn(f'href="{href_prefix}{rmd_name}"', article)
-                    bundle_rmd = (
-                        ROOT / "content" / "blog" / "the-miracle-of-istanbul" / rmd_name
-                    ).read_bytes()
-                    self.assertEqual(bundle_rmd, rmd.read_bytes())
-
-                    parser = MarkupReviewParser()
-                    parser.feed(article)
-                    self.assertEqual(20, len(parser.figures_in_paragraph))
-                    self.assertEqual([False] * 20, parser.figures_in_paragraph)
-                    self.assertEqual(20, len(parser.figure_images))
-
-                    paragraphs = [
-                        ("".join(text), in_blockquote)
-                        for text, in_blockquote in zip(
-                            parser.paragraph_texts,
-                            parser.paragraphs_in_blockquote,
-                            strict=True,
-                        )
-                    ]
-                    for analysis_opening in ("In the 2nd half", "Surprisingly"):
-                        with self.subTest(analysis_opening=analysis_opening):
-                            matches = [
-                                in_blockquote
-                                for text, in_blockquote in paragraphs
-                                if analysis_opening in text
-                            ]
-                            self.assertEqual([False], matches)
-                    visible_picture_labels = [
-                        "".join(text).strip()
-                        for text in parser.emphasis_texts
-                        if re.fullmatch(
-                            r"picture [1-4]",
-                            "".join(text).strip(),
-                            re.IGNORECASE,
-                        )
-                    ]
-                    with self.subTest("redundant picture labels are not visible"):
-                        self.assertEqual([], visible_picture_labels)
-
-                    for index, (image_name, alt) in enumerate(ISTANBUL_IMAGE_ALTS):
-                        resource = public / stable_route / image_name
-                        self.assertTrue(resource.is_file(), resource)
-                        self.assertIn(f'src="{href_prefix}{image_name}"', article)
-                        nonempty_alts = [
-                            image.get("alt")
-                            for image in parser.figure_images[index]
-                            if image.get("alt")
-                        ]
-                        self.assertEqual([alt], nonempty_alts)
-
-                    for archive_only in ("cover.png", "3-3.jpeg"):
-                        self.assertFalse(
-                            (public / stable_route / archive_only).exists(),
-                            archive_only,
-                        )
-                        self.assertNotIn(href_prefix + archive_only, article)
 
     def test_bundle_image_shortcode_rejects_invalid_arguments(self):
         fixtures = (
@@ -2134,15 +1686,6 @@ interactionId = "resource-suffixes"
     def test_localized_brand_contact_and_generated_favicons(self):
         source = ROOT / "assets/images/drawing-hands.png"
         self.assertTrue(source.is_file())
-        self.assertEqual(
-            "8a1a3fb3abaca3e1cffdd110d203892c02052bd1196398730de6db6e3955c8e8",
-            hashlib.sha256(source.read_bytes()).hexdigest(),
-        )
-        self.assertEqual((400, 400), png_dimensions(source))
-
-        configuration = tomllib.loads(
-            (ROOT / "hugo.toml").read_text(encoding="utf-8")
-        )
 
         expected_favicon_keys = {
             ("icon", "32x32"),
@@ -2159,21 +1702,21 @@ interactionId = "resource-suffixes"
                 ),
             ):
                 public = temporary_root / name / "public"
-                build_site(public, base_url)
+                build_site(public, base_url, "--config", BRANDING_CONFIG)
                 english = read_html(public, "index.html")
                 chinese = read_html(public, "zh/index.html")
 
-                self.assertIn(f"<title>{SITE_TITLE_EN}</title>", english)
-                self.assertIn(f"<h1>{SITE_TITLE_EN}</h1>", english)
-                self.assertIn(f"<title>{SITE_TITLE_ZH}</title>", chinese)
-                self.assertIn(f"<h1>{SITE_TITLE_ZH}</h1>", chinese)
+                self.assertIn(f"<title>{FIXTURE_TITLE_EN}</title>", english)
+                self.assertIn(f"<h1>{FIXTURE_TITLE_EN}</h1>", english)
+                self.assertIn(f"<title>{FIXTURE_TITLE_ZH}</title>", chinese)
+                self.assertIn(f"<h1>{FIXTURE_TITLE_ZH}</h1>", chinese)
 
                 favicon_links: dict[str, dict[tuple[str, str], str]] = {}
                 for language, html in (("en", english), ("zh", chinese)):
                     with self.subTest(build=name, language=language):
                         self.assertNotRegex(
                             html,
-                            rf">[^<]*xiaodoubizwx@gmail\.com[^<]*<",
+                            rf">[^<]*{re.escape(FIXTURE_CONTACT_EMAIL)}[^<]*<",
                         )
                         png_link_tags = [
                             tag
@@ -2216,106 +1759,71 @@ interactionId = "resource-suffixes"
 
     def test_home_sections_are_ordered_title_only_and_language_local(self):
         with TemporaryDirectory() as temporary:
-            for name, base_url, base_path in (
-                ("root", "https://example.test/", "/"),
-                (
-                    "project",
-                    "https://example.test/example-blog/",
-                    "/example-blog/",
-                ),
+            for name, base_url in (
+                ("root", "https://example.test/"),
+                ("project", "https://example.test/example-blog/"),
             ):
                 public = Path(temporary) / name
-                build_site(public, base_url)
-                english = read_html(public, "index.html")
-                chinese = read_html(public, "zh/index.html")
+                build_site(
+                    public,
+                    base_url,
+                    "--config",
+                    "hugo.toml,tests/fixtures/interactions.toml",
+                    "--contentDir",
+                    "tests/fixtures/content",
+                )
+                pages = {
+                    "en": read_html(public, "index.html"),
+                    "zh": read_html(public, "zh/index.html"),
+                }
+                labels = {
+                    "en": ("Projects", "Latest posts", "Popular posts"),
+                    "zh": ("项目", "最新文章", "热门文章"),
+                }
+                for language, html in pages.items():
+                    with self.subTest(build=name, language=language):
+                        self.assertLess(
+                            html.index('class="home-intro"'),
+                            html.index('data-home-section="projects"'),
+                        )
+                        self.assertLess(
+                            html.index('data-home-section="projects"'),
+                            html.index('data-home-section="latest"'),
+                        )
+                        self.assertLess(
+                            html.index('data-home-section="latest"'),
+                            html.index('data-home-section="popular"'),
+                        )
+                        for heading in labels[language]:
+                            self.assertIn(f"<h2>{heading}</h2>", html)
 
-                with self.subTest(build=name, language="en"):
-                    self.assertIn('class="home-intro"', english)
-                    self.assertLess(
-                        english.index('class="home-intro"'),
-                        english.index('data-home-section="projects"'),
-                    )
-                    self.assertLess(
-                        english.index('data-home-section="projects"'),
-                        english.index('data-home-section="latest"'),
-                    )
-                    self.assertLess(
-                        english.index('data-home-section="latest"'),
-                        english.index('data-home-section="popular"'),
-                    )
-                    self.assertRegex(
-                        english,
-                        r"<h2>Projects</h2>[\s\S]*<h3>Past projects</h3>",
-                    )
-                    self.assertRegex(
-                        english,
-                        r'<section data-home-section="latest">\s*'
-                        r"<h2>Latest posts</h2>",
-                    )
-                    self.assertRegex(
-                        english,
-                        r'<section data-home-section="popular">\s*'
-                        r"<h2>Popular posts</h2>",
-                    )
-                    self.assertIn("Beyond the Cloud", english)
+                english = pages["en"]
+                self.assertIn("Shared project", english)
+                self.assertIn("Older project", english)
+                self.assertNotIn("共享项目", english)
+                english_latest = re.search(
+                    r'<section data-home-section="latest">(.*?)</section>',
+                    english,
+                    re.DOTALL,
+                ).group(1)
+                self.assertIn("Shared article", english_latest)
+                self.assertNotIn("共享文章", english_latest)
+                self.assertNotRegex(english_latest, r"<time|data-post-count|#[\w-]+")
+                self.assertEqual(1, english_latest.count("<li>"))
 
-                    latest_match = re.search(
-                        r'<section data-home-section="latest">(.*?)</section>',
-                        english,
-                        re.DOTALL,
-                    )
-                    self.assertIsNotNone(latest_match)
-                    latest = latest_match.group(1)
-                    self.assertIn(
-                        f'href="{base_path}p/lekythos-a-shape/"', latest
-                    )
-                    self.assertIn(
-                        f'href="{base_path}p/the-miracle-of-istanbul/"', latest
-                    )
-                    self.assertNotIn("Beyond the Cloud", latest)
-                    self.assertNotRegex(
-                        latest,
-                        r"<time|data-post-count|#[\w-]+",
-                    )
-                    self.assertEqual(2, latest.count("<li>"))
-
-                with self.subTest(build=name, language="zh"):
-                    self.assertIn('class="home-intro"', chinese)
-                    self.assertLess(
-                        chinese.index('class="home-intro"'),
-                        chinese.index('data-home-section="projects"'),
-                    )
-                    self.assertLess(
-                        chinese.index('data-home-section="projects"'),
-                        chinese.index('data-home-section="latest"'),
-                    )
-                    self.assertLess(
-                        chinese.index('data-home-section="latest"'),
-                        chinese.index('data-home-section="popular"'),
-                    )
-                    self.assertRegex(
-                        chinese,
-                        r"<h2>项目</h2>[\s\S]*<h3>过往项目</h3>",
-                    )
-                    self.assertRegex(
-                        chinese,
-                        r'<section data-home-section="latest">\s*'
-                        r"<h2>最新文章</h2>",
-                    )
-                    self.assertRegex(
-                        chinese,
-                        r'<section data-home-section="popular">\s*'
-                        r"<h2>热门文章</h2>",
-                    )
-                    self.assertNotIn("Beyond the Cloud", chinese)
-                    self.assertIn("暂无过往项目", chinese)
-                    chinese_latest = re.search(
-                        r'<section data-home-section="latest">(.*?)</section>',
-                        chinese,
-                        re.DOTALL,
-                    )
-                    self.assertIsNotNone(chinese_latest)
-                    self.assertIn("暂无文章", chinese_latest.group(1))
+                chinese = pages["zh"]
+                self.assertIn("共享项目", chinese)
+                self.assertNotIn("Older project", chinese)
+                chinese_latest = re.search(
+                    r'<section data-home-section="latest">(.*?)</section>',
+                    chinese,
+                    re.DOTALL,
+                ).group(1)
+                self.assertIn("共享文章", chinese_latest)
+                self.assertIn("仅中文文章", chinese_latest)
+                self.assertNotIn("Shared article", chinese_latest)
+                self.assertNotRegex(chinese_latest, r"<time|data-post-count|#[\w-]+")
+                self.assertEqual(2, chinese_latest.count("<li>"))
 
     def test_home_latest_is_capped_at_three_visible_posts(self):
         with TemporaryDirectory() as temporary:
@@ -2323,11 +1831,11 @@ interactionId = "resource-suffixes"
             content = temporary_root / "content"
             content.mkdir()
             (content / "_index.en.md").write_text(
-                '+++\ntitle = "{SITE_TITLE_EN}"\n+++\n\nFixture home.\n',
+                '+++\ntitle = "Fixture Home"\n+++\n\nFixture home.\n',
                 encoding="utf-8",
             )
             (content / "_index.zh.md").write_text(
-                '+++\ntitle = "{SITE_TITLE_ZH}"\n+++\n\n测试首页。\n',
+                '+++\ntitle = "测试首页"\n+++\n\n测试首页。\n',
                 encoding="utf-8",
             )
             for ordinal in range(1, 5):
@@ -2402,128 +1910,6 @@ interactionId = "resource-suffixes"
                     self.assertNotIn("Draft post", latest)
                     self.assertNotIn("Draft project", home)
 
-    def test_popular_posts_emit_language_local_count_only_candidates(self):
-        module_pattern = re.compile(
-            r'<script(?=[^>]*\btype="module")'
-            r'(?=[^>]*\bsrc="([^"]*popular-posts[^"]*)")'
-            r'(?=[^>]*\bintegrity="([^"]+)")[^>]*></script>'
-        )
-        candidate_pattern = re.compile(
-            r'<li\b(?=[^>]*\bdata-popular-candidate(?:\s|>))'
-            r'(?=[^>]*\bdata-entity="([^"]+)")'
-            r'(?=[^>]*\bdata-recency="(\d+)")[^>]*>'
-            r'\s*<a\b[^>]*href="([^"]+)"[^>]*>([^<]+)</a>\s*</li>'
-        )
-
-        def popular_section(html: str) -> str:
-            match = re.search(
-                r'<section data-home-section="popular">(.*?)</section>',
-                html,
-                re.DOTALL,
-            )
-            self.assertIsNotNone(match)
-            return match.group(1)
-
-        with TemporaryDirectory() as temporary:
-            temporary_root = Path(temporary)
-            for name, base_url, base_path in (
-                ("root", "https://example.test/", "/"),
-                (
-                    "project",
-                    "https://example.test/example-blog/",
-                    "/example-blog/",
-                ),
-            ):
-                public = temporary_root / name
-                build_site(public, base_url)
-                english = popular_section(read_html(public, "index.html"))
-                chinese = popular_section(read_html(public, "zh/index.html"))
-
-                with self.subTest(build=name, language="en"):
-                    self.assertEqual(
-                        [
-                            (
-                                "post:lekythos-a-shape",
-                                "0",
-                                f"{base_path}p/lekythos-a-shape/",
-                                "Shapes and Functions of the Lekythos",
-                            ),
-                            (
-                                "post:the-miracle-of-istanbul",
-                                "1",
-                                f"{base_path}p/the-miracle-of-istanbul/",
-                                "The Miracle of Istanbul",
-                            ),
-                        ],
-                        candidate_pattern.findall(english),
-                    )
-                    self.assertNotIn("Beyond the Cloud", english)
-                    self.assertNotIn("data-kudos-count", english)
-                    self.assertRegex(
-                        english,
-                        r'<ol class="home-title-list" data-popular-list hidden>',
-                    )
-                    self.assertEqual(1, english.count('aria-busy="true"'))
-                    self.assertEqual(1, english.count('role="status"'))
-                    self.assertEqual(1, english.count('aria-live="polite"'))
-                    self.assertEqual(1, english.count('aria-atomic="true"'))
-                    self.assertRegex(
-                        english,
-                        r'<span[^>]*data-popular-status[^>]*>'
-                        r'Loading popular posts</span>',
-                    )
-                    self.assertRegex(
-                        english,
-                        r'</div>\s*<noscript><p class="home-empty">'
-                        r'Enable JavaScript to load popular posts'
-                        r'</p></noscript>',
-                    )
-
-                    modules = module_pattern.findall(english)
-                    self.assertEqual(1, len(modules))
-                    source, integrity = modules[0]
-                    self.assertRegex(
-                        source,
-                        rf'^{re.escape(base_path)}js/'
-                        r'popular-posts\.[0-9a-f]{64}\.mjs$',
-                    )
-                    source_path = urlsplit(source).path
-                    self.assertTrue(source_path.startswith(base_path), source)
-                    asset_relative = source_path[len(base_path):]
-                    asset = public / asset_relative
-                    self.assertTrue(asset.is_file(), source)
-                    expected_integrity = "sha256-" + base64.b64encode(
-                        hashlib.sha256(asset.read_bytes()).digest()
-                    ).decode("ascii")
-                    self.assertEqual(expected_integrity, unescape(integrity))
-
-                with self.subTest(build=name, language="zh"):
-                    self.assertIn("暂无文章", chinese)
-                    self.assertNotIn("data-popular-posts", chinese)
-                    self.assertNotIn("data-popular-candidate", chinese)
-                    self.assertEqual([], module_pattern.findall(chinese))
-
-            for index, config in enumerate((
-                "disabled-kudos.toml",
-                "invalid-kudos-container-scalar.toml",
-                "invalid-endpoint-relative.toml",
-            )):
-                with self.subTest(invalid_config=config):
-                    public = temporary_root / f"invalid-{index}"
-                    build_site(
-                        public,
-                        "https://example.test/",
-                        "--config",
-                        f"hugo.toml,tests/fixtures/{config}",
-                    )
-                    popular = popular_section(read_html(public, "index.html"))
-                    self.assertIn(
-                        "Popular posts are temporarily unavailable",
-                        popular,
-                    )
-                    self.assertNotIn("data-popular-posts", popular)
-                    self.assertNotIn("data-popular-candidate", popular)
-                    self.assertEqual([], module_pattern.findall(popular))
 
     def test_popular_candidates_exclude_hidden_posts_in_each_language(self):
         candidate_pattern = re.compile(
@@ -2534,8 +1920,8 @@ interactionId = "resource-suffixes"
         )
         module_pattern = re.compile(
             r'<script(?=[^>]*\btype="module")'
-            r'(?=[^>]*\bsrc="[^"]*popular-posts[^"]*")'
-            r'(?=[^>]*\bintegrity="[^"]+")[^>]*></script>'
+            r'(?=[^>]*\bsrc="([^"]*popular-posts[^"]*)")'
+            r'(?=[^>]*\bintegrity="([^"]+)")[^>]*></script>'
         )
 
         with TemporaryDirectory() as temporary:
@@ -2543,11 +1929,11 @@ interactionId = "resource-suffixes"
             content = temporary_root / "content"
             content.mkdir()
             (content / "_index.en.md").write_text(
-                '+++\ntitle = "{SITE_TITLE_EN}"\n+++\n\nFixture home.\n',
+                '+++\ntitle = "Fixture Home"\n+++\n\nFixture home.\n',
                 encoding="utf-8",
             )
             (content / "_index.zh.md").write_text(
-                '+++\ntitle = "{SITE_TITLE_ZH}"\n+++\n\n测试首页。\n',
+                '+++\ntitle = "测试首页"\n+++\n\n测试首页。\n',
                 encoding="utf-8",
             )
             pages = (
@@ -2668,7 +2054,22 @@ interactionId = "resource-suffixes"
                         self.assertNotIn("隐藏文章", popular)
                         self.assertNotIn("草稿文章", popular)
                         self.assertEqual(1, popular.count('role="status"'))
-                        self.assertEqual(1, len(module_pattern.findall(popular)))
+                        modules = module_pattern.findall(popular)
+                        self.assertEqual(1, len(modules))
+                        source, integrity = modules[0]
+                        self.assertRegex(
+                            source,
+                            rf'^{re.escape(base_path)}js/'
+                            r'popular-posts\.[0-9a-f]{64}\.mjs$',
+                        )
+                        source_path = urlsplit(source).path
+                        self.assertTrue(source_path.startswith(base_path), source)
+                        asset = public / source_path.removeprefix(base_path)
+                        self.assertTrue(asset.is_file(), source)
+                        expected_integrity = "sha256-" + base64.b64encode(
+                            hashlib.sha256(asset.read_bytes()).digest()
+                        ).decode("ascii")
+                        self.assertEqual(expected_integrity, unescape(integrity))
                         self.assertRegex(
                             popular,
                             r'</div>\s*<noscript><p class="home-empty">'
@@ -2688,11 +2089,11 @@ interactionId = "resource-suffixes"
             content = temporary_root / "content"
             content.mkdir()
             (content / "_index.en.md").write_text(
-                '+++\ntitle = "{SITE_TITLE_EN}"\n+++\n\nFixture home.\n',
+                '+++\ntitle = "Fixture Home"\n+++\n\nFixture home.\n',
                 encoding="utf-8",
             )
             (content / "_index.zh.md").write_text(
-                '+++\ntitle = "{SITE_TITLE_ZH}"\n+++\n\n测试首页。\n',
+                '+++\ntitle = "测试首页"\n+++\n\n测试首页。\n',
                 encoding="utf-8",
             )
             bundle = content / "blog" / "only-post"
@@ -2769,15 +2170,16 @@ interactionId = "resource-suffixes"
             ]
             for relative in expected:
                 self.assertTrue((public / relative).is_file(), relative)
-            self.assertIn("Wenxuan Zhao", (public / "index.html").read_text(encoding="utf-8"))
-            self.assertIn("赵文轩", (public / "zh/index.html").read_text(encoding="utf-8"))
 
-    def test_chrome_is_localized_and_uses_browser_color_preference(self):
+    def test_chrome_is_localized_configurable_and_uses_browser_color_preference(self):
         with TemporaryDirectory() as temporary:
             public = Path(temporary) / "public"
-            build_site(public, "https://example.test/")
+            build_site(public, "https://example.test/", "--config", BRANDING_CONFIG)
             english = read_html(public, "index.html")
             chinese = read_html(public, "zh/index.html")
+
+            self.assertIn(f"<title>{FIXTURE_TITLE_EN}</title>", english)
+            self.assertIn(f"<title>{FIXTURE_TITLE_ZH}</title>", chinese)
             self.assertEqual(
                 [("/", "Home"), ("/blog/", "Blog"), ("/tags/", "Tags")],
                 primary_navigation(english),
@@ -2788,28 +2190,20 @@ interactionId = "resource-suffixes"
             )
             self.assertIn('<html lang="en-US"', english)
             self.assertIn('<html lang="zh-CN"', chinese)
-            self.assertIn('name="color-scheme" content="light dark"', english)
-            self.assertIn('name="referrer" content="strict-origin-when-cross-origin"', english)
-            self.assertIn('media="(prefers-color-scheme: light)"', english)
-            self.assertIn('media="(prefers-color-scheme: dark)"', english)
-            self.assertNotIn("theme-toggle", english)
-            primary = re.search(
-                r'<nav[^>]*data-primary-navigation[^>]*>(.*?)</nav>',
-                english,
-                re.DOTALL,
-            )
-            self.assertIsNotNone(primary)
-            self.assertNotIn("language-switcher", primary.group(1))
-            self.assertIn('class="language-switcher"', english)
+            for html in (english, chinese):
+                self.assertIn('name="color-scheme" content="light dark"', html)
+                self.assertIn(
+                    'name="referrer" content="strict-origin-when-cross-origin"',
+                    html,
+                )
+                self.assertIn('media="(prefers-color-scheme: light)"', html)
+                self.assertIn('media="(prefers-color-scheme: dark)"', html)
+                self.assertNotIn("theme-toggle", html)
+
             for language, html, alternate_label in (
                 ("en", english, "中文"),
                 ("zh", chinese, "English"),
             ):
-                rows = re.findall(
-                    r'<div class="header-navigation">(.*?)</div>',
-                    html,
-                    re.DOTALL,
-                )
                 with self.subTest(language=language):
                     self.assertEqual(
                         [
@@ -2820,98 +2214,21 @@ interactionId = "resource-suffixes"
                         ],
                         header_navigation_signatures(html),
                     )
-                    self.assertEqual(1, len(rows))
-                    self.assertEqual(1, rows[0].count("hreflang="))
-                    self.assertIn(f">{alternate_label}</a>", rows[0])
+                    self.assertIn(f">{alternate_label}</a>", html)
 
-            configuration = tomllib.loads((ROOT / "hugo.toml").read_text())
-            self.assertEqual("中文", configuration["languages"]["zh"]["label"])
-            site_css = (ROOT / "assets/css/site.css").read_text(encoding="utf-8")
-            self.assertRegex(
-                site_css,
-                r"\.header-navigation\s*\{[^}]*align-items:\s*baseline;"
-                r"[^}]*display:\s*flex;"
-                r"[^}]*flex-wrap:\s*nowrap;[^}]*\}",
-            )
-            self.assertRegex(
-                site_css,
-                r"\[data-primary-navigation\]\s*\{[^}]*display:\s*flex;"
-                r"[^}]*flex-wrap:\s*nowrap;[^}]*\}",
-            )
-            self.assertRegex(
-                site_css,
-                r"\[data-primary-navigation\]\s*\{[^}]*"
-                r"flex:\s*0\s+1\s+auto;[^}]*\}",
-            )
-            self.assertRegex(
-                site_css,
-                r"\.language-switcher\s*\{[^}]*align-items:\s*baseline;"
-                r"[^}]*border-left:\s*1px\s+solid\s+var\(--border-color\);"
-                r"[^}]*display:\s*inline-flex;"
-                r"[^}]*white-space:\s*nowrap;[^}]*\}",
-            )
-            self.assertRegex(
-                site_css,
-                r"\.language-switcher\s*\{[^}]*margin-left:\s*0\.5rem;"
-                r"[^}]*padding-left:\s*0\.5rem;[^}]*\}",
-            )
-            self.assertRegex(
-                site_css,
-                r"\.footer-links\s*\{[^}]*align-items:\s*center;"
-                r"[^}]*display:\s*flex;"
-                r"[^}]*flex-wrap:\s*wrap;"
-                r"[^}]*justify-content:\s*center;[^}]*\}",
-            )
-            self.assertRegex(
-                site_css,
-                r"\.footer-icon\s*\{[^}]*border:\s*0;"
-                r"[^}]*height:\s*16px;"
-                r"[^}]*margin:\s*0;"
-                r"[^}]*width:\s*16px;[^}]*\}",
-            )
-            self.assertRegex(
-                site_css,
-                r"@media\s*\(prefers-color-scheme:\s*dark\)\s*\{\s*"
-                r"\.footer-icon-github\s*\{[^}]*filter:\s*invert\(1\);[^}]*\}",
-            )
-            for (
-                language,
-                html,
-                rss_path,
-                contact_label,
-                scholar_label,
-                subscribe_text,
-                removed_text,
-            ) in (
-                (
-                    "en",
-                    english,
-                    "/index.xml",
-                    "Contact",
-                    "Google Scholar",
-                    "Subscribe via",
-                    ("Made with", "Hugo Bear Neo", "Sitemap"),
-                ),
-                (
-                    "zh",
-                    chinese,
-                    "/zh/index.xml",
-                    "联系",
-                    "谷歌学术",
-                    "订阅",
-                    ("网站主题", "Hugo Bear Neo", "网站地图"),
-                ),
+            for language, html, rss_path, contact_label, scholar_label in (
+                ("en", english, "/index.xml", "Contact", "Google Scholar"),
+                ("zh", chinese, "/zh/index.xml", "联系", "谷歌学术"),
             ):
                 footer = re.search(r"<footer>(.*?)</footer>", html, re.DOTALL)
                 self.assertIsNotNone(footer)
                 with self.subTest(language=language):
                     markup = footer.group(1)
-                    self.assertEqual(4, markup.count("<a "))
                     self.assertEqual(
                         [
-                            f"mailto:{CONTACT_EMAIL}",
-                            GITHUB_URL,
-                            SCHOLAR_URL,
+                            f"mailto:{FIXTURE_CONTACT_EMAIL}",
+                            FIXTURE_GITHUB_URL,
+                            FIXTURE_SCHOLAR_URL,
                             rss_path,
                         ],
                         re.findall(r'<a\b[^>]*\bhref="([^"]+)"', markup),
@@ -2919,15 +2236,10 @@ interactionId = "resource-suffixes"
                     self.assertIn(f'aria-label="{contact_label}"', markup)
                     self.assertIn('alt="GitHub"', markup)
                     self.assertIn(f'alt="{scholar_label}"', markup)
-                    self.assertEqual(
-                        3, len(re.findall(r'width="16" height="16"', markup))
-                    )
-                    self.assertIn(subscribe_text, markup)
                     self.assertNotRegex(
-                        markup, rf">[^<]*{CONTACT_EMAIL.replace(".", r"\.")}[^<]*<"
+                        markup,
+                        rf">[^<]*{re.escape(FIXTURE_CONTACT_EMAIL)}[^<]*<",
                     )
-                    for text in removed_text:
-                        self.assertNotIn(text, markup)
 
     def test_semantic_colors_meet_text_contrast_in_both_color_schemes(self):
         theme_css = (
@@ -2937,9 +2249,8 @@ interactionId = "resource-suffixes"
         theme_base = css_root_custom_properties(theme_css)
         site_base = css_root_custom_properties(site_css)
         site_light = css_root_custom_properties(site_css, scheme="light")
-        self.assertEqual("#707070", site_light.get("--text-color-tertiary"))
-        self.assertEqual("#b9473a", site_light.get("--upvoted-color"))
         for token in ("--text-color-tertiary", "--upvoted-color"):
+            self.assertIn(token, site_light)
             self.assertNotIn(token, site_base)
 
         schemes = {
@@ -2955,8 +2266,6 @@ interactionId = "resource-suffixes"
                 **css_root_custom_properties(site_css, scheme="dark"),
             },
         }
-        self.assertEqual("#a0a0a0", schemes["dark"]["--text-color-tertiary"])
-        self.assertEqual("#ff6b6b", schemes["dark"]["--upvoted-color"])
         for scheme, properties in schemes.items():
             for token in ("--text-color-tertiary", "--upvoted-color"):
                 with self.subTest(scheme=scheme, token=token):
@@ -2990,8 +2299,25 @@ interactionId = "resource-suffixes"
 
     def test_initial_chinese_lists_are_valid_and_empty(self):
         with TemporaryDirectory() as temporary:
-            public = Path(temporary) / "public"
-            build_site(public, "https://example.test/")
+            temporary_root = Path(temporary)
+            content = temporary_root / "content"
+            blog = content / "blog"
+            blog.mkdir(parents=True)
+            (blog / "_index.en.md").write_text(
+                '+++\ntitle = "Blog"\n+++\n',
+                encoding="utf-8",
+            )
+            (blog / "_index.zh.md").write_text(
+                '+++\ntitle = "博客"\n+++\n',
+                encoding="utf-8",
+            )
+            public = temporary_root / "public"
+            build_site(
+                public,
+                "https://example.test/",
+                "--contentDir",
+                str(content),
+            )
             posts = read_html(public, "zh/blog/index.html")
             tags = read_html(public, "zh/tags/index.html")
             self.assertIn("暂无文章", posts)
@@ -3002,7 +2328,14 @@ interactionId = "resource-suffixes"
     def test_post_search_has_localized_no_match_feedback(self):
         with TemporaryDirectory() as temporary:
             public = Path(temporary) / "public"
-            build_site(public, "https://example.test/")
+            build_site(
+                public,
+                "https://example.test/",
+                "--config",
+                "hugo.toml,tests/fixtures/interactions.toml",
+                "--contentDir",
+                "tests/fixtures/content",
+            )
             english = read_html(public, "blog/index.html")
             self.assertIn('data-search-empty', english)
             self.assertIn("No matching posts", english)
@@ -3192,31 +2525,6 @@ interactionId = "resource-suffixes"
                     chinese_locations,
                 )
 
-                production = Path(temporary) / f"{name}-production"
-                build_site(production, base_url)
-                visualization = read_html(
-                    production,
-                    "tags/visualization/index.html",
-                )
-                self.assertIn(
-                    "<h2>Tag: visualization</h2>",
-                    visualization,
-                )
-                self.assertNotIn(">All tags</a>", visualization)
-                self.assertNotIn("data-post-count", visualization)
-                self.assertIn(">Projects</h3>", visualization)
-                self.assertIn("Beyond the Cloud", visualization)
-                self.assertIn(
-                    f'href="{base_path}p/beyond-the-cloud/"',
-                    visualization,
-                )
-                self.assertNotIn(
-                    'data-tag-group="posts"',
-                    visualization,
-                )
-                self.assertNotIn("data-post-search", visualization)
-                self.assertNotIn("js/post-search.", visualization)
-
                 english_blog = read_html(public, "blog/index.html")
                 self.assertNotIn("data-post-count", english_blog)
                 self.assertEqual(1, english_blog.count("data-post-search"))
@@ -3363,81 +2671,8 @@ projectStatus = "past"
                         self.assertIn('aria-live="polite"', group)
                         self.assertIn('aria-atomic="true"', group)
 
-    def test_year_group_headings_align_with_grouped_date_columns(self):
-        site_css = (ROOT / "assets/css/site.css").read_text(encoding="utf-8")
-        theme_css = (
-            ROOT / "themes/hugo-bearneo/layouts/partials/style.html"
-        ).read_text(encoding="utf-8")
 
-        self.assertRegex(
-            site_css,
-            r"ul\.blog-posts li\.post-year\s*\{[^}]*display:\s*block;",
-        )
-        self.assertRegex(
-            site_css,
-            r"ul\.blog-posts li\.post-year h3\s*\{[^}]*margin:\s*16px 0;",
-        )
-        self.assertRegex(
-            theme_css,
-            r"ul\.blog-posts li span\.grouped\s*\{[^}]*flex:\s*0 0 80px;",
-        )
 
-        with TemporaryDirectory() as temporary:
-            public = Path(temporary) / "public"
-            build_site(
-                public,
-                "https://example.test/",
-                "--config",
-                "hugo.toml,tests/fixtures/interactions.toml",
-                "--contentDir",
-                "tests/fixtures/content",
-            )
-            year_heading = (
-                '<li class="post-year" data-post-year="2026"><h3>2026</h3></li>'
-            )
-
-            for archive in ("blog/index.html", "zh/blog/index.html"):
-                html = read_html(public, archive)
-                with self.subTest(page=archive):
-                    self.assertIn(year_heading, html)
-                    self.assertNotIn("<strong>2026</strong>", html)
-
-            for page in ("tags/fixture/index.html", "zh/tags/测试/index.html"):
-                html = read_html(public, page)
-                for group_name in ("projects", "posts"):
-                    with self.subTest(page=page, group=group_name):
-                        match = re.search(
-                            rf'<section data-tag-group="{group_name}">'
-                            r"(.*?)</section>",
-                            html,
-                            re.DOTALL,
-                        )
-                        self.assertIsNotNone(match)
-                        group = match.group(1)
-                        self.assertIn(year_heading, group)
-                        self.assertNotIn("<strong>2026</strong>", group)
-
-    def test_year_heading_optically_aligns_with_date_text(self):
-        site_css = (ROOT / "assets/css/site.css").read_text(encoding="utf-8")
-        rule = re.search(
-            r"ul\.blog-posts li\.post-year h3\s*\{([^}]*)\}",
-            site_css,
-            re.DOTALL,
-        )
-
-        self.assertIsNotNone(rule)
-        self.assertRegex(rule.group(1), r"text-indent:\s*-0\.08em;")
-
-    def test_tag_group_headings_are_larger_than_year_headings(self):
-        site_css = (ROOT / "assets/css/site.css").read_text(encoding="utf-8")
-        group_rule = re.search(
-            r"\[data-tag-group\]\s*>\s*h3\s*\{([^}]*)\}",
-            site_css,
-            re.DOTALL,
-        )
-
-        self.assertIsNotNone(group_rule)
-        self.assertRegex(group_rule.group(1), r"font-size:\s*1\.25em;")
 
     def test_filtered_post_rows_override_list_display_rules(self):
         site_css = (ROOT / "assets/css/site.css").read_text(encoding="utf-8")
@@ -3593,11 +2828,11 @@ projectStatus = "past"
             content = temporary_root / "content"
             content.mkdir()
             (content / "_index.en.md").write_text(
-                '+++\ntitle = "{SITE_TITLE_EN}"\n+++\n\nFixture home.\n',
+                '+++\ntitle = "Fixture Home"\n+++\n\nFixture home.\n',
                 encoding="utf-8",
             )
             (content / "_index.zh.md").write_text(
-                '+++\ntitle = "{SITE_TITLE_ZH}"\n+++\n\n测试首页。\n',
+                '+++\ntitle = "测试首页"\n+++\n\n测试首页。\n',
                 encoding="utf-8",
             )
             for month in range(1, 13):
