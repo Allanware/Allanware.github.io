@@ -57,3 +57,9 @@ other = "最新文章"
 other = "热门文章"
 [popularUnavailable]
 other = "热门文章暂时无法加载"
+[popularLoading]
+other = "正在加载热门文章"
+[popularReady]
+other = "热门文章已加载"
+[popularRequiresJavaScript]
+other = "请启用 JavaScript 以加载热门文章"

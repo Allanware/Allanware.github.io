@@ -1,0 +1,38 @@
+{{- $page := . -}}
+{{- $posts := where $page.Site.RegularPages "Section" "blog" -}}
+{{- $posts = where $posts "Language.Lang" $page.Language.Lang -}}
+{{- $posts = where $posts "Draft" false -}}
+{{- $posts = where $posts "Params.hidden" "ne" true -}}
+{{- $posts = $posts.ByDate.Reverse -}}
+<section data-home-section="popular">
+  <h2>{{ T "popularPosts" }}</h2>
+  {{- if eq (len $posts) 0 }}
+    <p class="home-empty">{{ T "noPosts" }}</p>
+  {{- else if eq (len $posts) 1 }}
+    {{ partial "home-title-list.html" (dict "Pages" $posts "EmptyKey" "noPosts") }}
+  {{- else -}}
+    {{- $config := partial "kudos-config.html" $page -}}
+    {{- if $config.enabled }}
+      <div data-popular-posts data-popular-endpoint="{{ $config.endpoint }}"
+        data-popular-timeout="5000"
+        data-popular-ready-label="{{ T "popularReady" }}"
+        data-popular-unavailable-label="{{ T "popularUnavailable" }}"
+        data-popular-state="loading" aria-busy="true">
+        <span class="visually-hidden" data-popular-status role="status"
+          aria-live="polite" aria-atomic="true">{{ T "popularLoading" }}</span>
+        <ol class="home-title-list" data-popular-list hidden>
+          {{- range $index, $post := $posts -}}
+            {{- $entity := partial "interaction-id.html" $post -}}
+            <li data-popular-candidate data-entity="{{ $entity }}"
+              data-recency="{{ $index }}"><a href="{{ $post.RelPermalink }}">{{ $post.Title }}</a></li>
+          {{- end }}
+        </ol>
+      </div>
+      <noscript><p class="home-empty">{{ T "popularRequiresJavaScript" }}</p></noscript>
+      {{- $script := resources.Get "js/popular-posts.mjs" | fingerprint "sha256" }}
+      <script type="module" src="{{ $script.RelPermalink }}" integrity="{{ $script.Data.Integrity }}"></script>
+    {{- else }}
+      <p class="home-empty">{{ T "popularUnavailable" }}</p>
+    {{- end }}
+  {{- end }}
+</section>

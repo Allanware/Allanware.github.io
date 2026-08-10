@@ -1,0 +1,37 @@
+{{- $page := . -}}
+{{- $params := dict -}}
+{{- if reflect.IsMap $page.Site.Params }}{{ $params = $page.Site.Params }}{{ end -}}
+{{- $kudos := dict -}}
+{{- if isset $params "kudos" -}}
+  {{- $configured := index $params "kudos" -}}
+  {{- if reflect.IsMap $configured }}{{ $kudos = $configured }}{{ end -}}
+{{- end -}}
+
+{{- $enabled := false -}}
+{{- if isset $kudos "enabled" -}}
+  {{- $value := index $kudos "enabled" -}}
+  {{- if eq (printf "%T" $value) "bool" }}{{ $enabled = $value }}{{ end -}}
+{{- end -}}
+
+{{- $endpoint := "" -}}
+{{- if isset $kudos "endpoint" -}}
+  {{- $value := index $kudos "endpoint" -}}
+  {{- if eq (printf "%T" $value) "string" -}}
+    {{- $endpoint = strings.TrimSpace $value -}}
+  {{- end -}}
+{{- end -}}
+
+{{- $httpsPattern := `^https://([A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)(\.([A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?))*(:[0-9]{1,5})?/?$` -}}
+{{- $loopbackPattern := `^http://(127\.0\.0\.1|localhost)(:[0-9]{1,5})?/?$` -}}
+{{- $validHTTPS := gt (len (findRE $httpsPattern $endpoint)) 0 -}}
+{{- $validLoopback := gt (len (findRE $loopbackPattern $endpoint)) 0 -}}
+{{- $validPort := true -}}
+{{- if gt (len (findRE `:[0-9]{1,5}/?$` $endpoint)) 0 -}}
+  {{- $port := int (replaceRE `^.*:([0-9]{1,5})/?$` "$1" $endpoint) -}}
+  {{- $validPort = and (ge $port 1) (le $port 65535) -}}
+{{- end -}}
+
+{{- return (dict
+  "enabled" (and $enabled $validPort (or $validHTTPS $validLoopback))
+  "endpoint" $endpoint
+) -}}

@@ -1,5 +1,6 @@
 import base64
 import hashlib
+from html import unescape
 from html.parser import HTMLParser
 from pathlib import Path
 import re
@@ -2368,6 +2369,359 @@ interactionId = "resource-suffixes"
                     self.assertNotIn("Hidden post", latest)
                     self.assertNotIn("Draft post", latest)
                     self.assertNotIn("Draft project", home)
+
+    def test_popular_posts_emit_language_local_count_only_candidates(self):
+        module_pattern = re.compile(
+            r'<script(?=[^>]*\btype="module")'
+            r'(?=[^>]*\bsrc="([^"]*popular-posts[^"]*)")'
+            r'(?=[^>]*\bintegrity="([^"]+)")[^>]*></script>'
+        )
+        candidate_pattern = re.compile(
+            r'<li\b(?=[^>]*\bdata-popular-candidate(?:\s|>))'
+            r'(?=[^>]*\bdata-entity="([^"]+)")'
+            r'(?=[^>]*\bdata-recency="(\d+)")[^>]*>'
+            r'\s*<a\b[^>]*href="([^"]+)"[^>]*>([^<]+)</a>\s*</li>'
+        )
+
+        def popular_section(html: str) -> str:
+            match = re.search(
+                r'<section data-home-section="popular">(.*?)</section>',
+                html,
+                re.DOTALL,
+            )
+            self.assertIsNotNone(match)
+            return match.group(1)
+
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            for name, base_url, base_path in (
+                ("root", "https://example.test/", "/"),
+                (
+                    "project",
+                    "https://example.test/example-blog/",
+                    "/example-blog/",
+                ),
+            ):
+                public = temporary_root / name
+                build_site(public, base_url)
+                english = popular_section(read_html(public, "index.html"))
+                chinese = popular_section(read_html(public, "zh/index.html"))
+
+                with self.subTest(build=name, language="en"):
+                    self.assertEqual(
+                        [
+                            (
+                                "post:lekythos-a-shape",
+                                "0",
+                                f"{base_path}p/lekythos-a-shape/",
+                                "Shapes and Functions of the Lekythos",
+                            ),
+                            (
+                                "post:the-miracle-of-istanbul",
+                                "1",
+                                f"{base_path}p/the-miracle-of-istanbul/",
+                                "The Miracle of Istanbul",
+                            ),
+                        ],
+                        candidate_pattern.findall(english),
+                    )
+                    self.assertNotIn("Beyond the Cloud", english)
+                    self.assertNotIn("data-kudos-count", english)
+                    self.assertRegex(
+                        english,
+                        r'<ol class="home-title-list" data-popular-list hidden>',
+                    )
+                    self.assertEqual(1, english.count('aria-busy="true"'))
+                    self.assertEqual(1, english.count('role="status"'))
+                    self.assertEqual(1, english.count('aria-live="polite"'))
+                    self.assertEqual(1, english.count('aria-atomic="true"'))
+                    self.assertRegex(
+                        english,
+                        r'<span[^>]*data-popular-status[^>]*>'
+                        r'Loading popular posts</span>',
+                    )
+                    self.assertRegex(
+                        english,
+                        r'</div>\s*<noscript><p class="home-empty">'
+                        r'Enable JavaScript to load popular posts'
+                        r'</p></noscript>',
+                    )
+
+                    modules = module_pattern.findall(english)
+                    self.assertEqual(1, len(modules))
+                    source, integrity = modules[0]
+                    self.assertRegex(
+                        source,
+                        rf'^{re.escape(base_path)}js/'
+                        r'popular-posts\.[0-9a-f]{64}\.mjs$',
+                    )
+                    source_path = urlsplit(source).path
+                    self.assertTrue(source_path.startswith(base_path), source)
+                    asset_relative = source_path[len(base_path):]
+                    asset = public / asset_relative
+                    self.assertTrue(asset.is_file(), source)
+                    expected_integrity = "sha256-" + base64.b64encode(
+                        hashlib.sha256(asset.read_bytes()).digest()
+                    ).decode("ascii")
+                    self.assertEqual(expected_integrity, unescape(integrity))
+
+                with self.subTest(build=name, language="zh"):
+                    self.assertIn("暂无文章", chinese)
+                    self.assertNotIn("data-popular-posts", chinese)
+                    self.assertNotIn("data-popular-candidate", chinese)
+                    self.assertEqual([], module_pattern.findall(chinese))
+
+            for index, config in enumerate((
+                "disabled-kudos.toml",
+                "invalid-kudos-container-scalar.toml",
+                "invalid-endpoint-relative.toml",
+            )):
+                with self.subTest(invalid_config=config):
+                    public = temporary_root / f"invalid-{index}"
+                    build_site(
+                        public,
+                        "https://example.test/",
+                        "--config",
+                        f"hugo.toml,tests/fixtures/{config}",
+                    )
+                    popular = popular_section(read_html(public, "index.html"))
+                    self.assertIn(
+                        "Popular posts are temporarily unavailable",
+                        popular,
+                    )
+                    self.assertNotIn("data-popular-posts", popular)
+                    self.assertNotIn("data-popular-candidate", popular)
+                    self.assertEqual([], module_pattern.findall(popular))
+
+    def test_popular_candidates_exclude_hidden_posts_in_each_language(self):
+        candidate_pattern = re.compile(
+            r'<li\b(?=[^>]*\bdata-popular-candidate(?:\s|>))'
+            r'(?=[^>]*\bdata-entity="([^"]+)")'
+            r'(?=[^>]*\bdata-recency="(\d+)")[^>]*>'
+            r'\s*<a\b[^>]*href="([^"]+)"[^>]*>([^<]+)</a>\s*</li>'
+        )
+        module_pattern = re.compile(
+            r'<script(?=[^>]*\btype="module")'
+            r'(?=[^>]*\bsrc="[^"]*popular-posts[^"]*")'
+            r'(?=[^>]*\bintegrity="[^"]+")[^>]*></script>'
+        )
+
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            content = temporary_root / "content"
+            content.mkdir()
+            (content / "_index.en.md").write_text(
+                '+++\ntitle = "Where Was I"\n+++\n\nFixture home.\n',
+                encoding="utf-8",
+            )
+            (content / "_index.zh.md").write_text(
+                '+++\ntitle = "说哪儿了"\n+++\n\n测试首页。\n',
+                encoding="utf-8",
+            )
+            pages = (
+                (
+                    "visible-1",
+                    "2026-01-01",
+                    False,
+                    False,
+                    "Visible one",
+                    "可见文章一",
+                ),
+                (
+                    "visible-2",
+                    "2026-01-02",
+                    False,
+                    False,
+                    "Visible two",
+                    "可见文章二",
+                ),
+                (
+                    "hidden-post",
+                    "2026-01-03",
+                    False,
+                    True,
+                    "Hidden post",
+                    "隐藏文章",
+                ),
+                (
+                    "draft-post",
+                    "2026-01-04",
+                    True,
+                    False,
+                    "Draft post",
+                    "草稿文章",
+                ),
+            )
+            for slug, date, draft, hidden, english_title, chinese_title in pages:
+                bundle = content / "blog" / slug
+                bundle.mkdir(parents=True)
+                for language, title in (
+                    ("en", english_title),
+                    ("zh", chinese_title),
+                ):
+                    (bundle / f"index.{language}.md").write_text(
+                        "+++\n"
+                        f'title = "{title}"\n'
+                        f"date = {date}\n"
+                        f"draft = {str(draft).lower()}\n"
+                        f"hidden = {str(hidden).lower()}\n"
+                        f'interactionId = "{slug}"\n'
+                        "+++\n\nBody.\n",
+                        encoding="utf-8",
+                    )
+
+            for name, base_url, base_path in (
+                ("root", "https://example.test/", "/"),
+                (
+                    "project",
+                    "https://example.test/example-blog/",
+                    "/example-blog/",
+                ),
+            ):
+                public = temporary_root / name
+                build_site(
+                    public,
+                    base_url,
+                    "--contentDir",
+                    str(content),
+                    "--buildDrafts",
+                )
+                for language, relative, language_path, titles, noscript in (
+                    (
+                        "en",
+                        "index.html",
+                        "",
+                        ("Visible two", "Visible one"),
+                        "Enable JavaScript to load popular posts",
+                    ),
+                    (
+                        "zh",
+                        "zh/index.html",
+                        "zh/",
+                        ("可见文章二", "可见文章一"),
+                        "请启用 JavaScript 以加载热门文章",
+                    ),
+                ):
+                    html = read_html(public, relative)
+                    match = re.search(
+                        r'<section data-home-section="popular">'
+                        r'(.*?)</section>',
+                        html,
+                        re.DOTALL,
+                    )
+                    self.assertIsNotNone(match)
+                    popular = match.group(1)
+                    with self.subTest(build=name, language=language):
+                        self.assertEqual(
+                            [
+                                (
+                                    "post:visible-2",
+                                    "0",
+                                    f"{base_path}{language_path}p/visible-2/",
+                                    titles[0],
+                                ),
+                                (
+                                    "post:visible-1",
+                                    "1",
+                                    f"{base_path}{language_path}p/visible-1/",
+                                    titles[1],
+                                ),
+                            ],
+                            candidate_pattern.findall(popular),
+                        )
+                        self.assertNotIn("hidden-post", popular)
+                        self.assertNotIn("draft-post", popular)
+                        self.assertNotIn("Hidden post", popular)
+                        self.assertNotIn("Draft post", popular)
+                        self.assertNotIn("隐藏文章", popular)
+                        self.assertNotIn("草稿文章", popular)
+                        self.assertEqual(1, popular.count('role="status"'))
+                        self.assertEqual(1, len(module_pattern.findall(popular)))
+                        self.assertRegex(
+                            popular,
+                            r'</div>\s*<noscript><p class="home-empty">'
+                            + re.escape(noscript)
+                            + r'</p></noscript>',
+                        )
+
+    def test_popular_posts_do_not_load_ranking_for_zero_or_one_candidate(self):
+        module_pattern = re.compile(
+            r'<script(?=[^>]*\btype="module")'
+            r'(?=[^>]*\bsrc="[^"]*popular-posts[^"]*")'
+            r'(?=[^>]*\bintegrity="[^"]+")[^>]*></script>'
+        )
+
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            content = temporary_root / "content"
+            content.mkdir()
+            (content / "_index.en.md").write_text(
+                '+++\ntitle = "Where Was I"\n+++\n\nFixture home.\n',
+                encoding="utf-8",
+            )
+            (content / "_index.zh.md").write_text(
+                '+++\ntitle = "说哪儿了"\n+++\n\n测试首页。\n',
+                encoding="utf-8",
+            )
+            bundle = content / "blog" / "only-post"
+            bundle.mkdir(parents=True)
+            (bundle / "index.en.md").write_text(
+                '+++\ntitle = "Only post"\ndate = 2026-01-01\n'
+                'draft = false\ninteractionId = "only-post"\n'
+                '+++\n\nBody.\n',
+                encoding="utf-8",
+            )
+
+            for name, base_url, base_path in (
+                ("root", "https://example.test/", "/"),
+                (
+                    "project",
+                    "https://example.test/example-blog/",
+                    "/example-blog/",
+                ),
+            ):
+                public = temporary_root / name
+                build_site(
+                    public,
+                    base_url,
+                    "--contentDir",
+                    str(content),
+                )
+                english = read_html(public, "index.html")
+                chinese = read_html(public, "zh/index.html")
+                english_match = re.search(
+                    r'<section data-home-section="popular">'
+                    r'(.*?)</section>',
+                    english,
+                    re.DOTALL,
+                )
+                chinese_match = re.search(
+                    r'<section data-home-section="popular">'
+                    r'(.*?)</section>',
+                    chinese,
+                    re.DOTALL,
+                )
+                self.assertIsNotNone(english_match)
+                self.assertIsNotNone(chinese_match)
+
+                with self.subTest(build=name, language="en"):
+                    popular = english_match.group(1)
+                    self.assertIn("Only post", popular)
+                    self.assertIn(
+                        f'href="{base_path}p/only-post/"',
+                        popular,
+                    )
+                    self.assertNotIn("data-popular-posts", popular)
+                    self.assertNotIn("data-popular-candidate", popular)
+                    self.assertEqual([], module_pattern.findall(popular))
+
+                with self.subTest(build=name, language="zh"):
+                    popular = chinese_match.group(1)
+                    self.assertIn("暂无文章", popular)
+                    self.assertNotIn("Only post", popular)
+                    self.assertNotIn("data-popular-posts", popular)
+                    self.assertNotIn("data-popular-candidate", popular)
+                    self.assertEqual([], module_pattern.findall(popular))
 
     def test_localized_core_routes_exist(self):
         with TemporaryDirectory() as temporary:

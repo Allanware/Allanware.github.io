@@ -57,3 +57,9 @@ other = "Latest posts"
 other = "Popular posts"
 [popularUnavailable]
 other = "Popular posts are temporarily unavailable"
+[popularLoading]
+other = "Loading popular posts"
+[popularReady]
+other = "Popular posts loaded"
+[popularRequiresJavaScript]
+other = "Enable JavaScript to load popular posts"

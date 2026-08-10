@@ -25,9 +25,6 @@
       <h2>{{ T "latestPosts" }}</h2>
       {{ partial "home-title-list.html" (dict "Pages" (first 3 $posts) "EmptyKey" "noPosts") }}
     </section>
-    <section data-home-section="popular">
-      <h2>{{ T "popularPosts" }}</h2>
-      <p class="home-empty">{{ T "popularUnavailable" }}</p>
-    </section>
+    {{ partial "popular-posts.html" . }}
   </content>
 {{ end }}
