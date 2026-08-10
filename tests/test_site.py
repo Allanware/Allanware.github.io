@@ -3456,7 +3456,11 @@ projectStatus = "past"
 
                 for html in (english_blog, english_tag):
                     self.assertIn(
-                        '<time datetime="2026-08-08">August 8</time>', html
+                        '<time datetime="2026-08-08">Aug 8</time>', html
+                    )
+                    self.assertNotIn(
+                        '<time datetime="2026-08-08">August 8</time>',
+                        html,
                     )
                     self.assertNotIn(
                         '<time datetime="2026-08-08">August 8, 2026</time>',
@@ -3467,7 +3471,7 @@ projectStatus = "past"
                         html,
                     )
                 self.assertIn(
-                    '<time datetime="2026-08-09">August 9</time>',
+                    '<time datetime="2026-08-09">Aug 9</time>',
                     english_tag,
                 )
 
@@ -3539,6 +3543,68 @@ projectStatus = "past"
             self.assertIn(
                 '<time datetime="2026-08-08">2026年8月8日</time>',
                 chinese_ungrouped,
+            )
+
+    def test_grouped_list_abbreviates_long_month_names(self):
+        # The grouped date column is a fixed width, so month names longer than
+        # five characters render abbreviated instead of wrapping onto a second
+        # line. Shorter names stay spelled out.
+        expected = {
+            "2025-01-22": "Jan 22",
+            "2025-02-22": "Feb 22",
+            "2025-03-22": "March 22",
+            "2025-04-22": "April 22",
+            "2025-05-22": "May 22",
+            "2025-06-22": "June 22",
+            "2025-07-22": "July 22",
+            "2025-08-22": "Aug 22",
+            "2025-09-22": "Sep 22",
+            "2025-10-22": "Oct 22",
+            "2025-11-22": "Nov 22",
+            "2025-12-22": "Dec 22",
+        }
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            content = temporary_root / "content"
+            content.mkdir()
+            (content / "_index.en.md").write_text(
+                '+++\ntitle = "Where Was I"\n+++\n\nFixture home.\n',
+                encoding="utf-8",
+            )
+            (content / "_index.zh.md").write_text(
+                '+++\ntitle = "说哪儿了"\n+++\n\n测试首页。\n',
+                encoding="utf-8",
+            )
+            for month in range(1, 13):
+                bundle = content / "blog" / f"month-{month:02d}"
+                bundle.mkdir(parents=True)
+                (bundle / "index.en.md").write_text(
+                    "+++\n"
+                    f'title = "Month {month:02d}"\n'
+                    f"date = 2025-{month:02d}-22\n"
+                    "draft = false\n"
+                    f'interactionId = "month-{month:02d}"\n'
+                    "+++\n\nBody.\n",
+                    encoding="utf-8",
+                )
+
+            public = temporary_root / "root"
+            build_site(
+                public,
+                "https://example.test/",
+                "--contentDir",
+                str(content),
+            )
+            listing = read_html(public, "blog/index.html")
+            for stamp, rendered in expected.items():
+                with self.subTest(date=stamp):
+                    self.assertIn(
+                        f'<time datetime="{stamp}">{rendered}</time>', listing
+                    )
+            # Article pages keep the full publication date.
+            self.assertIn(
+                '<time datetime="2025-11-22">November 22, 2025</time>',
+                read_html(public, "p/month-11/index.html"),
             )
 
     def test_populated_multilingual_post_and_tag_pages(self):

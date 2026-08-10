@@ -2,4 +2,4 @@
 title = "Where Was I"
 +++
 
-Wenxuan Zhao.
+I am a ill-defined multi-modal functionoid 
