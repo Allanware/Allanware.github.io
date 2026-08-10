@@ -1,5 +1,6 @@
 {{- /* Derived from rokcso/hugo-bearneo@f5c57c5ea39a091f0167af6312f4d4e385df2e6c: layouts/_default/list.html */ -}}
 {{ $page := .Page }}
+{{ $dateFormat := default $page.Site.Params.dateFormat $page.Site.Params.listDateFormat }}
 {{ $showCount := $page.Site.Params.showPostCount }}
 {{ if isset . "ShowCount" }}
   {{ $showCount = .ShowCount }}
@@ -35,7 +36,7 @@
       {{ range .Pages }}
         <li data-post-item data-post-year="{{ .Date.Year }}" data-post-title="{{ .Title }}">
           <span class="{{ if $page.Site.Params.groupByYear }}grouped{{ else }}ungrouped{{ end }}">
-            <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date | time.Format $page.Site.Params.dateFormat }}</time>
+            <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date | time.Format $dateFormat }}</time>
           </span>
           <a href="{{ .RelPermalink }}">{{ .Title }}</a>
         </li>

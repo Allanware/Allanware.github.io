@@ -3267,6 +3267,73 @@ projectStatus = "past"
                         self.assertIn('aria-live="polite"', group)
                         self.assertIn('aria-atomic="true"', group)
 
+    def test_grouped_lists_use_localized_dates_without_repeating_year(self):
+        with TemporaryDirectory() as temporary:
+            for name, base_url in (
+                ("root", "https://example.test/"),
+                ("project", "https://example.test/example-blog/"),
+            ):
+                public = Path(temporary) / name
+                build_site(
+                    public,
+                    base_url,
+                    "--config",
+                    "hugo.toml,tests/fixtures/interactions.toml",
+                    "--contentDir",
+                    "tests/fixtures/content",
+                )
+                english_blog = read_html(public, "blog/index.html")
+                chinese_blog = read_html(public, "zh/blog/index.html")
+                english_tag = read_html(public, "tags/fixture/index.html")
+                chinese_tag = read_html(public, "zh/tags/测试/index.html")
+                english_article = read_html(
+                    public, "p/shared-article/index.html"
+                )
+                chinese_article = read_html(
+                    public, "zh/p/shared-article/index.html"
+                )
+
+                for html in (english_blog, english_tag):
+                    self.assertIn(
+                        '<time datetime="2026-08-08">August 8</time>', html
+                    )
+                    self.assertNotIn(
+                        '<time datetime="2026-08-08">August 8, 2026</time>',
+                        html,
+                    )
+                    self.assertIn(
+                        '<li class="post-year" data-post-year="2026">', html
+                    )
+                self.assertIn(
+                    '<time datetime="2026-08-09">August 9</time>',
+                    english_tag,
+                )
+
+                for html in (chinese_blog, chinese_tag):
+                    self.assertIn(
+                        '<time datetime="2026-08-08">8月8日</time>', html
+                    )
+                    self.assertNotIn(
+                        '<time datetime="2026-08-08">2026年8月8日</time>',
+                        html,
+                    )
+                    self.assertIn(
+                        '<li class="post-year" data-post-year="2026">', html
+                    )
+                self.assertIn(
+                    '<time datetime="2026-08-09">8月9日</time>',
+                    chinese_tag,
+                )
+
+                self.assertIn(
+                    '<time datetime="2026-08-08">Published August 8, 2026</time>',
+                    english_article,
+                )
+                self.assertIn(
+                    '<time datetime="2026-08-08">发布于2026年8月8日</time>',
+                    chinese_article,
+                )
+
     def test_populated_multilingual_post_and_tag_pages(self):
         with TemporaryDirectory() as temporary:
             temporary_root = Path(temporary)

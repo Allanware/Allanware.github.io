@@ -65,6 +65,7 @@ capitalizeListTitles = false
     description = "Posts by Wenxuan Zhao"
     giscusLanguage = "en"
     dateFormat = ":date_long"
+    listDateFormat = "January 2"
 
   [[languages.en.menus.main]]
     identifier = "home"
@@ -96,6 +97,7 @@ capitalizeListTitles = false
     description = "赵文轩的文章"
     giscusLanguage = "zh-CN"
     dateFormat = ":date_long"
+    listDateFormat = "1月2日"
 
   [[languages.zh.menus.main]]
     identifier = "home"
