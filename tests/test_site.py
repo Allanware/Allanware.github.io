@@ -2825,6 +2825,25 @@ interactionId = "resource-suffixes"
                 r"\.language-switcher\s*\{[^}]*margin-left:\s*0\.5rem;"
                 r"[^}]*padding-left:\s*0\.5rem;[^}]*\}",
             )
+            self.assertRegex(
+                site_css,
+                r"\.footer-links\s*\{[^}]*align-items:\s*center;"
+                r"[^}]*display:\s*flex;"
+                r"[^}]*flex-wrap:\s*wrap;"
+                r"[^}]*justify-content:\s*center;[^}]*\}",
+            )
+            self.assertRegex(
+                site_css,
+                r"\.footer-icon\s*\{[^}]*border:\s*0;"
+                r"[^}]*height:\s*16px;"
+                r"[^}]*margin:\s*0;"
+                r"[^}]*width:\s*16px;[^}]*\}",
+            )
+            self.assertRegex(
+                site_css,
+                r"@media\s*\(prefers-color-scheme:\s*dark\)\s*\{\s*"
+                r"\.footer-icon-github\s*\{[^}]*filter:\s*invert\(1\);[^}]*\}",
+            )
             for (
                 language,
                 html,

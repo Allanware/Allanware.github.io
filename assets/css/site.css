@@ -169,3 +169,31 @@ button.upvoted svg {
 .home-empty {
   color: var(--text-color-tertiary);
 }
+
+.footer-links {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.footer-link {
+  display: inline-flex;
+  line-height: 1;
+}
+
+.footer-icon {
+  border: 0;
+  border-radius: 0;
+  display: block;
+  height: 16px;
+  margin: 0;
+  width: 16px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .footer-icon-github {
+    filter: invert(1);
+  }
+}
