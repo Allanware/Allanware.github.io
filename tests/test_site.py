@@ -17,6 +17,19 @@ from scripts.check_site import check_site
 
 
 ROOT = Path(__file__).resolve().parents[1]
+with (ROOT / "hugo.toml").open("rb") as _f:
+    _config = tomllib.load(_f)
+    SITE_TITLE_EN = _config["languages"]["en"]["title"]
+    SITE_TITLE_ZH = _config["languages"]["zh"]["title"]
+    CONTACT_EMAIL = _config["params"]["contactEmail"]
+    GITHUB_URL = _config["params"]["githubURL"]
+    SCHOLAR_URL = _config["params"]["scholarURL"]
+    GISCUS_REPO = _config["params"]["giscus"]["repo"]
+    GISCUS_REPO_ID = _config["params"]["giscus"]["repoId"]
+    GISCUS_CATEGORY = _config["params"]["giscus"]["category"]
+    GISCUS_CATEGORY_ID = _config["params"]["giscus"]["categoryId"]
+    KUDOS_ENDPOINT = _config["params"]["kudos"]["endpoint"]
+
 ISTANBUL_IMAGE_ALTS = (
     ("unnamed-chunk-3-1.png", "Starting-eleven market values for AC Milan and Liverpool"),
     ("unnamed-chunk-3-2.png", "Ten highest-valued players across both starting elevens"),
@@ -428,8 +441,8 @@ class GeneratedSiteTests(unittest.TestCase):
                         (f"{base_path}zh/tags/", "标签"),
                     ]
                     for html, page_title, site_title in (
-                        (english_blog, "Blog", "Where Was I"),
-                        (chinese_blog, "博客", "说哪儿了"),
+                        (english_blog, "Blog", SITE_TITLE_EN),
+                        (chinese_blog, "博客", SITE_TITLE_ZH),
                     ):
                         self.assertIn(
                             f"<title>{page_title} | {site_title}</title>", html
@@ -846,10 +859,10 @@ class GeneratedSiteTests(unittest.TestCase):
             self.assertEqual(1, production_post.count("https://giscus.app/client.js"))
             self.assertNotIn("http://giscus.app/client.js", production_post)
             for attribute in (
-                'data-repo="Allanware/Allanware.github.io"',
-                'data-repo-id="R_kgDOTzd2Dw"',
-                'data-category="Announcements"',
-                'data-category-id="DIC_kwDOTzd2D84DDBer"',
+                f'data-repo="{GISCUS_REPO}"',
+                f'data-repo-id="{GISCUS_REPO_ID}"',
+                f'data-category="{GISCUS_CATEGORY}"',
+                f'data-category-id="{GISCUS_CATEGORY_ID}"',
                 'data-mapping="specific"',
                 'data-term="post:beyond-the-cloud"',
                 'data-strict="1"',
@@ -991,7 +1004,7 @@ class GeneratedSiteTests(unittest.TestCase):
                 "post:beyond-the-cloud",
                 "/",
             )
-            production_endpoint = "https://allanware-kudos.xiaodoubizwx.workers.dev"
+            production_endpoint = KUDOS_ENDPOINT
             self.assertEqual(
                 1,
                 production_post.count(
@@ -999,7 +1012,7 @@ class GeneratedSiteTests(unittest.TestCase):
                 ),
             )
             self.assertNotIn(
-                "http://allanware-kudos.xiaodoubizwx.workers.dev",
+                KUDOS_ENDPOINT.replace("https://", "http://"),
                 production_post,
             )
 
@@ -1550,10 +1563,10 @@ interactionId = "visible-with-hidden"
             )
             self.assertEqual([], chinese.findall("item"))
             self.assertIn(
-                "Recent posts from Where Was I",
+                f"Recent posts from {SITE_TITLE_EN}",
                 english.findtext("description"),
             )
-            self.assertIn("说哪儿了的最新文章", chinese.findtext("description"))
+            self.assertIn(f"{SITE_TITLE_ZH}的最新文章", chinese.findtext("description"))
             self.assertIn("05 Nov 2023", english.findtext("lastBuildDate"))
             zh_home = read_html(public, "zh/index.html")
             self.assertIn('href="https://example.test/zh/index.xml"', zh_home)
@@ -2130,8 +2143,6 @@ interactionId = "resource-suffixes"
         configuration = tomllib.loads(
             (ROOT / "hugo.toml").read_text(encoding="utf-8")
         )
-        self.assertEqual("Where Was I", configuration["languages"]["en"]["title"])
-        self.assertEqual("说哪儿了", configuration["languages"]["zh"]["title"])
 
         expected_favicon_keys = {
             ("icon", "32x32"),
@@ -2152,10 +2163,10 @@ interactionId = "resource-suffixes"
                 english = read_html(public, "index.html")
                 chinese = read_html(public, "zh/index.html")
 
-                self.assertIn("<title>Where Was I</title>", english)
-                self.assertIn("<h1>Where Was I</h1>", english)
-                self.assertIn("<title>说哪儿了</title>", chinese)
-                self.assertIn("<h1>说哪儿了</h1>", chinese)
+                self.assertIn(f"<title>{SITE_TITLE_EN}</title>", english)
+                self.assertIn(f"<h1>{SITE_TITLE_EN}</h1>", english)
+                self.assertIn(f"<title>{SITE_TITLE_ZH}</title>", chinese)
+                self.assertIn(f"<h1>{SITE_TITLE_ZH}</h1>", chinese)
 
                 favicon_links: dict[str, dict[tuple[str, str], str]] = {}
                 for language, html in (("en", english), ("zh", chinese)):
@@ -2312,11 +2323,11 @@ interactionId = "resource-suffixes"
             content = temporary_root / "content"
             content.mkdir()
             (content / "_index.en.md").write_text(
-                '+++\ntitle = "Where Was I"\n+++\n\nFixture home.\n',
+                '+++\ntitle = "{SITE_TITLE_EN}"\n+++\n\nFixture home.\n',
                 encoding="utf-8",
             )
             (content / "_index.zh.md").write_text(
-                '+++\ntitle = "说哪儿了"\n+++\n\n测试首页。\n',
+                '+++\ntitle = "{SITE_TITLE_ZH}"\n+++\n\n测试首页。\n',
                 encoding="utf-8",
             )
             for ordinal in range(1, 5):
@@ -2532,11 +2543,11 @@ interactionId = "resource-suffixes"
             content = temporary_root / "content"
             content.mkdir()
             (content / "_index.en.md").write_text(
-                '+++\ntitle = "Where Was I"\n+++\n\nFixture home.\n',
+                '+++\ntitle = "{SITE_TITLE_EN}"\n+++\n\nFixture home.\n',
                 encoding="utf-8",
             )
             (content / "_index.zh.md").write_text(
-                '+++\ntitle = "说哪儿了"\n+++\n\n测试首页。\n',
+                '+++\ntitle = "{SITE_TITLE_ZH}"\n+++\n\n测试首页。\n',
                 encoding="utf-8",
             )
             pages = (
@@ -2677,11 +2688,11 @@ interactionId = "resource-suffixes"
             content = temporary_root / "content"
             content.mkdir()
             (content / "_index.en.md").write_text(
-                '+++\ntitle = "Where Was I"\n+++\n\nFixture home.\n',
+                '+++\ntitle = "{SITE_TITLE_EN}"\n+++\n\nFixture home.\n',
                 encoding="utf-8",
             )
             (content / "_index.zh.md").write_text(
-                '+++\ntitle = "说哪儿了"\n+++\n\n测试首页。\n',
+                '+++\ntitle = "{SITE_TITLE_ZH}"\n+++\n\n测试首页。\n',
                 encoding="utf-8",
             )
             bundle = content / "blog" / "only-post"
@@ -2898,9 +2909,9 @@ interactionId = "resource-suffixes"
                     self.assertEqual(4, markup.count("<a "))
                     self.assertEqual(
                         [
-                            "mailto:xiaodoubizwx@gmail.com",
-                            "https://github.com/Allanware",
-                            "https://scholar.google.com/citations?user=cd-oBQUAAAAJ",
+                            f"mailto:{CONTACT_EMAIL}",
+                            GITHUB_URL,
+                            SCHOLAR_URL,
                             rss_path,
                         ],
                         re.findall(r'<a\b[^>]*\bhref="([^"]+)"', markup),
@@ -2913,7 +2924,7 @@ interactionId = "resource-suffixes"
                     )
                     self.assertIn(subscribe_text, markup)
                     self.assertNotRegex(
-                        markup, r">[^<]*xiaodoubizwx@gmail\.com[^<]*<"
+                        markup, rf">[^<]*{CONTACT_EMAIL.replace(".", r"\.")}[^<]*<"
                     )
                     for text in removed_text:
                         self.assertNotIn(text, markup)
@@ -3582,11 +3593,11 @@ projectStatus = "past"
             content = temporary_root / "content"
             content.mkdir()
             (content / "_index.en.md").write_text(
-                '+++\ntitle = "Where Was I"\n+++\n\nFixture home.\n',
+                '+++\ntitle = "{SITE_TITLE_EN}"\n+++\n\nFixture home.\n',
                 encoding="utf-8",
             )
             (content / "_index.zh.md").write_text(
-                '+++\ntitle = "说哪儿了"\n+++\n\n测试首页。\n',
+                '+++\ntitle = "{SITE_TITLE_ZH}"\n+++\n\n测试首页。\n',
                 encoding="utf-8",
             )
             for month in range(1, 13):

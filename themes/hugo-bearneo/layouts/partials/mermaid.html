@@ -1,6 +1,6 @@
 {{/* Load Mermaid only for pages that opt in through front matter. */}}
-<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
-<script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
   mermaid.initialize({
     startOnLoad: true,
     theme: 'default',
