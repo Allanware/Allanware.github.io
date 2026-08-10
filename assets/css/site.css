@@ -142,6 +142,14 @@ button.upvoted svg {
   width: 1px;
 }
 
+ul.blog-posts li.post-year {
+  display: block;
+}
+
+ul.blog-posts li.post-year h3 {
+  margin: 16px 0;
+}
+
 @media (max-width: 800px) {
   [data-post-search] {
     font-size: 16px;

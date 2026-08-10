@@ -35,7 +35,7 @@
   <p class="visually-hidden" data-search-status role="status" aria-live="polite" aria-atomic="true"></p>
   <ul class="blog-posts">
     {{ range $pages.GroupByDate "2006" }}
-      {{ if $page.Site.Params.groupByYear }}<li class="post-year" data-post-year="{{ .Key }}"><strong>{{ .Key }}</strong></li>{{ end }}
+      {{ if $page.Site.Params.groupByYear }}<li class="post-year" data-post-year="{{ .Key }}"><h3>{{ .Key }}</h3></li>{{ end }}
       {{ range .Pages }}
         <li data-post-item data-post-year="{{ .Date.Year }}" data-post-title="{{ .Title }}">
           <span class="{{ if $page.Site.Params.groupByYear }}grouped{{ else }}ungrouped{{ end }}">

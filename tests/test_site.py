@@ -3333,6 +3333,60 @@ projectStatus = "past"
                         self.assertIn('aria-live="polite"', group)
                         self.assertIn('aria-atomic="true"', group)
 
+    def test_year_group_headings_align_with_grouped_date_columns(self):
+        site_css = (ROOT / "assets/css/site.css").read_text(encoding="utf-8")
+        theme_css = (
+            ROOT / "themes/hugo-bearneo/layouts/partials/style.html"
+        ).read_text(encoding="utf-8")
+
+        self.assertRegex(
+            site_css,
+            r"ul\.blog-posts li\.post-year\s*\{[^}]*display:\s*block;",
+        )
+        self.assertRegex(
+            site_css,
+            r"ul\.blog-posts li\.post-year h3\s*\{[^}]*margin:\s*16px 0;",
+        )
+        self.assertRegex(
+            theme_css,
+            r"ul\.blog-posts li span\.grouped\s*\{[^}]*flex:\s*0 0 80px;",
+        )
+
+        with TemporaryDirectory() as temporary:
+            public = Path(temporary) / "public"
+            build_site(
+                public,
+                "https://example.test/",
+                "--config",
+                "hugo.toml,tests/fixtures/interactions.toml",
+                "--contentDir",
+                "tests/fixtures/content",
+            )
+            year_heading = (
+                '<li class="post-year" data-post-year="2026"><h3>2026</h3></li>'
+            )
+
+            for archive in ("blog/index.html", "zh/blog/index.html"):
+                html = read_html(public, archive)
+                with self.subTest(page=archive):
+                    self.assertIn(year_heading, html)
+                    self.assertNotIn("<strong>2026</strong>", html)
+
+            for page in ("tags/fixture/index.html", "zh/tags/测试/index.html"):
+                html = read_html(public, page)
+                for group_name in ("projects", "posts"):
+                    with self.subTest(page=page, group=group_name):
+                        match = re.search(
+                            rf'<section data-tag-group="{group_name}">'
+                            r"(.*?)</section>",
+                            html,
+                            re.DOTALL,
+                        )
+                        self.assertIsNotNone(match)
+                        group = match.group(1)
+                        self.assertIn(year_heading, group)
+                        self.assertNotIn("<strong>2026</strong>", group)
+
     def test_grouped_lists_use_localized_dates_without_repeating_year(self):
         with TemporaryDirectory() as temporary:
             for name, base_url in (
