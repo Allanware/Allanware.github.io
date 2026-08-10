@@ -1,5 +1,5 @@
 +++
-title = "Where Was I"
+title = "┐(￣▽￣)ゞ Where Was I"
 +++
 
-I am a ill-defined multi-modal functionoid 
+I am an ill-defined multi-modal functionoid.  
