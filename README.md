@@ -1,9 +1,9 @@
-# Wenxuan Zhao / 赵文轩
+# Where Was I / 说哪儿了
 
 This is a multilingual Hugo blog built on a vendored copy of
 [Hugo Bear Neo](https://github.com/rokcso/hugo-bearneo). English is the default
-language and Simplified Chinese is available under `/zh/`. A post may be
-English-only, Chinese-only, or paired in both languages.
+language and Simplified Chinese is available under `/zh/`. A post or project
+may be English-only, Chinese-only, or paired in both languages.
 
 The primary navigation intentionally has exactly Home, Posts, and Tags as its
 three destinations. English and Chinese have separate post lists and tag
@@ -18,7 +18,7 @@ theme switch, analytics, or advertising.
 - Hugo Extended 0.164.0, or a compatible newer release
 - Python 3.11 or newer
 - Node.js 22 or newer
-- [actionlint](https://github.com/rhysd/actionlint) for checking the Pages workflow
+- [actionlint](https://github.com/rhysd/actionlint) for checking the CI workflow
 
 The test suite uses only the Python and Node.js standard libraries.
 
@@ -37,9 +37,12 @@ hugo server -D
 ```
 
 Open the URL printed by Hugo, normally `http://localhost:1313/`. Hugo watches
-content and templates for changes. Giscus and Kudos are disabled until their
-external settings are complete, so neither service is required for local
-reading, navigation, feeds, or authoring.
+content and templates for changes. Comments and upvotes are enabled: Giscus
+contacts `giscus.app`, and Kudos contacts the configured Worker during this
+preview. The core site stays usable if either service is unavailable. The
+homepage's live ranking also requires the Kudos Worker to allow the exact
+`http://localhost:1313` origin. For an external-request-free preview, use an
+uncommitted local configuration override that disables both integrations.
 
 Run the local verification suite:
 
@@ -114,11 +117,11 @@ a Chinese-only post, scaffold only its Chinese file:
 hugo new content --kind blog content/blog/chinese-only/index.zh.md
 ```
 
-Every published post needs a 1–80 character lowercase ASCII `interactionId`
-made from letters, numbers, and internal hyphens. It is unique to one article,
-identical across that article's language files, and immutable after
-publication. That shared value joins both the Giscus discussion and the Kudos
-count across translations. Validate it after every content change:
+Every published post or project needs an immutable, shared 1–80 character
+lowercase ASCII `interactionId` made from letters, numbers, and internal
+hyphens. It must be unique across `content/blog/` and `content/projects/`, and
+identical in every translation of the same entry. Giscus and Kudos both use
+that shared value across translations. Validate it after every content change:
 
 ```sh
 python3 scripts/validate_interaction_ids.py content
@@ -139,76 +142,72 @@ The site publishes one feed per language:
 Each feed includes only posts available in that language. They are deliberately
 not combined, so subscribing to one does not mix languages.
 
-## GitHub Pages
+## Content model
 
-This repository is ready for GitHub Pages but does not configure or push to a
-remote repository on its own. After pushing it to a public GitHub repository:
+The English site is named **Where Was I** and the Simplified Chinese site is
+named **说哪儿了**. Blog leaf bundles live under `content/blog/<slug>/`, while
+project leaf bundles live under `content/projects/<slug>/`; each language file
+is named `index.en.md` or `index.zh.md`. A project with
+`projectStatus = "past"` appears in the homepage Projects/Past section only for
+the languages whose files actually exist in its bundle.
 
-1. Open **Settings → Pages** in that repository.
-2. Under **Build and deployment**, select **GitHub Actions** as the source.
-3. Push the default branch or run the workflow manually.
+Create a project translation with the same copy-first helper used for posts:
 
-The workflow uses GitHub's configured Pages base URL with a trailing slash, so
-both user sites and repository project sites retain the correct internal path.
-It tests all branches but deploys only the actual default branch or a manual
-run. The Bear Neo source is vendored, so checkout does not use submodules. The
-uploaded artifact includes the hidden `.nojekyll` marker.
+```sh
+python3 scripts/new_translation.py <slug> en zh --section projects
+```
 
-## Giscus comments
+Translate the copied title and body, but keep its `interactionId` unchanged.
+Never create a placeholder language file merely to make a project appear in
+another language.
 
-[Giscus](https://giscus.app) is a free, ad-free comment interface backed by
-public GitHub Discussions. It remains hidden until every value under
-`[params.giscus]` in `hugo.toml` is set and `enabled = true`.
+## Popular posts
 
-Before enabling it, the eventual public repository needs Discussions enabled,
-the Giscus GitHub App installed, and a Discussion category selected. Copy the
-repository, repository ID, category, and category ID generated by giscus.app
-into `hugo.toml`. The template uses strict `specific` mapping with
-`post:<interactionId>`, so paired translations share one bilingual Discussion
-thread.
+The homepage ranks only published, visible blog posts in the active language.
+When at least two candidates exist, it sends one count-only
+`GET /<encoded-entity>` request per candidate to the Kudos Worker, waits for all
+responses, and lists at most five titles in descending Kudos order. This
+ranking never requests voter state and never displays vote counts.
 
-Reading comments contacts the third-party `giscus.app`. Writing a comment and
-authentication require a GitHub account. Giscus can be slow or unreachable in
-mainland China; an outage, blocked request, or authentication failure affects
-only the comment region and never the article or navigation.
+Cloudflare receives ordinary request metadata, including the visitor's public
+IP, for these requests. A timeout, network failure, or invalid response affects
+only the Popular posts region; the rest of the homepage remains usable. The
+production Worker CORS configuration should allow the exact origin
+`https://allanware.github.io`. Local ranking at the normal Hugo URL requires
+the exact origin `http://localhost:1313` to be allowed as well.
 
-## Registration-free Kudos
+## Comments
 
-Kudos is the optional, registration-free upvote backend. This integration was
-reviewed at upstream
-[Kudos v0.2.0](https://github.com/puinoib/kudos/releases/tag/v0.2.0), specifically
-[commit b449185be66d239555bf1242fec1169a0a09517f](https://github.com/puinoib/kudos/commit/b449185be66d239555bf1242fec1169a0a09517f).
-GitHub Pages cannot host its mutable API, so activation requires a separate
-Cloudflare Worker and D1 database. Follow the inspected commit's
-[pinned deployment guide](https://github.com/puinoib/kudos/blob/b449185be66d239555bf1242fec1169a0a09517f/docs/deployment.md):
+[Giscus](https://giscus.app) backs comments with public GitHub Discussions.
+Its settings live under `[params.giscus]` in `hugo.toml`, and the comment
+section disappears if `enabled = false` or any value is blank. Mapping is
+strict `specific` on `post:<interactionId>`, so paired translations share one
+bilingual thread.
 
-1. Fork that inspected Kudos release and install the guide's dependencies.
-2. Create a Cloudflare D1 database.
-3. Supply `D1_DATABASE_ID` as the build/deploy environment variable used to
-   generate the Worker's D1 binding; it is not a Worker runtime secret.
-4. Deploy the fork with the guide's `pnpm run deploy` command.
-5. Optionally set `ALLOWED_ORIGINS` as a Worker runtime variable containing the
-   final Pages or custom-domain origin and any loopback preview origin used for
-   testing. When it is unset, the upstream default is open CORS.
-6. Put the resulting Worker origin in `[params.kudos].endpoint` in `hugo.toml`
-   and set `enabled = true`.
+Reading comments contacts `giscus.app`; posting one requires a GitHub account.
+Giscus can be slow or unreachable in mainland China, and any failure there
+affects only the comment region, never the article or navigation.
 
-`ALLOWED_ORIGINS` is browser CORS policy, not authentication or authorization.
-Use a credential-free HTTPS root origin in production, with no path beyond an
-optional trailing slash and no query or fragment. Plain HTTP is accepted only
-for `localhost` or `127.0.0.1` local testing.
+## Upvotes
 
-When Kudos is enabled, loading a post sends count and voter-state requests to
-the Worker. Cloudflare therefore receives ordinary request metadata, including
-the visitor's public IP. The reviewed Worker stores a SHA-256-derived voting
-identity rather than the raw IP. People sharing one public IP may consequently
-share voting state. Both languages use the same `post:<interactionId>` entity
-and count. A Worker failure disables only the upvote control.
+Kudos provides registration-free upvotes from a Cloudflare Worker backed by a
+D1 database, since static hosting cannot serve its mutable API. The Worker
+origin is set in `[params.kudos].endpoint` in `hugo.toml`. The integration was
+reviewed at [Kudos v0.2.0](https://github.com/puinoib/kudos/releases/tag/v0.2.0),
+[commit b449185](https://github.com/puinoib/kudos/commit/b449185be66d239555bf1242fec1169a0a09517f);
+redeploying follows that commit's
+[pinned guide](https://github.com/puinoib/kudos/blob/b449185be66d239555bf1242fec1169a0a09517f/docs/deployment.md)
+— create the D1 database, pass `D1_DATABASE_ID` as a build-time variable rather
+than a runtime secret, then run `pnpm run deploy`. The Worker's optional
+`ALLOWED_ORIGINS` variable is browser CORS policy, not authentication; when it
+is unset, the upstream default is open CORS.
 
-No analytics or advertising scripts are included. Giscus and Kudos are the
-only optional third-party requests.
+Loading a post sends count and voter-state requests, so Cloudflare receives
+ordinary request metadata including the visitor's public IP. The Worker stores a
+SHA-256-derived voting identity rather than the raw IP, so visitors sharing one
+public IP may share voting state. Both languages share a single
+`post:<interactionId>` count, and a Worker outage disables only the upvote
+control.
 
-## Source migration archive
-
-The three root Markdown files and `writings-images/` remain untouched migration
-inputs. Hugo publishes only resources copied into `content/blog/` leaf bundles.
+No analytics or advertising scripts are included. Giscus and Kudos are the only
+third-party requests.

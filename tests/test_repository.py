@@ -190,6 +190,35 @@ class RepositoryTests(unittest.TestCase):
         self.assertIn("GitHub account", readme)
         self.assertIn("mainland China", readme)
         self.assertIn("No analytics or advertising", readme)
+        self.assertIn("Where Was I", readme)
+        self.assertIn("content/projects/", readme)
+        self.assertIn("--section projects", readme)
+        self.assertIn("Popular posts", readme)
+        self.assertIn("count-only", readme)
+        popular_match = re.search(
+            r"(?ms)^## Popular posts\s*$\n(?P<body>.*?)(?=^## |\Z)",
+            readme,
+        )
+        self.assertIsNotNone(popular_match)
+        self.assertRegex(
+            popular_match.group("body"),
+            r"(?s)production Worker CORS.*?allow the exact origin\s+"
+            r"`https://allanware\.github\.io`\."
+            r".*?Local ranking.*?exact origin\s+"
+            r"`http://localhost:1313`",
+        )
+        self.assertIn("for checking the CI workflow", readme)
+        self.assertIn("Comments and upvotes are enabled", readme)
+        self.assertIn("## Comments", readme)
+        self.assertIn("## Upvotes", readme)
+        self.assertNotIn("## Deployment", readme)
+        self.assertNotIn("## Source migration archive", readme)
+        self.assertNotIn("Before enabling it", readme)
+        self.assertNotIn("This repository is ready for GitHub Pages", readme)
+        self.assertNotIn(
+            "Hugo publishes only resources copied into `content/blog/` leaf bundles.",
+            readme,
+        )
         self.assertIn("D1_DATABASE_ID", readme)
         self.assertIn("ALLOWED_ORIGINS", readme)
         self.assertIn("browser CORS policy, not authentication", readme)
