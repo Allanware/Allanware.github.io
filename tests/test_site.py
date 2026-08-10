@@ -441,9 +441,11 @@ class GeneratedSiteTests(unittest.TestCase):
                             ("name", "twitter:title"),
                             ("itemprop", "name"),
                         ):
+                            value = re.escape(page_title)
                             self.assertRegex(
                                 html,
-                                rf'<meta {attribute}="?{selector}"? content="?{re.escape(page_title)}"?',
+                                rf'<meta {attribute}=(?:{selector}|"{selector}") '
+                                rf'content=(?:{value}|"{value}")(?=\s|/?>)',
                             )
                     beyond = read_html(public, "p/beyond-the-cloud/index.html")
                     self.assertEqual(expected_navigation, primary_navigation(beyond))
@@ -3451,6 +3453,7 @@ projectStatus = "past"
                     )
                     self.assertIn(
                         '<li class="post-year" data-post-year="2026"><h3>2026</h3></li>',
+                        html,
                     )
                 self.assertIn(
                     '<time datetime="2026-08-09">August 9</time>',
@@ -3467,6 +3470,7 @@ projectStatus = "past"
                     )
                     self.assertIn(
                         '<li class="post-year" data-post-year="2026"><h3>2026</h3></li>',
+                        html,
                     )
                 self.assertIn(
                     '<time datetime="2026-08-09">8月9日</time>',
@@ -3602,7 +3606,7 @@ Hidden content.
                 for node in sitemap.findall("{*}url")
             }
 
-            with self.subTest("English list has search, module, and visible count"):
+            with self.subTest("English list has search and module without visible count"):
                 self.assertIn("data-post-search", english_blog)
                 self.assertRegex(
                     english_blog,
@@ -3628,7 +3632,7 @@ Hidden content.
                     english_blog.index("Older visible post"),
                 )
 
-            with self.subTest("Chinese list uses invariant singular count"):
+            with self.subTest("Chinese list omits visible count but retains count templates"):
                 self.assertEqual(1, chinese_blog.count("data-post-item"))
                 self.assertNotIn("data-post-count", chinese_blog)
                 self.assertIn('data-count-one="{count} 篇文章"', chinese_blog)
