@@ -12,3 +12,4 @@
 {{- $isExternal := or (hasPrefix $href "http://") (hasPrefix $href "https://") -}}
 {{- $isInternal := and $isExternal (hasPrefix $href .Page.Site.BaseURL) -}}
 <a href="{{ $href }}"{{ if and $isExternal (not $isInternal) }}{{ if $newTabEnabled }} target="_blank"{{ end }} rel="noopener noreferrer"{{ end }}{{ with .Title }} title="{{ . }}"{{ end }}>{{ .Text | safeHTML }}</a>
+{{- /* Strip the trailing newline emitted by Hugo. */ -}}

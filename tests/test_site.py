@@ -2124,17 +2124,15 @@ interactionId = "resource-suffixes"
 
                 self.assertIn("<title>Where Was I</title>", english)
                 self.assertIn("<h1>Where Was I</h1>", english)
-                # Render hooks may terminate their fragment with whitespace, so
-                # keep the intro assertion semantic at that single boundary.
-                self.assertRegex(
+                self.assertIn(
+                    '<p>Wenxuan Zhao. <a href="mailto:xiaodoubizwx@gmail.com">Contact me</a>.</p>',
                     english,
-                    r'<p>Wenxuan Zhao\. <a href="mailto:xiaodoubizwx@gmail\.com">Contact me</a>\s*\.</p>',
                 )
                 self.assertIn("<title>说哪儿了</title>", chinese)
                 self.assertIn("<h1>说哪儿了</h1>", chinese)
-                self.assertRegex(
+                self.assertIn(
+                    '<p>赵文轩。<a href="mailto:xiaodoubizwx@gmail.com">联系我</a>。</p>',
                     chinese,
-                    r'<p>赵文轩。<a href="mailto:xiaodoubizwx@gmail\.com">联系我</a>\s*。</p>',
                 )
 
                 favicon_links: dict[str, dict[tuple[str, str], str]] = {}
