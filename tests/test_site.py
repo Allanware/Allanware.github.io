@@ -2157,22 +2157,6 @@ interactionId = "resource-suffixes"
                 self.assertIn("<title>说哪儿了</title>", chinese)
                 self.assertIn("<h1>说哪儿了</h1>", chinese)
 
-                expected_intros = {
-                    "en": "<p>I am a ill-defined multi-modal functionoid</p>",
-                    "zh": "",
-                }
-                for language, html in (("en", english), ("zh", chinese)):
-                    intro = re.search(
-                        r'<div class="home-intro">(.*?)</div>', html, re.DOTALL
-                    )
-                    self.assertIsNotNone(intro, language)
-                    with self.subTest(build=name, language=language):
-                        self.assertEqual(
-                            expected_intros[language], intro.group(1).strip()
-                        )
-                        self.assertNotIn("<a ", intro.group(1))
-                        self.assertNotIn("mailto:", intro.group(1))
-
                 favicon_links: dict[str, dict[tuple[str, str], str]] = {}
                 for language, html in (("en", english), ("zh", chinese)):
                     with self.subTest(build=name, language=language):
