@@ -2947,6 +2947,17 @@ interactionId = "resource-suffixes"
             r"button\.upvoted\s+svg\s*\{[^}]*fill:\s*currentColor;[^}]*\}",
         )
 
+    def test_popular_posts_keep_order_but_render_bullets(self):
+        partial = (ROOT / "layouts/_partials/popular-posts.html").read_text(
+            encoding="utf-8"
+        )
+        css = (ROOT / "assets/css/site.css").read_text(encoding="utf-8")
+        self.assertIn('<ol class="home-title-list" data-popular-list', partial)
+        self.assertRegex(
+            css,
+            r"ol\.home-title-list\s*\{[^}]*list-style-type:\s*disc;[^}]*\}",
+        )
+
     def test_initial_chinese_lists_are_valid_and_empty(self):
         with TemporaryDirectory() as temporary:
             public = Path(temporary) / "public"
@@ -3381,13 +3392,15 @@ projectStatus = "past"
                 )
 
                 self.assertIn(
-                    '<time datetime="2026-08-08">Published August 8, 2026</time>',
+                    '<time datetime="2026-08-08">August 8, 2026</time>',
                     english_article,
                 )
+                self.assertNotIn("Published August 8, 2026", english_article)
                 self.assertIn(
-                    '<time datetime="2026-08-08">发布于2026年8月8日</time>',
+                    '<time datetime="2026-08-08">2026年8月8日</time>',
                     chinese_article,
                 )
+                self.assertNotIn("发布于", chinese_article)
 
             ungrouped_config = Path(temporary) / "ungrouped.toml"
             ungrouped_config.write_text(

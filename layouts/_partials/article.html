@@ -3,7 +3,7 @@
   <header>
     <h2>{{ .Title }}</h2>
     {{ if not .Date.IsZero }}
-      <p><time datetime="{{ .Date.Format "2006-01-02" }}">{{ T "publishedOn" (.Date | time.Format .Site.Params.dateFormat) }}</time></p>
+      <p><time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date | time.Format .Site.Params.dateFormat }}</time></p>
     {{ end }}
   </header>
   <content>{{ .Content }}</content>

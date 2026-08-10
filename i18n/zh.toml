@@ -14,8 +14,6 @@ other = "目录"
 other = "放大图片：{{ . }}"
 [notFound]
 other = "页面未找到"
-[publishedOn]
-other = "发布于{{ . }}"
 [searchPosts]
 other = "搜索文章"
 [searchProjects]

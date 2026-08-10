@@ -166,6 +166,10 @@ button.upvoted svg {
   margin-block-start: 0.4rem;
 }
 
+ol.home-title-list {
+  list-style-type: disc;
+}
+
 .home-empty {
   color: var(--text-color-tertiary);
 }

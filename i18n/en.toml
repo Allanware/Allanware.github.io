@@ -14,8 +14,6 @@ other = "Table of contents"
 other = "Enlarge image: {{ . }}"
 [notFound]
 other = "Page not found"
-[publishedOn]
-other = "Published {{ . }}"
 [searchPosts]
 other = "Search posts"
 [searchProjects]
