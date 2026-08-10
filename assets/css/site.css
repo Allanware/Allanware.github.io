@@ -148,6 +148,8 @@ ul.blog-posts li.post-year {
 
 ul.blog-posts li.post-year h3 {
   margin: 16px 0;
+  /* Match the visible ink edge of bold years to the monospace date text. */
+  text-indent: -0.08em;
 }
 
 @media (max-width: 800px) {

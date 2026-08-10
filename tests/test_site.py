@@ -3417,6 +3417,17 @@ projectStatus = "past"
                         self.assertIn(year_heading, group)
                         self.assertNotIn("<strong>2026</strong>", group)
 
+    def test_year_heading_optically_aligns_with_date_text(self):
+        site_css = (ROOT / "assets/css/site.css").read_text(encoding="utf-8")
+        rule = re.search(
+            r"ul\.blog-posts li\.post-year h3\s*\{([^}]*)\}",
+            site_css,
+            re.DOTALL,
+        )
+
+        self.assertIsNotNone(rule)
+        self.assertRegex(rule.group(1), r"text-indent:\s*-0\.08em;")
+
     def test_grouped_lists_use_localized_dates_without_repeating_year(self):
         with TemporaryDirectory() as temporary:
             for name, base_url in (
