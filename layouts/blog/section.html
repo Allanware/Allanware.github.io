@@ -2,6 +2,6 @@
 {{ define "main" }}
   <content>
     <h2>{{ .Title }}</h2>
-    {{ partial "post-list.html" (dict "Page" . "Pages" .Pages) }}
+    {{ partial "post-list.html" (dict "Page" . "Pages" .Pages "ShowCount" false) }}
   </content>
 {{ end }}

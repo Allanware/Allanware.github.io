@@ -5,7 +5,7 @@ This is a multilingual Hugo blog built on a vendored copy of
 language and Simplified Chinese is available under `/zh/`. A post or project
 may be English-only, Chinese-only, or paired in both languages.
 
-The primary navigation intentionally has exactly Home, Posts, and Tags as its
+The primary navigation intentionally has exactly Home, Blog, and Tags as its
 three destinations. English and Chinese have separate post lists and tag
 vocabularies. RSS stays available through feed discovery and the footer rather
 than becoming a fourth page.

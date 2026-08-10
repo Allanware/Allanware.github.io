@@ -87,6 +87,22 @@ test("filters titles, hides empty years, and announces the singular count", () =
   assert.equal(status.textContent, "1 post");
 });
 
+test("filters and announces results without a visible count", () => {
+  const { empty, input, items, root, status, years } = createPostList();
+  const querySelector = root.querySelector.bind(root);
+  root.querySelector = (selector) =>
+    selector === "[data-post-count]" ? null : querySelector(selector);
+  mountPostSearch(root);
+
+  input.value = "newer";
+  input.dispatch("input");
+
+  assert.deepEqual(items.map((item) => item.hidden), [false, true]);
+  assert.deepEqual(years.map((year) => year.hidden), [false, true]);
+  assert.equal(empty.hidden, true);
+  assert.equal(status.textContent, "1 post");
+});
+
 test("rendered dates do not match and localized no-results text is announced", () => {
   const { count, empty, input, items, root, status, years } = createPostList();
   mountPostSearch(root);

@@ -403,10 +403,10 @@ class GeneratedSiteTests(unittest.TestCase):
                     ):
                         self.assertTrue((public / "p" / slug / "index.html").is_file())
                         self.assertFalse((public / "zh" / "p" / slug / "index.html").exists())
-                    self.assertIn(
-                        '<p data-post-count>2 posts</p>',
-                        read_html(public, "blog/index.html"),
-                    )
+                    english_blog = read_html(public, "blog/index.html")
+                    chinese_blog = read_html(public, "zh/blog/index.html")
+                    self.assertNotIn("data-post-count", english_blog)
+                    self.assertNotIn("data-post-count", chinese_blog)
                     self.assertTrue((public / ".nojekyll").is_file())
                     self.assertTrue(
                         (public / "p/beyond-the-cloud/beyond_the_cloud.v5.pdf").is_file()
@@ -419,11 +419,39 @@ class GeneratedSiteTests(unittest.TestCase):
                     )
                     expected_navigation = [
                         (f"{base_path}", "Home"),
-                        (f"{base_path}blog/", "Posts"),
+                        (f"{base_path}blog/", "Blog"),
                         (f"{base_path}tags/", "Tags"),
                     ]
+                    expected_chinese_navigation = [
+                        (f"{base_path}zh/", "首页"),
+                        (f"{base_path}zh/blog/", "博客"),
+                        (f"{base_path}zh/tags/", "标签"),
+                    ]
+                    for html, page_title, site_title in (
+                        (english_blog, "Blog", "Where Was I"),
+                        (chinese_blog, "博客", "说哪儿了"),
+                    ):
+                        self.assertIn(
+                            f"<title>{page_title} | {site_title}</title>", html
+                        )
+                        self.assertIn(f"<h2>{page_title}</h2>", html)
+                        for attribute, selector in (
+                            ("name", "title"),
+                            ("property", "og:title"),
+                            ("name", "twitter:title"),
+                            ("itemprop", "name"),
+                        ):
+                            self.assertRegex(
+                                html,
+                                rf'<meta {attribute}="?{selector}"? content="?{re.escape(page_title)}"?',
+                            )
                     beyond = read_html(public, "p/beyond-the-cloud/index.html")
                     self.assertEqual(expected_navigation, primary_navigation(beyond))
+                    self.assertEqual(expected_navigation, primary_navigation(english_blog))
+                    self.assertEqual(
+                        expected_chinese_navigation,
+                        primary_navigation(chinese_blog),
+                    )
                     self.assertNotIn("language-switcher", beyond)
                     self.assertEqual(
                         [[("nav", True, ())]],
@@ -547,10 +575,10 @@ class GeneratedSiteTests(unittest.TestCase):
             chinese = read_html(fixture, "zh/p/shared-article/index.html")
             english_posts = read_html(fixture, "blog/index.html")
             chinese_posts = read_html(fixture, "zh/blog/index.html")
-            self.assertIn('<p data-post-count>1 post</p>', english_posts)
+            self.assertNotIn("data-post-count", english_posts)
             self.assertIn('data-count-one="{count} post"', english_posts)
             self.assertIn('data-count-many="{count} posts"', english_posts)
-            self.assertIn('<p data-post-count>2 篇文章</p>', chinese_posts)
+            self.assertNotIn("data-post-count", chinese_posts)
             self.assertIn('data-count-one="{count} 篇文章"', chinese_posts)
             self.assertIn('data-count-many="{count} 篇文章"', chinese_posts)
             expected = {
@@ -1686,7 +1714,7 @@ Hidden body.
                 )
                 archive = read_html(public, "blog/index.html")
                 self.assertNotIn("Beyond the Cloud", archive)
-                self.assertIn('<p data-post-count>2 posts</p>', archive)
+                self.assertNotIn("data-post-count", archive)
                 rss_titles = [
                     item.findtext("title")
                     for item in ET.parse(public / "index.xml")
@@ -2749,11 +2777,11 @@ interactionId = "resource-suffixes"
             english = read_html(public, "index.html")
             chinese = read_html(public, "zh/index.html")
             self.assertEqual(
-                [("/", "Home"), ("/blog/", "Posts"), ("/tags/", "Tags")],
+                [("/", "Home"), ("/blog/", "Blog"), ("/tags/", "Tags")],
                 primary_navigation(english),
             )
             self.assertEqual(
-                [("/zh/", "首页"), ("/zh/blog/", "文章"), ("/zh/tags/", "标签")],
+                [("/zh/", "首页"), ("/zh/blog/", "博客"), ("/zh/tags/", "标签")],
                 primary_navigation(chinese),
             )
             self.assertIn('<html lang="en-US"', english)
@@ -3188,7 +3216,7 @@ interactionId = "resource-suffixes"
                 self.assertNotIn("js/post-search.", visualization)
 
                 english_blog = read_html(public, "blog/index.html")
-                self.assertIn("<p data-post-count>1 post</p>", english_blog)
+                self.assertNotIn("data-post-count", english_blog)
                 self.assertEqual(1, english_blog.count("data-post-search"))
                 self.assertEqual(1, english_blog.count("js/post-search."))
 
@@ -3422,7 +3450,7 @@ projectStatus = "past"
                         html,
                     )
                     self.assertIn(
-                        '<li class="post-year" data-post-year="2026">', html
+                        '<li class="post-year" data-post-year="2026"><h3>2026</h3></li>',
                     )
                 self.assertIn(
                     '<time datetime="2026-08-09">August 9</time>',
@@ -3438,12 +3466,22 @@ projectStatus = "past"
                         html,
                     )
                     self.assertIn(
-                        '<li class="post-year" data-post-year="2026">', html
+                        '<li class="post-year" data-post-year="2026"><h3>2026</h3></li>',
                     )
                 self.assertIn(
                     '<time datetime="2026-08-09">8月9日</time>',
                     chinese_tag,
                 )
+
+                for html, count_one, count_many in (
+                    (english_blog, "{count} post", "{count} posts"),
+                    (chinese_blog, "{count} 篇文章", "{count} 篇文章"),
+                ):
+                    self.assertNotIn("data-post-count", html)
+                    self.assertIn("data-post-search", html)
+                    self.assertRegex(html, r"js/post-search\.")
+                    self.assertIn(f'data-count-one="{count_one}"', html)
+                    self.assertIn(f'data-count-many="{count_many}"', html)
 
                 self.assertIn(
                     '<time datetime="2026-08-08">August 8, 2026</time>',
@@ -3571,7 +3609,7 @@ Hidden content.
                     r'<script type="module" src="/js/post-search\.[^"]+\.mjs" integrity="sha256-[^"]+"></script>',
                 )
                 self.assertEqual(2, english_blog.count("data-post-item"))
-                self.assertIn("<p data-post-count>2 posts</p>", english_blog)
+                self.assertNotIn("data-post-count", english_blog)
                 self.assertIn('data-count-one="{count} post"', english_blog)
                 self.assertIn('data-count-many="{count} posts"', english_blog)
                 self.assertNotIn("Hidden post", english_blog)
@@ -3592,7 +3630,9 @@ Hidden content.
 
             with self.subTest("Chinese list uses invariant singular count"):
                 self.assertEqual(1, chinese_blog.count("data-post-item"))
-                self.assertIn("<p data-post-count>1 篇文章</p>", chinese_blog)
+                self.assertNotIn("data-post-count", chinese_blog)
+                self.assertIn('data-count-one="{count} 篇文章"', chinese_blog)
+                self.assertIn('data-count-many="{count} 篇文章"', chinese_blog)
 
             with self.subTest("taxonomy count excludes hidden posts"):
                 self.assertIn(

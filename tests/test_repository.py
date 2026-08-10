@@ -169,7 +169,7 @@ class RepositoryTests(unittest.TestCase):
         for field in ["title", "date", "lastmod", "draft", "tags", "interactionId"]:
             self.assertRegex(archetype, rf"(?m)^{field} = ")
         self.assertIn("## Introduction", archetype)
-        self.assertIn("Home, Posts, and Tags", readme)
+        self.assertIn("Home, Blog, and Tags", readme)
         self.assertIn("index.en.md", readme)
         self.assertIn("index.zh.md", readme)
         self.assertIn(

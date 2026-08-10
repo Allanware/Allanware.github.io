@@ -78,7 +78,7 @@ capitalizeListTitles = false
 
   [[languages.en.menus.main]]
     identifier = "posts"
-    name = "Posts"
+    name = "Blog"
     pageRef = "/blog"
     weight = 20
 
@@ -110,7 +110,7 @@ capitalizeListTitles = false
 
   [[languages.zh.menus.main]]
     identifier = "posts"
-    name = "文章"
+    name = "博客"
     pageRef = "/blog"
     weight = 20
 
