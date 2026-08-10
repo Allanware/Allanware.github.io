@@ -1,6 +1,9 @@
 {{- /* Derived from rokcso/hugo-bearneo@f5c57c5ea39a091f0167af6312f4d4e385df2e6c: layouts/_default/list.html */ -}}
 {{ $page := .Page }}
-{{ $dateFormat := default $page.Site.Params.dateFormat $page.Site.Params.listDateFormat }}
+{{ $dateFormat := $page.Site.Params.dateFormat }}
+{{ if $page.Site.Params.groupByYear }}
+  {{ $dateFormat = default $dateFormat $page.Site.Params.listDateFormat }}
+{{ end }}
 {{ $showCount := $page.Site.Params.showPostCount }}
 {{ if isset . "ShowCount" }}
   {{ $showCount = .ShowCount }}

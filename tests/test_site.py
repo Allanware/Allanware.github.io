@@ -3334,6 +3334,38 @@ projectStatus = "past"
                     chinese_article,
                 )
 
+            ungrouped_config = Path(temporary) / "ungrouped.toml"
+            ungrouped_config.write_text(
+                "[params]\ngroupByYear = false\n",
+                encoding="utf-8",
+            )
+            ungrouped_public = Path(temporary) / "ungrouped"
+            build_site(
+                ungrouped_public,
+                "https://example.test/",
+                "--config",
+                f"hugo.toml,{ungrouped_config}",
+                "--contentDir",
+                "tests/fixtures/content",
+            )
+            english_ungrouped = read_html(
+                ungrouped_public, "blog/index.html"
+            )
+            chinese_ungrouped = read_html(
+                ungrouped_public, "zh/blog/index.html"
+            )
+
+            for html in (english_ungrouped, chinese_ungrouped):
+                self.assertNotIn('class="post-year"', html)
+            self.assertIn(
+                '<time datetime="2026-08-08">August 8, 2026</time>',
+                english_ungrouped,
+            )
+            self.assertIn(
+                '<time datetime="2026-08-08">2026年8月8日</time>',
+                chinese_ungrouped,
+            )
+
     def test_populated_multilingual_post_and_tag_pages(self):
         with TemporaryDirectory() as temporary:
             temporary_root = Path(temporary)
