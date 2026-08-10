@@ -45,3 +45,15 @@ other = "The upvote could not be saved; try again"
 other = "Comments"
 [rssDescription]
 other = "Recent posts from {{ . }}"
+[projects]
+other = "Projects"
+[pastProjects]
+other = "Past projects"
+[noPastProjects]
+other = "No past projects yet"
+[latestPosts]
+other = "Latest posts"
+[popularPosts]
+other = "Popular posts"
+[popularUnavailable]
+other = "Popular posts are temporarily unavailable"

@@ -2181,6 +2181,194 @@ interactionId = "resource-suffixes"
 
                 self.assertEqual(favicon_links["en"], favicon_links["zh"])
 
+    def test_home_sections_are_ordered_title_only_and_language_local(self):
+        with TemporaryDirectory() as temporary:
+            for name, base_url, base_path in (
+                ("root", "https://example.test/", "/"),
+                (
+                    "project",
+                    "https://example.test/example-blog/",
+                    "/example-blog/",
+                ),
+            ):
+                public = Path(temporary) / name
+                build_site(public, base_url)
+                english = read_html(public, "index.html")
+                chinese = read_html(public, "zh/index.html")
+
+                with self.subTest(build=name, language="en"):
+                    self.assertIn('class="home-intro"', english)
+                    self.assertLess(
+                        english.index('class="home-intro"'),
+                        english.index('data-home-section="projects"'),
+                    )
+                    self.assertLess(
+                        english.index('data-home-section="projects"'),
+                        english.index('data-home-section="latest"'),
+                    )
+                    self.assertLess(
+                        english.index('data-home-section="latest"'),
+                        english.index('data-home-section="popular"'),
+                    )
+                    self.assertRegex(
+                        english,
+                        r"<h2>Projects</h2>[\s\S]*<h3>Past projects</h3>",
+                    )
+                    self.assertRegex(
+                        english,
+                        r'<section data-home-section="latest">\s*'
+                        r"<h2>Latest posts</h2>",
+                    )
+                    self.assertRegex(
+                        english,
+                        r'<section data-home-section="popular">\s*'
+                        r"<h2>Popular posts</h2>",
+                    )
+                    self.assertIn("Beyond the Cloud", english)
+
+                    latest_match = re.search(
+                        r'<section data-home-section="latest">(.*?)</section>',
+                        english,
+                        re.DOTALL,
+                    )
+                    self.assertIsNotNone(latest_match)
+                    latest = latest_match.group(1)
+                    self.assertIn(
+                        f'href="{base_path}p/lekythos-a-shape/"', latest
+                    )
+                    self.assertIn(
+                        f'href="{base_path}p/the-miracle-of-istanbul/"', latest
+                    )
+                    self.assertNotIn("Beyond the Cloud", latest)
+                    self.assertNotRegex(
+                        latest,
+                        r"<time|data-post-count|#[\w-]+",
+                    )
+                    self.assertEqual(2, latest.count("<li>"))
+
+                with self.subTest(build=name, language="zh"):
+                    self.assertIn('class="home-intro"', chinese)
+                    self.assertLess(
+                        chinese.index('class="home-intro"'),
+                        chinese.index('data-home-section="projects"'),
+                    )
+                    self.assertLess(
+                        chinese.index('data-home-section="projects"'),
+                        chinese.index('data-home-section="latest"'),
+                    )
+                    self.assertLess(
+                        chinese.index('data-home-section="latest"'),
+                        chinese.index('data-home-section="popular"'),
+                    )
+                    self.assertRegex(
+                        chinese,
+                        r"<h2>项目</h2>[\s\S]*<h3>过往项目</h3>",
+                    )
+                    self.assertRegex(
+                        chinese,
+                        r'<section data-home-section="latest">\s*'
+                        r"<h2>最新文章</h2>",
+                    )
+                    self.assertRegex(
+                        chinese,
+                        r'<section data-home-section="popular">\s*'
+                        r"<h2>热门文章</h2>",
+                    )
+                    self.assertNotIn("Beyond the Cloud", chinese)
+                    self.assertIn("暂无过往项目", chinese)
+                    chinese_latest = re.search(
+                        r'<section data-home-section="latest">(.*?)</section>',
+                        chinese,
+                        re.DOTALL,
+                    )
+                    self.assertIsNotNone(chinese_latest)
+                    self.assertIn("暂无文章", chinese_latest.group(1))
+
+    def test_home_latest_is_capped_at_three_visible_posts(self):
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            content = temporary_root / "content"
+            content.mkdir()
+            (content / "_index.en.md").write_text(
+                '+++\ntitle = "Where Was I"\n+++\n\nFixture home.\n',
+                encoding="utf-8",
+            )
+            (content / "_index.zh.md").write_text(
+                '+++\ntitle = "说哪儿了"\n+++\n\n测试首页。\n',
+                encoding="utf-8",
+            )
+            for ordinal in range(1, 5):
+                bundle = content / "blog" / f"post-{ordinal}"
+                bundle.mkdir(parents=True)
+                (bundle / "index.en.md").write_text(
+                    "+++\n"
+                    f'title = "Post {ordinal}"\n'
+                    f"date = 2026-01-0{ordinal}\n"
+                    "draft = false\n"
+                    f'interactionId = "post-{ordinal}"\n'
+                    "+++\n\nBody.\n",
+                    encoding="utf-8",
+                )
+            hidden = content / "blog/hidden-post"
+            hidden.mkdir(parents=True)
+            (hidden / "index.en.md").write_text(
+                '+++\ntitle = "Hidden post"\ndate = 2026-01-05\n'
+                'draft = false\nhidden = true\ninteractionId = "hidden-post"\n'
+                '+++\n\nHidden.\n',
+                encoding="utf-8",
+            )
+            draft_post = content / "blog/draft-post"
+            draft_post.mkdir(parents=True)
+            (draft_post / "index.en.md").write_text(
+                '+++\ntitle = "Draft post"\ndate = 2026-01-06\n'
+                'draft = true\ninteractionId = "draft-post"\n'
+                '+++\n\nDraft.\n',
+                encoding="utf-8",
+            )
+            draft_project = content / "projects/draft-project"
+            draft_project.mkdir(parents=True)
+            (draft_project / "index.en.md").write_text(
+                '+++\ntitle = "Draft project"\ndate = 2026-01-06\n'
+                'draft = true\ninteractionId = "draft-project"\n'
+                'projectStatus = "past"\n+++\n\nDraft project.\n',
+                encoding="utf-8",
+            )
+
+            for name, base_url, base_path in (
+                ("root", "https://example.test/", "/"),
+                (
+                    "project",
+                    "https://example.test/example-blog/",
+                    "/example-blog/",
+                ),
+            ):
+                public = temporary_root / name
+                build_site(
+                    public,
+                    base_url,
+                    "--contentDir",
+                    str(content),
+                    "--buildDrafts",
+                )
+                home = read_html(public, "index.html")
+                latest_match = re.search(
+                    r'<section data-home-section="latest">(.*?)</section>',
+                    home,
+                    re.DOTALL,
+                )
+                with self.subTest(build=name):
+                    self.assertIsNotNone(latest_match)
+                    latest = latest_match.group(1)
+                    self.assertEqual(
+                        ["Post 4", "Post 3", "Post 2"],
+                        re.findall(r"<a[^>]*>([^<]+)</a>", latest),
+                    )
+                    self.assertIn(f'href="{base_path}p/post-4/"', latest)
+                    self.assertNotIn("Post 1", latest)
+                    self.assertNotIn("Hidden post", latest)
+                    self.assertNotIn("Draft post", latest)
+                    self.assertNotIn("Draft project", home)
+
     def test_localized_core_routes_exist(self):
         with TemporaryDirectory() as temporary:
             public = Path(temporary) / "public"

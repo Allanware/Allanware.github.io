@@ -1,5 +1,33 @@
 {{- /* Site-local template; no Bear Neo counterpart. */ -}}
 {{ define "title" }}{{ .Site.Title }}{{ end }}
 {{ define "main" }}
-  <content>{{ .Content }}</content>
+  {{- $projects := where .Site.RegularPages "Section" "projects" -}}
+  {{- $projects = where $projects "Language.Lang" .Language.Lang -}}
+  {{- $projects = where $projects "Draft" false -}}
+  {{- $projects = where $projects "Params.hidden" "ne" true -}}
+  {{- $pastProjects := where $projects "Params.projectstatus" "past" -}}
+  {{- $pastProjects = $pastProjects.ByDate.Reverse -}}
+  {{- $posts := where .Site.RegularPages "Section" "blog" -}}
+  {{- $posts = where $posts "Language.Lang" .Language.Lang -}}
+  {{- $posts = where $posts "Draft" false -}}
+  {{- $posts = where $posts "Params.hidden" "ne" true -}}
+  {{- $posts = $posts.ByDate.Reverse -}}
+  <content class="home-content">
+    <div class="home-intro">{{ .Content }}</div>
+    <section data-home-section="projects">
+      <h2>{{ T "projects" }}</h2>
+      <section data-project-status="past">
+        <h3>{{ T "pastProjects" }}</h3>
+        {{ partial "home-title-list.html" (dict "Pages" $pastProjects "EmptyKey" "noPastProjects") }}
+      </section>
+    </section>
+    <section data-home-section="latest">
+      <h2>{{ T "latestPosts" }}</h2>
+      {{ partial "home-title-list.html" (dict "Pages" (first 3 $posts) "EmptyKey" "noPosts") }}
+    </section>
+    <section data-home-section="popular">
+      <h2>{{ T "popularPosts" }}</h2>
+      <p class="home-empty">{{ T "popularUnavailable" }}</p>
+    </section>
+  </content>
 {{ end }}

@@ -45,3 +45,15 @@ other = "未能保存赞同，请重试"
 other = "评论"
 [rssDescription]
 other = "{{ . }}的最新文章"
+[projects]
+other = "项目"
+[pastProjects]
+other = "过往项目"
+[noPastProjects]
+other = "暂无过往项目"
+[latestPosts]
+other = "最新文章"
+[popularPosts]
+other = "热门文章"
+[popularUnavailable]
+other = "热门文章暂时无法加载"

@@ -1,0 +1,11 @@
+{{- $pages := .Pages -}}
+{{- $emptyKey := .EmptyKey -}}
+{{- if gt (len $pages) 0 -}}
+  <ul class="home-title-list">
+    {{- range $pages }}
+      <li><a href="{{ .RelPermalink }}">{{ .Title }}</a></li>
+    {{- end }}
+  </ul>
+{{- else -}}
+  <p class="home-empty">{{ T $emptyKey }}</p>
+{{- end -}}
