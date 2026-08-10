@@ -2124,16 +2124,19 @@ interactionId = "resource-suffixes"
 
                 self.assertIn("<title>Where Was I</title>", english)
                 self.assertIn("<h1>Where Was I</h1>", english)
-                self.assertIn(
-                    '<p>Wenxuan Zhao. <a href="mailto:xiaodoubizwx@gmail.com">Contact me</a>.</p>',
-                    english,
-                )
+                self.assertIn("<p>Wenxuan Zhao.</p>", english)
                 self.assertIn("<title>说哪儿了</title>", chinese)
                 self.assertIn("<h1>说哪儿了</h1>", chinese)
-                self.assertIn(
-                    '<p>赵文轩。<a href="mailto:xiaodoubizwx@gmail.com">联系我</a>。</p>',
-                    chinese,
-                )
+                self.assertIn("<p>赵文轩。</p>", chinese)
+
+                for language, html in (("en", english), ("zh", chinese)):
+                    intro = re.search(
+                        r'<div class="home-intro">(.*?)</div>', html, re.DOTALL
+                    )
+                    self.assertIsNotNone(intro, language)
+                    with self.subTest(build=name, language=language):
+                        self.assertNotIn("<a ", intro.group(1))
+                        self.assertNotIn("mailto:", intro.group(1))
 
                 favicon_links: dict[str, dict[tuple[str, str], str]] = {}
                 for language, html in (("en", english), ("zh", chinese)):
