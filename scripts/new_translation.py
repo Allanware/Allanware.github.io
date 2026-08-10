@@ -10,6 +10,7 @@ import re
 
 SLUG_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 LANGUAGES = {"en", "zh"}
+SECTIONS = {"blog", "projects"}
 
 
 def create_translation(
@@ -17,6 +18,8 @@ def create_translation(
     slug: str,
     source_language: str,
     target_language: str,
+    *,
+    section: str = "blog",
 ) -> Path:
     """Exclusively copy one leaf-bundle language file to another language."""
     if SLUG_PATTERN.fullmatch(slug) is None:
@@ -27,20 +30,26 @@ def create_translation(
         raise ValueError("languages must be en or zh")
     if source_language == target_language:
         raise ValueError("source and target languages must differ")
+    if section not in SECTIONS:
+        raise ValueError("section must be blog or projects")
 
     resolved_content_root = Path(content_root).resolve()
-    blog = Path(content_root) / "blog"
-    bundle = blog / slug
-    blog_root = blog.resolve()
+    section_path = Path(content_root) / section
+    section_root = section_path.resolve()
     try:
-        blog_root.relative_to(resolved_content_root)
+        section_root.relative_to(resolved_content_root)
     except ValueError as error:
-        raise ValueError("blog content root must resolve inside content root") from error
+        raise ValueError(
+            f"{section} content root must resolve inside content root"
+        ) from error
+    bundle = section_path / slug
     resolved_bundle = bundle.resolve()
     try:
-        resolved_bundle.relative_to(blog_root)
+        resolved_bundle.relative_to(section_root)
     except ValueError as error:
-        raise ValueError("slug must resolve inside the blog content root") from error
+        raise ValueError(
+            f"slug must resolve inside the {section} content root"
+        ) from error
 
     source = bundle / f"index.{source_language}.md"
     target = bundle / f"index.{target_language}.md"
@@ -69,6 +78,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("slug")
     parser.add_argument("source_language", choices=sorted(LANGUAGES))
     parser.add_argument("target_language", choices=sorted(LANGUAGES))
+    parser.add_argument("--section", choices=sorted(SECTIONS), default="blog")
     parser.add_argument("--content-root", type=Path, default=Path("content"))
     arguments = parser.parse_args(argv)
     try:
@@ -77,6 +87,7 @@ def main(argv: list[str] | None = None) -> int:
             arguments.slug,
             arguments.source_language,
             arguments.target_language,
+            section=arguments.section,
         )
     except (FileNotFoundError, FileExistsError, ValueError) as error:
         parser.error(str(error))

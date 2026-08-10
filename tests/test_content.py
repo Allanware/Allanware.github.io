@@ -10,7 +10,8 @@ from scripts.validate_interaction_ids import read_front_matter
 
 ROOT = Path(__file__).resolve().parents[1]
 BLOG = ROOT / "content" / "blog"
-BEYOND_THE_CLOUD = BLOG / "beyond-the-cloud"
+PROJECTS = ROOT / "content" / "projects"
+BEYOND_THE_CLOUD = PROJECTS / "beyond-the-cloud"
 BEYOND_THE_CLOUD_POST = BEYOND_THE_CLOUD / "index.en.md"
 BEYOND_THE_CLOUD_BODY_SHA256 = (
     "41f562021e10b1f920db5e759f53deb148e6ac1ac7e5e007944f8ccbf10315d4"
@@ -200,7 +201,15 @@ class MigratedContentTests(unittest.TestCase):
 
         self.assertEqual(
             set(front_matter),
-            {"title", "date", "lastmod", "draft", "tags", "interactionId"},
+            {
+                "title",
+                "date",
+                "lastmod",
+                "draft",
+                "tags",
+                "interactionId",
+                "projectStatus",
+            },
         )
         self.assertEqual(
             front_matter["title"],
@@ -214,6 +223,7 @@ class MigratedContentTests(unittest.TestCase):
         self.assertEqual(front_matter["date"], datetime.date(2024, 5, 30))
         self.assertEqual(front_matter["lastmod"], datetime.date(2024, 5, 30))
         self.assertIs(front_matter["draft"], False)
+        self.assertEqual("past", front_matter["projectStatus"])
 
         article = body(BEYOND_THE_CLOUD_POST)
         self.assertNotIn(

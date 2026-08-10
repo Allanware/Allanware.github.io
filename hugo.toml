@@ -11,6 +11,7 @@ capitalizeListTitles = false
 
 [permalinks.page]
   blog = "/p/:contentbasename/"
+  projects = "/p/:contentbasename/"
 
 [outputs]
   home = ["HTML", "RSS"]

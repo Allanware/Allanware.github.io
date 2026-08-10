@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate interaction IDs used by translated Hugo blog posts."""
+"""Validate interaction IDs used by translated Hugo blog posts and projects."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from typing import Any
 
 
 INTERACTION_ID_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+CONTENT_SECTIONS = ("blog", "projects")
 
 
 def _display_path(path: Path, content_root: Path) -> str:
@@ -39,7 +40,7 @@ def read_front_matter(path: Path) -> dict[str, Any]:
 
 
 def validate_content(content_root: Path) -> list[str]:
-    """Return validation errors for leaf-bundle blog post interaction IDs."""
+    """Return validation errors for blog post and project interaction IDs."""
     content_root = Path(content_root)
     if not content_root.is_dir():
         return [f"{content_root}: content root is not a directory"]
@@ -48,7 +49,12 @@ def validate_content(content_root: Path) -> list[str]:
     bundle_ids: dict[Path, set[str]] = {}
     id_bundles: dict[str, set[Path]] = {}
 
-    for path in sorted(content_root.glob("blog/*/index.*.md")):
+    paths = (
+        path
+        for section in CONTENT_SECTIONS
+        for path in (content_root / section).glob("*/index.*.md")
+    )
+    for path in sorted(paths):
         display_path = _display_path(path, content_root)
         try:
             front_matter = read_front_matter(path)
@@ -60,7 +66,7 @@ def validate_content(content_root: Path) -> list[str]:
         if not has_interaction_id:
             if front_matter.get("draft") is not True:
                 errors.append(
-                    f"{display_path}: interactionId is required for published posts"
+                    f"{display_path}: interactionId is required for published articles"
                 )
             continue
 

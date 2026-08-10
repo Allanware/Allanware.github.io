@@ -19,7 +19,7 @@ DERIVED_TEMPLATES = {
     "layouts/_partials/custom_head.html": "layouts/partials/custom_head.html",
     "layouts/_partials/seo_tags.html": "layouts/partials/seo_tags.html",
     "layouts/_partials/post-list.html": "layouts/_default/list.html",
-    "layouts/blog/page.html": "layouts/_default/single.html",
+    "layouts/_partials/article.html": "layouts/_default/single.html",
     "layouts/blog/section.html": "layouts/_default/list.html",
     "layouts/home.rss.xml": "layouts/_default/rss.xml",
 }

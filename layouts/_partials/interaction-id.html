@@ -9,7 +9,7 @@
 {{- $result := "" -}}
 {{- if $mustValidate -}}
   {{- if not $hasValue -}}
-    {{- errorf "%s: published blog posts require interactionId" $page.File.Path -}}
+    {{- errorf "%s: published articles require interactionId" $page.File.Path -}}
   {{- else if not $isString -}}
     {{- errorf "%s: interactionId must be a string" $page.File.Path -}}
   {{- else if or (lt (len $raw) 1) (gt (len $raw) 80) (eq (len (findRE `^[a-z0-9]+(-[a-z0-9]+)*$` $raw)) 0) -}}

@@ -5,6 +5,7 @@ lastmod = 2024-05-30
 draft = false
 tags = ["visualization", "perception", "research"]
 interactionId = "beyond-the-cloud"
+projectStatus = "past"
 +++
 
 [Wenxuan Zhao](https://jov.arvojournals.org/solr/searchresults.aspx?author=Wenxuan+Zhao); [Karen B. Schloss](https://jov.arvojournals.org/solr/searchresults.aspx?author=Karen+B.+Schloss)

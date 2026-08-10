@@ -402,7 +402,7 @@ class GeneratedSiteTests(unittest.TestCase):
                         self.assertTrue((public / "p" / slug / "index.html").is_file())
                         self.assertFalse((public / "zh" / "p" / slug / "index.html").exists())
                     self.assertIn(
-                        '<p data-post-count>3 posts</p>',
+                        '<p data-post-count>2 posts</p>',
                         read_html(public, "blog/index.html"),
                     )
                     self.assertTrue((public / ".nojekyll").is_file())
@@ -1204,13 +1204,13 @@ class GeneratedSiteTests(unittest.TestCase):
                 "missing-with-site-fallback",
                 "tests/fixtures/missing-id-content",
                 "hugo.toml,tests/fixtures/site-id.toml",
-                "published blog posts require interactionId",
+                "published articles require interactionId",
             ),
             (
                 "missing-with-language-fallback",
                 "tests/fixtures/missing-id-content",
                 "hugo.toml,tests/fixtures/language-id.toml",
-                "published blog posts require interactionId",
+                "published articles require interactionId",
             ),
         )
         with TemporaryDirectory() as temporary:
@@ -1370,13 +1370,19 @@ draft = true
         identity_path = ROOT / "layouts/_partials/interaction-id.html"
         self.assertTrue(identity_path.is_file())
         identity = identity_path.read_text(encoding="utf-8")
-        page = (ROOT / "layouts/blog/page.html").read_text(encoding="utf-8")
+        article = (ROOT / "layouts/_partials/article.html").read_text(
+            encoding="utf-8"
+        )
+        blog_page = (ROOT / "layouts/blog/page.html").read_text(encoding="utf-8")
+        project_page = (ROOT / "layouts/projects/page.html").read_text(
+            encoding="utf-8"
+        )
         self.assertEqual(1, identity.count("return $result"))
         self.assertRegex(identity, r'isset\s+\$page\.Params\s+"interactionid"')
         self.assertNotRegex(identity, r'\$page\.Param\b')
         self.assertIn("$page.Translations", identity)
         self.assertNotIn("$page.AllTranslations", identity)
-        self.assertEqual(1, page.count('partial "interaction-id.html" .'))
+        self.assertEqual(1, article.count('partial "interaction-id.html" .'))
         kudos_call = (
             'partial "kudos.html" '
             '(dict "Page" . "Entity" $interactionEntity)'
@@ -1385,12 +1391,14 @@ draft = true
             'partial "giscus.html" '
             '(dict "Page" . "Entity" $interactionEntity)'
         )
-        self.assertEqual(
-            1,
-            page.count(kudos_call),
-        )
-        self.assertEqual(1, page.count(giscus_call))
-        self.assertLess(page.index(kudos_call), page.index(giscus_call))
+        self.assertEqual(1, article.count(kudos_call))
+        self.assertEqual(1, article.count(giscus_call))
+        self.assertLess(article.index(kudos_call), article.index(giscus_call))
+        for entrypoint in (blog_page, project_page):
+            self.assertEqual(1, entrypoint.count('partial "article.html" .'))
+            self.assertNotIn('partial "interaction-id.html"', entrypoint)
+            self.assertNotIn('partial "kudos.html"', entrypoint)
+            self.assertNotIn('partial "giscus.html"', entrypoint)
 
     def test_hidden_translations_are_not_advertised(self):
         with TemporaryDirectory() as temporary:
@@ -1503,7 +1511,6 @@ interactionId = "visible-with-hidden"
             ]
             self.assertEqual(
                 [
-                    "Beyond the Cloud: A Perceptual Illusion in Overlaid Bar Charts",
                     "Shapes and Functions of the Lekythos",
                     "The Miracle of Istanbul",
                 ],
@@ -1515,7 +1522,7 @@ interactionId = "visible-with-hidden"
                 english.findtext("description"),
             )
             self.assertIn("说哪儿了的最新文章", chinese.findtext("description"))
-            self.assertIn("30 May 2024", english.findtext("lastBuildDate"))
+            self.assertIn("05 Nov 2023", english.findtext("lastBuildDate"))
             zh_home = read_html(public, "zh/index.html")
             self.assertIn('href="https://example.test/zh/index.xml"', zh_home)
             self.assertIn('href="/zh/index.xml"', zh_home)
@@ -1532,8 +1539,8 @@ interactionId = "visible-with-hidden"
             )
             self.assertEqual(
                 [
-                    "Beyond the Cloud: A Perceptual Illusion in Overlaid Bar Charts",
                     "Shapes and Functions of the Lekythos",
+                    "The Miracle of Istanbul",
                 ],
                 [
                     item.findtext("title")
@@ -1639,6 +1646,73 @@ Hidden body.
                         item.findtext("title")
                         for item in limited_channel.findall("item")
                     ],
+                )
+
+    def test_beyond_is_a_project_with_a_stable_public_contract(self):
+        with TemporaryDirectory() as temporary:
+            for name, base_url, base_path in (
+                ("root", "https://example.test/", "/"),
+                (
+                    "project",
+                    "https://example.test/example-blog/",
+                    "/example-blog/",
+                ),
+            ):
+                public = Path(temporary) / name
+                build_site(public, base_url)
+                article = read_html(public, "p/beyond-the-cloud/index.html")
+                self.assertFalse((public / "projects/index.html").exists())
+                self.assertFalse((public / "zh/projects/index.html").exists())
+                self.assertIn(
+                    f'<link rel="canonical" href="{base_url}p/beyond-the-cloud/">',
+                    article,
+                )
+                self.assertIn('data-term="post:beyond-the-cloud"', article)
+                self.assertIn(
+                    'data-kudos-entity="post:beyond-the-cloud"',
+                    article,
+                )
+                self.assertIn(
+                    f'href="{base_path}p/beyond-the-cloud/beyond_the_cloud.v5.pdf"',
+                    article,
+                )
+                self.assertTrue(
+                    (
+                        public
+                        / "p/beyond-the-cloud/beyond_the_cloud.v5.pdf"
+                    ).is_file()
+                )
+                archive = read_html(public, "blog/index.html")
+                self.assertNotIn("Beyond the Cloud", archive)
+                self.assertIn('<p data-post-count>2 posts</p>', archive)
+                rss_titles = [
+                    item.findtext("title")
+                    for item in ET.parse(public / "index.xml")
+                    .getroot()
+                    .find("channel")
+                    .findall("item")
+                ]
+                self.assertNotIn(
+                    "Beyond the Cloud: A Perceptual Illusion in Overlaid Bar Charts",
+                    rss_titles,
+                )
+                project_url = f"{base_url}p/beyond-the-cloud/"
+                english_sitemap = ET.parse(public / "en/sitemap.xml").getroot()
+                chinese_sitemap = ET.parse(public / "zh/sitemap.xml").getroot()
+                english_locations = {
+                    node.text
+                    for node in english_sitemap.findall("{*}url/{*}loc")
+                }
+                chinese_locations = {
+                    node.text
+                    for node in chinese_sitemap.findall("{*}url/{*}loc")
+                }
+                self.assertIn(project_url, english_locations)
+                self.assertNotIn(project_url, chinese_locations)
+                self.assertNotIn(f"{base_url}projects/", english_locations)
+                self.assertNotIn(
+                    f"{base_url}zh/projects/",
+                    chinese_locations,
                 )
 
     def test_beyond_the_cloud_bundle_route_is_stable_across_base_urls(self):

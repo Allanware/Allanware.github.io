@@ -18,6 +18,7 @@ class InteractionIdValidationTests(unittest.TestCase):
         bundle: str,
         language: str,
         *,
+        section: str = "blog",
         draft: bool = False,
         interaction_id=...,
     ) -> Path:
@@ -32,7 +33,7 @@ class InteractionIdValidationTests(unittest.TestCase):
                 value = str(interaction_id)
             front_matter.append(f"interactionId = {value}")
 
-        post_path = self.content_root / "blog" / bundle / f"index.{language}.md"
+        post_path = self.content_root / section / bundle / f"index.{language}.md"
         post_path.parent.mkdir(parents=True, exist_ok=True)
         post_path.write_text(
             "+++\n" + "\n".join(front_matter) + "\n+++\n\nBody.\n",
@@ -59,7 +60,31 @@ class InteractionIdValidationTests(unittest.TestCase):
         errors = validate_content(self.content_root)
 
         self.assertEqual(len(errors), 1)
-        self.assertIn("interactionId is required for published posts", errors[0])
+        self.assertIn("interactionId is required for published articles", errors[0])
+
+    def test_project_translations_share_an_id(self):
+        self.write_post(
+            "shared-project",
+            "en",
+            section="projects",
+            interaction_id="shared-project",
+        )
+        self.write_post(
+            "shared-project",
+            "zh",
+            section="projects",
+            interaction_id="shared-project",
+        )
+
+        self.assertEqual(validate_content(self.content_root), [])
+
+    def test_published_project_without_an_id_is_rejected(self):
+        self.write_post("missing-project", "en", section="projects")
+
+        errors = validate_content(self.content_root)
+
+        self.assertEqual(1, len(errors))
+        self.assertIn("interactionId is required for published articles", errors[0])
 
     def test_draft_post_may_omit_an_id(self):
         self.write_post("draft", "en", draft=True)
@@ -108,6 +133,26 @@ class InteractionIdValidationTests(unittest.TestCase):
         self.assertIn("translations in bundle", errors[0])
         self.assertIn("must share one interactionId", errors[0])
 
+    def test_project_translations_must_share_an_id(self):
+        self.write_post(
+            "mismatched-project",
+            "en",
+            section="projects",
+            interaction_id="english-project",
+        )
+        self.write_post(
+            "mismatched-project",
+            "zh",
+            section="projects",
+            interaction_id="chinese-project",
+        )
+
+        errors = validate_content(self.content_root)
+
+        self.assertEqual(1, len(errors))
+        self.assertIn("translations in bundle", errors[0])
+        self.assertIn("must share one interactionId", errors[0])
+
     def test_unrelated_bundles_cannot_reuse_an_id(self):
         self.write_post("first", "en", interaction_id="duplicate-id")
         self.write_post("second", "en", interaction_id="duplicate-id")
@@ -115,6 +160,25 @@ class InteractionIdValidationTests(unittest.TestCase):
         errors = validate_content(self.content_root)
 
         self.assertEqual(len(errors), 1)
+        self.assertIn("interactionId 'duplicate-id' is reused by bundles", errors[0])
+
+    def test_blog_and_project_bundles_cannot_reuse_an_id(self):
+        self.write_post(
+            "article",
+            "en",
+            section="blog",
+            interaction_id="duplicate-id",
+        )
+        self.write_post(
+            "project",
+            "en",
+            section="projects",
+            interaction_id="duplicate-id",
+        )
+
+        errors = validate_content(self.content_root)
+
+        self.assertEqual(1, len(errors))
         self.assertIn("interactionId 'duplicate-id' is reused by bundles", errors[0])
 
 
