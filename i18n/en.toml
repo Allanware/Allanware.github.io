@@ -15,7 +15,7 @@ other = "Enlarge image: {{ . }}"
 [notFound]
 other = "Page not found"
 [searchPosts]
-other = "Search posts"
+other = "Search..."
 [searchProjects]
 other = "Search projects"
 [noSearchResults]
@@ -53,7 +53,7 @@ other = "Recent posts from {{ . }}"
 [projects]
 other = "Projects"
 [posts]
-other = "Posts"
+other = "Blog"
 [pastProjects]
 other = "Past projects"
 [noPastProjects]

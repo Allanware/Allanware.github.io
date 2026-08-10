@@ -3046,20 +3046,20 @@ interactionId = "resource-suffixes"
                 self.assertNotIn("Shared project", chinese_home)
                 self.assertNotIn("Older project", chinese_home)
                 self.assertIn(">Projects</h3>", english)
-                self.assertIn(">Posts</h3>", english)
+                self.assertIn(">Blog</h3>", english)
                 self.assertLess(
                     english.index(">Projects</h3>"),
-                    english.index(">Posts</h3>"),
+                    english.index(">Blog</h3>"),
                 )
                 self.assertLess(
                     english.index("Shared project"),
                     english.index("Shared article"),
                 )
                 self.assertIn(">项目</h3>", chinese)
-                self.assertIn(">文章</h3>", chinese)
+                self.assertIn(">博客</h3>", chinese)
                 self.assertLess(
                     chinese.index(">项目</h3>"),
-                    chinese.index(">文章</h3>"),
+                    chinese.index(">博客</h3>"),
                 )
                 self.assertLess(
                     chinese.index("共享项目"),
@@ -3114,7 +3114,7 @@ interactionId = "resource-suffixes"
                 self.assertIn("共享文章", chinese_posts)
                 self.assertIn("仅中文文章", chinese_posts)
                 self.assertNotIn("共享项目", chinese_posts)
-                self.assertIn('placeholder="搜索文章"', chinese_posts)
+                self.assertIn('placeholder="搜索..."', chinese_posts)
                 self.assertEqual(1, chinese_posts.count("data-post-search"))
                 self.assertEqual(1, english.count("js/post-search."))
                 self.assertEqual(1, chinese.count("js/post-search."))
@@ -3299,7 +3299,7 @@ projectStatus = "past"
                             "posts",
                             "{count} post",
                             "{count} posts",
-                            "Search posts",
+                            "Search...",
                             "No matching posts",
                         ),
                     ),
@@ -3319,7 +3319,7 @@ projectStatus = "past"
                             "posts",
                             "{count} 篇文章",
                             "{count} 篇文章",
-                            "搜索文章",
+                            "搜索...",
                             "没有匹配的文章",
                         ),
                     ),
@@ -3698,6 +3698,8 @@ Hidden content.
                 self.assertNotIn("data-post-count", english_blog)
                 self.assertIn('data-count-one="{count} post"', english_blog)
                 self.assertIn('data-count-many="{count} posts"', english_blog)
+                self.assertIn('placeholder="Search..."', english_blog)
+                self.assertIn("No matching posts", english_blog)
                 self.assertNotIn("Hidden post", english_blog)
 
             with self.subTest("English list is reverse chronological by year"):
@@ -3719,6 +3721,8 @@ Hidden content.
                 self.assertNotIn("data-post-count", chinese_blog)
                 self.assertIn('data-count-one="{count} 篇文章"', chinese_blog)
                 self.assertIn('data-count-many="{count} 篇文章"', chinese_blog)
+                self.assertIn('placeholder="搜索..."', chinese_blog)
+                self.assertIn("没有匹配的文章", chinese_blog)
 
             with self.subTest("taxonomy count excludes hidden posts"):
                 self.assertIn(

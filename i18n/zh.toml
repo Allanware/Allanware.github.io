@@ -15,7 +15,7 @@ other = "放大图片：{{ . }}"
 [notFound]
 other = "页面未找到"
 [searchPosts]
-other = "搜索文章"
+other = "搜索..."
 [searchProjects]
 other = "搜索项目"
 [noSearchResults]
@@ -53,7 +53,7 @@ other = "{{ . }}的最新文章"
 [projects]
 other = "项目"
 [posts]
-other = "文章"
+other = "博客"
 [pastProjects]
 other = "过往项目"
 [noPastProjects]
