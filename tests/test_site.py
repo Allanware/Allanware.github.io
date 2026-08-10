@@ -2822,27 +2822,60 @@ interactionId = "resource-suffixes"
                 r"\.language-switcher\s*\{[^}]*margin-left:\s*0\.5rem;"
                 r"[^}]*padding-left:\s*0\.5rem;[^}]*\}",
             )
-            for language, html, rss_path, removed_text in (
+            for (
+                language,
+                html,
+                rss_path,
+                contact_label,
+                scholar_label,
+                subscribe_text,
+                removed_text,
+            ) in (
                 (
                     "en",
                     english,
                     "/index.xml",
+                    "Contact",
+                    "Google Scholar",
+                    "Subscribe via",
                     ("Made with", "Hugo Bear Neo", "Sitemap"),
                 ),
                 (
                     "zh",
                     chinese,
                     "/zh/index.xml",
+                    "联系",
+                    "谷歌学术",
+                    "订阅",
                     ("网站主题", "Hugo Bear Neo", "网站地图"),
                 ),
             ):
                 footer = re.search(r"<footer>(.*?)</footer>", html, re.DOTALL)
                 self.assertIsNotNone(footer)
                 with self.subTest(language=language):
-                    self.assertEqual(1, footer.group(1).count("<a "))
-                    self.assertIn(f'href="{rss_path}"', footer.group(1))
+                    markup = footer.group(1)
+                    self.assertEqual(4, markup.count("<a "))
+                    self.assertEqual(
+                        [
+                            "mailto:xiaodoubizwx@gmail.com",
+                            "https://github.com/Allanware",
+                            "https://scholar.google.com/citations?user=cd-oBQUAAAAJ",
+                            rss_path,
+                        ],
+                        re.findall(r'<a\b[^>]*\bhref="([^"]+)"', markup),
+                    )
+                    self.assertIn(f'aria-label="{contact_label}"', markup)
+                    self.assertIn('alt="GitHub"', markup)
+                    self.assertIn(f'alt="{scholar_label}"', markup)
+                    self.assertEqual(
+                        3, len(re.findall(r'width="16" height="16"', markup))
+                    )
+                    self.assertIn(subscribe_text, markup)
+                    self.assertNotRegex(
+                        markup, r">[^<]*xiaodoubizwx@gmail\.com[^<]*<"
+                    )
                     for text in removed_text:
-                        self.assertNotIn(text, footer.group(1))
+                        self.assertNotIn(text, markup)
 
     def test_semantic_colors_meet_text_contrast_in_both_color_schemes(self):
         theme_css = (

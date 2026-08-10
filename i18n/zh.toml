@@ -72,3 +72,9 @@ other = "正在加载热门文章"
 other = "热门文章已加载"
 [popularRequiresJavaScript]
 other = "请启用 JavaScript 以加载热门文章"
+[contact]
+other = "联系"
+[github]
+other = "GitHub"
+[googleScholar]
+other = "谷歌学术"

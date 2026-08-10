@@ -1,4 +1,34 @@
-{{- /* Derived from rokcso/hugo-bearneo@f5c57c5ea39a091f0167af6312f4d4e385df2e6c: layouts/partials/footer.html */ -}}
-{{ with .Site.Home.OutputFormats.Get "RSS" }}
-  {{ T "subscribeVia" }} <a href="{{ .RelPermalink }}">{{ T "rss" }}</a>.
-{{ end }}
+{{- /* Derived from rokcso/hugo-bearneo@f5c57c5ea39a091f0167af6312f4d4e385df2e6c: layouts/partials/footer.html; site-local contact and profile icons. */ -}}
+{{- $githubSource := resources.Get "images/github-logo.svg" -}}
+{{- if not $githubSource -}}
+  {{- errorf "required footer icon assets/images/github-logo.svg is missing" -}}
+{{- end -}}
+{{- $scholarSource := resources.Get "images/google-scholar-logo.webp" -}}
+{{- if not $scholarSource -}}
+  {{- errorf "required footer icon assets/images/google-scholar-logo.webp is missing" -}}
+{{- end -}}
+{{- $github := $githubSource | fingerprint "sha256" -}}
+{{- $scholar := $scholarSource.Resize "32x32 webp Lanczos" -}}
+<div class="footer-links">
+  {{- with .Site.Params.contactEmail -}}
+    <a class="footer-link" href="mailto:{{ . }}" aria-label="{{ T "contact" }}">
+      <svg class="footer-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true" focusable="false">
+        <path d="M2 5.5A1.5 1.5 0 0 1 3.5 4h17A1.5 1.5 0 0 1 22 5.5V6l-10 6.5L2 6V5.5Z"></path>
+        <path d="M2 8.2l10 6.3 10-6.3V18.5A1.5 1.5 0 0 1 20.5 20h-17A1.5 1.5 0 0 1 2 18.5V8.2Z"></path>
+      </svg>
+    </a>
+  {{- end -}}
+  {{- with .Site.Params.githubURL -}}
+    <a class="footer-link" href="{{ . }}" rel="me">
+      <img class="footer-icon footer-icon-github" src="{{ $github.RelPermalink }}" width="16" height="16" alt="{{ T "github" }}" loading="lazy" decoding="async">
+    </a>
+  {{- end -}}
+  {{- with .Site.Params.scholarURL -}}
+    <a class="footer-link" href="{{ . }}" rel="me">
+      <img class="footer-icon" src="{{ $scholar.RelPermalink }}" width="16" height="16" alt="{{ T "googleScholar" }}" loading="lazy" decoding="async">
+    </a>
+  {{- end -}}
+  {{- with .Site.Home.OutputFormats.Get "RSS" -}}
+    <span class="footer-subscribe">{{ T "subscribeVia" }} <a href="{{ .RelPermalink }}">{{ T "rss" }}</a>.</span>
+  {{- end -}}
+</div>

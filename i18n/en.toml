@@ -72,3 +72,9 @@ other = "Loading popular posts"
 other = "Popular posts loaded"
 [popularRequiresJavaScript]
 other = "Enable JavaScript to load popular posts"
+[contact]
+other = "Contact"
+[github]
+other = "GitHub"
+[googleScholar]
+other = "Google Scholar"

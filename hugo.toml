@@ -37,6 +37,9 @@ capitalizeListTitles = false
   toc = true
   imageZoom = true
   externalLinksNewTab = false
+  contactEmail = "xiaodoubizwx@gmail.com"
+  githubURL = "https://github.com/Allanware"
+  scholarURL = "https://scholar.google.com/citations?user=cd-oBQUAAAAJ"
 
 [params.giscus]
   enabled = true
