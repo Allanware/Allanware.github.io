@@ -1938,7 +1938,23 @@ interactionId = "resource-suffixes"
                         self.assertIn('data-home-ending-state="static"', html)
                         self.assertIn(f'aria-label="{thought}"', html)
                         self.assertIn(f'href="#home-top">{return_label}</a>', html)
-                        self.assertEqual(3, html.count("data-home-ending-dot"))
+                        ending = html[
+                            html.index('<div class="home-ending"'):
+                            html.index("<footer>")
+                        ]
+                        self.assertEqual(1, ending.count("data-home-ending-balloon"))
+                        self.assertNotIn("data-home-ending-dot", ending)
+                        self.assertRegex(
+                            ending,
+                            r'<svg\b(?=[^>]*\bdata-home-ending-balloon(?:\s|>))'
+                            r'(?=[^>]*\bviewBox="0 0 64 48")'
+                            r'(?=[^>]*\bwidth="36")'
+                            r'(?=[^>]*\bheight="27")'
+                            r'(?=[^>]*\baria-hidden="true")'
+                            r'(?=[^>]*\bfocusable="false")[^>]*>',
+                        )
+                        self.assertEqual(1, ending.count("<path "))
+                        self.assertEqual(2, ending.count("<circle "))
                         self.assertLess(
                             html.index('data-home-section="popular"'),
                             html.index("data-home-ending"),
