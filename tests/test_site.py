@@ -2378,6 +2378,39 @@ interactionId = "resource-suffixes"
                         4.5,
                     )
 
+    def test_callouts_fold_on_the_author_marker_and_localize_their_label(self):
+        with TemporaryDirectory() as temporary:
+            public = Path(temporary) / "public"
+            build_site(
+                public,
+                "https://example.test/",
+                "--contentDir",
+                "tests/fixtures/content",
+            )
+            english = read_html(public, "p/shared-article/index.html")
+            chinese = read_html(public, "zh/p/shared-article/index.html")
+
+        folded, unfolded = re.findall(
+            r"<details\b([^>]*)>(.*?)</details>",
+            english,
+            re.DOTALL,
+        )
+        with self.subTest(marker="-"):
+            self.assertNotIn("open", folded[0])
+            self.assertIn("<summary>Folded fixture callout</summary>", folded[1])
+            # The body is markdown, not raw text: its code block still highlights.
+            self.assertIn('class="chroma"', folded[1])
+        with self.subTest(marker="+"):
+            self.assertIn("open", unfolded[0])
+            self.assertIn("<summary>Unfolded fixture callout</summary>", unfolded[1])
+
+        # An unmarked callout stays open prose, and plain quotes stay blockquotes.
+        self.assertNotIn("Fixture warning body", folded[1] + unfolded[1])
+        self.assertRegex(english, r">Warning</[a-z]+>\s*<p>Fixture warning body")
+        self.assertRegex(chinese, r">警告</[a-z]+>\s*<p>测试警告内容")
+        self.assertIn("<blockquote>", english)
+        self.assertRegex(english, r"<blockquote>\s*<p>Plain fixture quote")
+
     def test_upvoted_icon_adds_a_non_color_pressed_cue(self):
         kudos = (ROOT / "layouts/_partials/kudos.html").read_text(
             encoding="utf-8"

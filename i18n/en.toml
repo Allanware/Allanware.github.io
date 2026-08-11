@@ -76,3 +76,13 @@ other = "Contact"
 other = "GitHub"
 [googleScholar]
 other = "Google Scholar"
+[note]
+other = "Note"
+[tip]
+other = "Tip"
+[important]
+other = "Important"
+[warning]
+other = "Warning"
+[caution]
+other = "Caution"

@@ -14,3 +14,7 @@ interactionId = "shared-article"
 ![共享测试图](diagram.svg)
 
 [下载共享测试说明](notes.txt)
+
+> [!WARNING]
+>
+> 测试警告内容。

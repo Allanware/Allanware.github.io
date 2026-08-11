@@ -28,9 +28,31 @@ html:lang(zh-CN) content {
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
+summary:focus-visible,
 .image-zoom-label:focus-visible {
   outline: 2px solid var(--link-color);
   outline-offset: 3px;
+}
+
+.callout {
+  border-left: 4px solid var(--border-color);
+  margin: 16px 0;
+  padding-left: 12px;
+}
+
+.callout > summary,
+.callout-label {
+  color: var(--text-color-secondary);
+  font-weight: 700;
+  margin: 0;
+}
+
+details.callout > summary {
+  cursor: pointer;
+}
+
+details.callout[open] > summary {
+  margin-bottom: 8px;
 }
 
 .header-navigation {

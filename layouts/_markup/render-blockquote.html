@@ -1,0 +1,18 @@
+{{- /* GitHub-style callouts. Obsidian's fold markers make one collapsible:
+       "> [!NOTE]-" starts folded, "> [!NOTE]+" starts open, neither stays prose. */ -}}
+{{- if eq .Type "alert" -}}
+  {{- $label := or .AlertTitle (i18n .AlertType) | default (title .AlertType) -}}
+  {{- if .AlertSign -}}
+    <details class="callout callout-{{ .AlertType }}"{{ if eq .AlertSign "+" }} open{{ end }}>
+      <summary>{{ $label }}</summary>
+      {{ .Text }}
+    </details>
+  {{- else -}}
+    <div class="callout callout-{{ .AlertType }}">
+      <p class="callout-label">{{ $label }}</p>
+      {{ .Text }}
+    </div>
+  {{- end -}}
+{{- else -}}
+  <blockquote>{{ .Text }}</blockquote>
+{{- end -}}

@@ -76,3 +76,13 @@ other = "联系"
 other = "GitHub"
 [googleScholar]
 other = "谷歌学术"
+[note]
+other = "说明"
+[tip]
+other = "提示"
+[important]
+other = "重要"
+[warning]
+other = "警告"
+[caution]
+other = "注意"

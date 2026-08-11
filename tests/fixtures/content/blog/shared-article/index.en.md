@@ -19,3 +19,19 @@ fixture <- c("string", 1.5)
 ```
 
 [Download shared fixture notes](notes.txt)
+
+> Plain fixture quote.
+
+> [!NOTE]- Folded fixture callout
+>
+> ``` r
+> folded <- TRUE
+> ```
+
+> [!TIP]+ Unfolded fixture callout
+>
+> Fixture tip body.
+
+> [!WARNING]
+>
+> Fixture warning body.
