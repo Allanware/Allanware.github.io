@@ -2447,7 +2447,8 @@ interactionId = "resource-suffixes"
         self.assertRegex(
             css,
             r"\.home-ending\s*\{[^}]*"
-            r"margin-block-start:\s*clamp\(8rem,\s*25vh,\s*15rem\);",
+            r"margin-block-start:\s*clamp\(8rem,\s*25vh,\s*15rem\);[^}]*"
+            r"padding-block-end:\s*1rem;",
         )
         for name in (
             "home-ending-train-crossing",

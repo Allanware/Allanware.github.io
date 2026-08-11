@@ -250,7 +250,7 @@ ol.home-title-list {
   color: var(--text-color-tertiary);
   margin-block-start: clamp(8rem, 25vh, 15rem);
   min-height: 10rem;
-  padding-block-end: 2rem;
+  padding-block-end: 1rem;
   text-align: center;
 }
 
