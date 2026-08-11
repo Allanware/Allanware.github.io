@@ -194,7 +194,7 @@ self.assertEqual(1, ending.count("data-home-ending-carriage"))
 self.assertEqual(1, ending.count("data-home-ending-engine"))
 self.assertEqual(3, ending.count("data-home-ending-smoke"))
 self.assertEqual(4, ending.count("data-home-ending-wheel"))
-self.assertEqual(8, ending.count("data-home-ending-cutout"))
+self.assertEqual(7, ending.count("data-home-ending-cutout"))
 self.assertIn('fill="currentColor"', ending)
 self.assertIn('stroke="none"', ending)
 ```
@@ -236,7 +236,6 @@ Keep the ending root, lane, runner, caption, return link, and module include. Re
     <rect x="93" y="29" width="56" height="21" rx="10.5"></rect>
     <rect x="120" y="12" width="12" height="19" rx="3"></rect>
     <rect x="117" y="9" width="18" height="6" rx="3"></rect>
-    <circle class="home-ending-train-cutout" data-home-ending-cutout cx="145" cy="34" r="3"></circle>
     <path d="M148 41h8l9 10h-17Z"></path>
   </g>
   <g class="home-ending-wheel" data-home-ending-wheel>
@@ -262,7 +261,9 @@ Keep the ending root, lane, runner, caption, return link, and module include. Re
 </svg>
 ```
 
-The filled bodies create a clear toy silhouette. Eight background-colored cut-outs provide three windows, one lamp, and four wheel hubs without reintroducing the rejected outline clutter.
+The filled bodies create a clear toy silhouette. Seven background-colored
+cut-outs provide three windows and four wheel hubs without reintroducing the
+rejected outline clutter or cutting a distracting notch into the train's nose.
 
 - [ ] **Step 4: Run the generated-site test and verify green**
 

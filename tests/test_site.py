@@ -1964,7 +1964,7 @@ interactionId = "resource-suffixes"
                         self.assertEqual(1, ending.count("data-home-ending-engine"))
                         self.assertEqual(3, ending.count("data-home-ending-smoke"))
                         self.assertEqual(4, ending.count("data-home-ending-wheel"))
-                        self.assertEqual(8, ending.count("data-home-ending-cutout"))
+                        self.assertEqual(7, ending.count("data-home-ending-cutout"))
                         self.assertIn('fill="currentColor"', ending)
                         self.assertIn('stroke="none"', ending)
                         self.assertLess(
@@ -2458,6 +2458,8 @@ interactionId = "resource-suffixes"
         for name in (
             "home-ending-train-crossing",
             "home-ending-train-bob",
+            "home-ending-wheel-turn",
+            "home-ending-smoke-drift",
             "home-ending-caption",
             "home-ending-return",
         ):
@@ -2478,14 +2480,30 @@ interactionId = "resource-suffixes"
             css,
             r"\.home-ending-train\s*\{[^}]*"
             r"color:\s*var\(--text-color-secondary\);[^}]*"
-            r"height:\s*3\.25rem;[^}]*width:\s*8\.25rem;",
+            r"height:\s*4rem;[^}]*width:\s*10\.5rem;",
         )
         self.assertIn("animation-iteration-count: 1", css)
         self.assertNotIn("animation-iteration-count: infinite", css)
         self.assertRegex(
             css,
+            r'\[data-home-ending-state="playing"\] '
+            r"\.home-ending-train-runner\s*"
+            r"\{[^}]*animation-duration:\s*5\.5s;",
+        )
+        self.assertRegex(
+            css,
             r'\[data-home-ending-state="playing"\] \.home-ending-caption\s*'
-            r"\{[^}]*animation-delay:\s*3s;",
+            r"\{[^}]*animation-delay:\s*5\.5s;",
+        )
+        self.assertRegex(
+            css,
+            r"\.home-ending-train-cutout\s*\{[^}]*"
+            r"fill:\s*var\(--bg-color-primary\);",
+        )
+        self.assertRegex(
+            css,
+            r"\.home-ending-wheel\s*\{[^}]*"
+            r"transform-box:\s*fill-box;",
         )
         reduced = re.search(
             r"@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{([\s\S]*)\}\s*$",
