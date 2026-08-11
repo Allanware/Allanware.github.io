@@ -62,30 +62,43 @@ With `prefers-reduced-motion: reduce`, the balloon remains static, the return
 link is visible immediately, and no smooth-scroll or floating animation is
 applied.
 
-## Prototype 2: Train of Thought (Selected for Review)
+## Prototype 2: Train of Thought (Second Revision Selected for Review)
 
-The second review build replaces the balloon in the same homepage-only slot. A
-small, rounded line-drawn toy train crosses a clipped lane from left to right
-once when the ending enters the viewport. The train consists of a locomotive,
-one carriage, visible wheels, and two smoke puffs so the silhouette reads
-immediately without relying on an emoji or platform font. A gentle vertical bob
-adds personality while the overall motion remains quiet.
+The first train iteration was rejected because its thin, skeletal line drawing
+looked ugly and its three-second crossing disappeared too quickly. The second
+revision keeps the same homepage-only concept but replaces that drawing with a
+larger, rounded, filled toy steam train. It has one compact carriage, a chunky
+locomotive, cut-out windows and wheel hubs, and three soft smoke puffs. Its cute
+character comes from simple proportions and motion rather than a face, so it
+does not become a second mascot.
+
+The monochrome inline SVG is approximately `10.5rem` wide and `4rem` tall. It
+inherits the site's secondary text color, uses the page background for its
+window and hub cut-outs, and contains fewer internal strokes than the rejected
+version. It remains crisp and responsive without depending on an emoji or
+platform font.
+
+When the ending enters the viewport, the train takes `5.5s` to travel through a
+clipped lane from left to right. The full train is visible for most of that
+journey. Its wheels rotate and its smoke puffs rise gently during the same
+one-shot sequence; neither effect runs after the train has left.
 
 Only after the train has left the lane does localized copy fade in:
 
 - English: `there goes my train of thought.`
 - Chinese: `思绪又飘走了。`
 
-The existing localized return link fades in beneath the line and keeps the
-replay contract established during the first review: clicking it scrolls to the
-top, the observer waits for the ending to leave the viewport, and the train may
-play again only after the reader returns to the bottom.
+The existing localized return link fades in beneath the line. Clicking it is a
+literal restart: script sets the current URL fragment to `#home-top` and reloads
+the page. The reload resets the animation state and lands at the homepage's top
+anchor. The old observer-based scroll-and-rearm behavior is removed because it
+did not reliably restart in the user's browser. Without JavaScript, the link
+retains its normal fragment-link fallback.
 
-The train is an inline SVG animated with CSS rather than an animated GIF. It
-inherits the site's secondary text color, stays crisp and responsive, never
-loops, and adds no external asset. The reduced-motion version omits the crossing
-and fade sequence, centers the train in its lane, and shows the final line and
-return link immediately.
+The train uses CSS rather than an animated GIF, never loops, and adds no external
+asset. The reduced-motion version omits the crossing, wheel, smoke, and fade
+sequences; it centers the train in its lane and shows the final line and return
+link immediately. Activating the link still performs the same hard restart.
 
 ## Implementation Boundaries
 
@@ -121,11 +134,10 @@ root and project-subpath base URLs and assert that the active ending:
 - emits base-path-safe assets and a working top fragment target; and
 - uses semantic markup without a looping media asset.
 
-Dependency-free Node tests cover armed viewport activation, no replay while the
-ending remains visible, re-arming through the return link, replay after a full
-viewport exit and re-entry, fallback when `IntersectionObserver` is unavailable,
-the final visible state, return-to-top behavior, and reduced-motion behavior
-where it is controlled by script.
+Dependency-free Node tests cover one-shot viewport activation, observer cleanup,
+fallback when `IntersectionObserver` is unavailable, the final visible state,
+the fragment-plus-reload restart, and reduced-motion behavior where it is
+controlled by script.
 
 The full Python and Node test suites, the strict Hugo build, and a browser review
 at desktop and mobile widths verify each prototype before it is presented for
@@ -137,9 +149,12 @@ visual judgment.
 2. Review it in site. (Complete; rejected as insufficiently interesting or
    cute.)
 3. Replace it with the train-of-thought prototype using `思绪又飘走了。` for the
-   Chinese analogy. (Active.)
-4. Pause for a second in-site review.
-5. Keep the preferred prototype and remove temporary comparison code.
+   Chinese analogy. (Complete; first train drawing and timing rejected.)
+4. Replace the first train with the larger filled toy-train revision, slow the
+   crossing to `5.5s`, and make the return link hard-reload the homepage.
+   (Active.)
+5. Pause for another in-site review.
+6. Keep the preferred prototype and remove temporary comparison code.
 
 The two versions are never shown together, and no final choice is assumed until
 both have been seen in the site.
