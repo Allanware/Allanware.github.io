@@ -14,8 +14,12 @@ ROOT = Path(__file__).resolve().parents[1]
 BUNDLE = ROOT / "content/blog/go-game-review-2026-07-26"
 PAGE = BUNDLE / "index.en.md"
 SGF = BUNDLE / "2026-7-26.sgf"
+PRO_SGF = BUNDLE / "2026-7-26_pro.sgf"
 EXPECTED_SGF_SHA256 = (
     "829cceb4e5cc25b2d6a97104a76958c7431d98377e33d5d3c0031940bd158427"
+)
+EXPECTED_PRO_SGF_SHA256 = (
+    "4522758078cf8a367e446f981a2f52d3f9f5a91e75e0dc960da38b7100802363"
 )
 SHORTCODE_PATTERN = re.compile(r"{{<\s*go-board\s+(?P<params>.*?)\s*>}}", re.DOTALL)
 ATTRIBUTE_PATTERN = re.compile(r'([a-zA-Z][\w-]*)="([^"]*)"')
@@ -55,23 +59,44 @@ class GoGameReviewBundleTests(unittest.TestCase):
         self.assertEqual(2703, len(payload))
         self.assertEqual(EXPECTED_SGF_SHA256, hashlib.sha256(payload).hexdigest())
 
-    def test_page_keeps_its_identity_and_a_valid_local_board(self):
+    def test_pro_sgf_is_the_unmodified_supplied_record(self):
+        self.assertTrue(PRO_SGF.is_file(), f"missing supplied SGF at {PRO_SGF}")
+        payload = PRO_SGF.read_bytes()
+        self.assertEqual(4770, len(payload))
+        self.assertEqual(
+            EXPECTED_PRO_SGF_SHA256,
+            hashlib.sha256(payload).hexdigest(),
+        )
+
+    def test_page_keeps_its_identity_and_three_valid_local_boards(self):
         self.assertTrue(PAGE.is_file(), f"missing English page at {PAGE}")
         self.assertEqual(
             "go-game-review-2026-07-26",
             read_front_matter(PAGE).get("interactionId"),
         )
         boards = go_board_shortcodes(PAGE.read_text(encoding="utf-8"))
-        self.assertGreaterEqual(len(boards), 1)
+        self.assertEqual(
+            [
+                ("2026-7-26.sgf", "64"),
+                ("2026-7-26.sgf", "80"),
+                ("2026-7-26_pro.sgf", "36"),
+            ],
+            [(board.get("src"), board.get("move")) for board in boards],
+        )
+        self.assertEqual(
+            [
+                "2026-7-26.sgf — position after move 64.",
+                "2026-7-26.sgf — position after move 80.",
+                "2026-7-26_pro.sgf — position after move 36.",
+            ],
+            [board.get("caption") for board in boards],
+        )
         for board in boards:
             with self.subTest(board=board):
                 assert_valid_local_board(self, board, BUNDLE)
 
-    def test_page_renders_its_local_board_with_drafts_enabled(self):
-        attributes = go_board_shortcodes(PAGE.read_text(encoding="utf-8"))[0]
-        selectors = set(attributes) & {"move", "path"}
-        selector_kind = next(iter(selectors), "move")
-        selector_value = attributes.get(selector_kind, "0")
+    def test_page_renders_its_local_boards_with_drafts_enabled(self):
+        boards = go_board_shortcodes(PAGE.read_text(encoding="utf-8"))
         with TemporaryDirectory() as temporary:
             temporary_root = Path(temporary)
             public = temporary_root / "public"
@@ -102,16 +127,35 @@ class GoGameReviewBundleTests(unittest.TestCase):
                 "Go review was not rendered with --buildDrafts",
             )
             rendered = rendered_path.read_text(encoding="utf-8")
-            self.assertIn(f'data-selector-kind="{selector_kind}"', rendered)
-            self.assertIn(f'data-selector-value="{selector_value}"', rendered)
-            self.assertIn(attributes["caption"], unescape(rendered))
-            published_sgf = (
-                public / "p/go-game-review-2026-07-26" / attributes["src"]
+            for attributes in boards:
+                selectors = set(attributes) & {"move", "path"}
+                selector_kind = next(iter(selectors), "move")
+                selector_value = attributes.get(selector_kind, "0")
+                with self.subTest(attributes=attributes):
+                    self.assertIn(
+                        f'data-selector-kind="{selector_kind}"',
+                        rendered,
+                    )
+                    self.assertIn(
+                        f'data-selector-value="{selector_value}"',
+                        rendered,
+                    )
+                    self.assertIn(attributes["caption"], unescape(rendered))
+                    published_sgf = (
+                        public / "p/go-game-review-2026-07-26"
+                        / attributes["src"]
+                    )
+                    self.assertEqual(
+                        (BUNDLE / attributes["src"]).read_bytes(),
+                        published_sgf.read_bytes(),
+                    )
+
+            figure_ids = re.findall(
+                r'<figure id="([^"]+)" class="go-board" data-go-board',
+                rendered,
             )
-            self.assertEqual(
-                (BUNDLE / attributes["src"]).read_bytes(),
-                published_sgf.read_bytes(),
-            )
+            self.assertEqual(3, len(figure_ids))
+            self.assertEqual(3, len(set(figure_ids)))
 
 
 class GoBoardAuthoringDocumentationTests(unittest.TestCase):

@@ -7,6 +7,7 @@ import * as goBoardCore from "../assets/js/go-board-core.mjs";
 const {
   createSgfTextLoader,
   reloadPristine,
+  selectAuthoredNode,
   selectMainlineMove,
   selectPath,
 } = goBoardCore;
@@ -209,6 +210,35 @@ test("the documented exact path resolves against the bundled Go review", () => {
     { x: selected.move.x, y: selected.move.y },
     { x: 2, y: 14 },
   );
+});
+
+
+test("published review positions preserve their authored forks", () => {
+  const positions = [
+    ["2026-7-26.sgf", "64"],
+    ["2026-7-26.sgf", "80"],
+    ["2026-7-26_pro.sgf", "36"],
+  ];
+
+  for (const [source, move] of positions) {
+    const sgfText = readFileSync(
+      new URL(`../content/blog/go-game-review-2026-07-26/${source}`, import.meta.url),
+      "utf8",
+    );
+    const parsed = globalThis.besogo.parseSgf(sgfText);
+    const editor = globalThis.besogo.makeEditor(19, 19);
+    goBoardCore.loadSgfForReader({
+      besogo: globalThis.besogo,
+      editor,
+      sgf: parsed,
+    });
+
+    const selected = selectAuthoredNode(editor.getRoot(), {
+      kind: "move",
+      value: move,
+    });
+    assert.equal(selected.children.length, 2, `${source} move ${move}`);
+  }
 });
 
 
