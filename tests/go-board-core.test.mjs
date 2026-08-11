@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import {
+import * as goBoardCore from "../assets/js/go-board-core.mjs";
+
+const {
   createSgfTextLoader,
   reloadPristine,
   selectMainlineMove,
   selectPath,
-} from "../assets/js/go-board-core.mjs";
+} = goBoardCore;
 
 
 globalThis.window = globalThis;
@@ -22,6 +24,9 @@ const syntheticSgf = readFileSync(
   new URL("fixtures/go-board/synthetic.sgf", import.meta.url),
   "utf8",
 );
+const rootMoveSgf = "(;GM[1]FF[4]SZ[5]KM[6.5]C[Root move]B[aa](;W[bb])(;W[cc]))";
+const rootMoveWithSetupSgf = "(;GM[1]FF[4]SZ[5]KM[6.5]AB[cc][ee]AW[dd]AE[ee]C[Root setup and move]B[aa];W[bb])";
+const setupRootSgf = "(;GM[1]FF[4]SZ[5]KM[6.5]AB[cc]C[Setup root];B[aa](;W[bb])(;W[dd]))";
 
 
 function node(name, move = null) {
@@ -54,6 +59,104 @@ test("main-line move selection ignores nodes without moves", () => {
   const { root, moveTwo } = authoredTree();
 
   assert.equal(selectMainlineMove(root, 2), moveTwo);
+});
+
+
+test("a moving SGF root cannot masquerade as semantic move zero", () => {
+  const parsed = globalThis.besogo.parseSgf(rootMoveSgf);
+  const editor = globalThis.besogo.makeEditor(19, 19);
+  globalThis.besogo.loadSgf(parsed, editor);
+  const movingRoot = editor.getRoot();
+
+  assert.equal(movingRoot.moveNumber, 1);
+  assert.throws(
+    () => selectMainlineMove(movingRoot, 0),
+    /pre-move root/,
+  );
+  assert.equal(selectMainlineMove(movingRoot, 1), movingRoot);
+});
+
+
+test("reader loading adds a non-mutating pre-move root without shifting authored paths", () => {
+  assert.equal(typeof goBoardCore.loadSgfForReader, "function");
+  const parsed = globalThis.besogo.parseSgf(rootMoveSgf);
+  const authoredTree = JSON.stringify(parsed);
+  const editor = globalThis.besogo.makeEditor(19, 19);
+
+  goBoardCore.loadSgfForReader({
+    besogo: globalThis.besogo,
+    editor,
+    sgf: parsed,
+  });
+
+  const preMove = editor.getRoot();
+  const firstMove = selectMainlineMove(preMove, 1);
+  assert.equal(JSON.stringify(parsed), authoredTree);
+  assert.deepEqual(preMove.getSize(), { x: 5, y: 5 });
+  assert.equal(editor.getGameInfo().KM, "6.5");
+  assert.equal(preMove.move, null);
+  assert.equal(preMove.moveNumber, 0);
+  assert.equal(selectMainlineMove(preMove, 0), preMove);
+  assert.equal(firstMove.moveNumber, 1);
+  assert.deepEqual({ x: firstMove.move.x, y: firstMove.move.y }, { x: 1, y: 1 });
+  assert.equal(selectMainlineMove(preMove, 2), firstMove.children[0]);
+  assert.equal(selectPath(preMove, "N0"), firstMove);
+  assert.equal(selectPath(preMove, "B2"), firstMove.children[1]);
+  editor.setCurrent(firstMove);
+  assert.deepEqual(editor.getVariants(), firstMove.children);
+});
+
+
+test("reader loading applies root setup before a same-node first move without duplicating deltas", () => {
+  const parsed = globalThis.besogo.parseSgf(rootMoveWithSetupSgf);
+  const authoredTree = JSON.stringify(parsed);
+  const editor = globalThis.besogo.makeEditor(19, 19);
+
+  goBoardCore.loadSgfForReader({
+    besogo: globalThis.besogo,
+    editor,
+    sgf: parsed,
+  });
+
+  const preMove = editor.getRoot();
+  const firstMove = preMove.children[0];
+  assert.equal(JSON.stringify(parsed), authoredTree);
+  assert.equal(preMove.getStone(3, 3), -1);
+  assert.equal(preMove.getStone(4, 4), 1);
+  assert.equal(preMove.getStone(5, 5), 0);
+  assert.equal(preMove.getSetup(3, 3), "AB");
+  assert.equal(preMove.getSetup(4, 4), "AW");
+  assert.equal(preMove.getSetup(5, 5), false);
+  assert.equal(firstMove.getSetup(3, 3), false);
+  assert.equal(firstMove.moveNumber, 1);
+  assert.deepEqual(
+    { x: firstMove.move.x, y: firstMove.move.y, color: firstMove.move.color },
+    { x: 1, y: 1, color: -1 },
+  );
+  assert.equal(firstMove.getStone(3, 3), -1);
+  assert.equal(firstMove.getStone(4, 4), 1);
+});
+
+
+test("reader loading leaves an authored setup root and its paths unchanged", () => {
+  assert.equal(typeof goBoardCore.loadSgfForReader, "function");
+  const parsed = globalThis.besogo.parseSgf(setupRootSgf);
+  const authoredTree = JSON.stringify(parsed);
+  const editor = globalThis.besogo.makeEditor(19, 19);
+
+  goBoardCore.loadSgfForReader({
+    besogo: globalThis.besogo,
+    editor,
+    sgf: parsed,
+  });
+
+  const root = editor.getRoot();
+  assert.equal(JSON.stringify(parsed), authoredTree);
+  assert.equal(root.move, null);
+  assert.equal(root.getStone(3, 3), -1);
+  assert.equal(root.comment, "Setup root");
+  assert.equal(selectMainlineMove(root, 0), root);
+  assert.equal(selectPath(root, "N1B2"), root.children[0].children[1]);
 });
 
 
@@ -318,6 +421,50 @@ test("Return restores the published selector after read-only navigation", async 
   assert.equal(editor.getTool(), "navOnly");
   assert.equal(dom.returnButton.disabled, true);
   assert.equal(dom.tryButton.disabled, false);
+});
+
+
+test("root-move SGF starts at move zero and Return reloads its pristine pre-move tree", async () => {
+  const dom = boardDom({ kind: "move", value: "0" });
+  const besogo = boardBesogo();
+  const authoredText = rootMoveSgf;
+  const parseInputs = [];
+  const parseSgf = besogo.parseSgf;
+  besogo.parseSgf = (text) => {
+    parseInputs.push(text);
+    return parseSgf(text);
+  };
+  const controller = mountGoBoard(dom.root, {
+    besogo,
+    loadSgfText: async () => authoredText,
+    logger: { error() {} },
+  });
+  await controller.ready;
+
+  const editor = dom.host.besogoEditor;
+  const initialRoot = editor.getRoot();
+  assert.equal(editor.getCurrent(), initialRoot);
+  assert.equal(editor.getCurrent().moveNumber, 0);
+  assert.equal(editor.getCurrent().move, null);
+  assert.equal(dom.move.textContent, "Move 0");
+  assert.equal(initialRoot.children.length, 1);
+
+  dom.next.click();
+  assert.equal(editor.getCurrent().moveNumber, 1);
+  assert.equal(dom.returnButton.disabled, false);
+  dom.returnButton.click();
+  assert.notEqual(editor.getRoot(), initialRoot);
+  assert.equal(editor.getCurrent().moveNumber, 0);
+
+  const pristineRoot = editor.getRoot();
+  dom.tryButton.click();
+  editor.click(3, 3, false, false);
+  assert.equal(pristineRoot.children.length, 2);
+  dom.returnButton.click();
+  assert.notEqual(editor.getRoot(), pristineRoot);
+  assert.equal(editor.getRoot().children.length, 1);
+  assert.equal(editor.getCurrent().moveNumber, 0);
+  assert.deepEqual(parseInputs, [authoredText, authoredText, authoredText]);
 });
 
 

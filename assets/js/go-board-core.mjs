@@ -1,8 +1,51 @@
+const SYNTHETIC_PRE_MOVE_ROOT = Symbol("go-board synthetic pre-move root");
+// Mirrors the root properties consumed by the pinned BesoGo loader. It ignores PL.
+const ROOT_METADATA_IDS = new Set([
+  "SZ", "ST",
+  "PB", "BR", "BT", "PW", "WR", "WT",
+  "HA", "KM", "RU", "TM", "OT",
+  "DT", "EV", "GN", "PC", "RO",
+  "GC", "ON", "RE", "AN", "CP", "SO", "US",
+]);
+const ROOT_SETUP_IDS = new Set(["AB", "AW", "AE"]);
+
+
+export function loadSgfForReader({ besogo, editor, sgf }) {
+  const startsWithMove = sgf.props.some(
+    (property) => property.id === "B" || property.id === "W",
+  );
+  let readerTree = sgf;
+  if (startsWithMove) {
+    const authoredRoot = {
+      props: sgf.props.filter((property) => !ROOT_SETUP_IDS.has(property.id)),
+      children: sgf.children,
+    };
+    readerTree = {
+      props: sgf.props.filter(
+        (property) => ROOT_METADATA_IDS.has(property.id)
+          || ROOT_SETUP_IDS.has(property.id),
+      ),
+      children: [authoredRoot],
+    };
+  }
+
+  besogo.loadSgf(readerTree, editor);
+  const root = editor.getRoot();
+  if (startsWithMove) root[SYNTHETIC_PRE_MOVE_ROOT] = true;
+  return root;
+}
+
+
 export function selectMainlineMove(root, moveNumber) {
   if (!Number.isSafeInteger(moveNumber) || moveNumber < 0) {
     throw new RangeError("Move number must be a non-negative safe integer");
   }
-  if (moveNumber === 0) return root;
+  if (moveNumber === 0) {
+    if (root.move) {
+      throw new RangeError("Move 0 requires a pre-move root");
+    }
+    return root;
+  }
 
   if (root.move && moveNumber === 1) return root;
   const remaining = moveNumber - (root.move ? 1 : 0);
@@ -47,7 +90,7 @@ export function selectPath(root, path) {
     throw new TypeError(`Invalid path selector: ${path}`);
   }
 
-  let current = root;
+  let current = root[SYNTHETIC_PRE_MOVE_ROOT] ? root.children[0] : root;
   for (const match of path.matchAll(/([NB])([0-9]+)/g)) {
     const value = Number(match[2]);
     if (!Number.isSafeInteger(value)) {
@@ -84,7 +127,7 @@ export function selectAuthoredNode(root, selector) {
 
 export function reloadPristine({ editor, sgfText, selector, besogo }) {
   const parsed = besogo.parseSgf(sgfText);
-  besogo.loadSgf(parsed, editor);
+  loadSgfForReader({ besogo, editor, sgf: parsed });
   editor.setTool("navOnly");
   const selected = selectAuthoredNode(editor.getRoot(), selector);
   editor.setCurrent(selected);

@@ -25,6 +25,23 @@ SYNTHETIC_SGF = ROOT / "tests/fixtures/go-board/synthetic.sgf"
 GO_BOARD_CONTENT = ROOT / "tests/fixtures/go-board-content"
 
 
+def relative_luminance(color: str) -> float:
+    channels = [int(color[index:index + 2], 16) / 255 for index in (1, 3, 5)]
+    linear = [
+        value / 12.92 if value <= 0.04045
+        else ((value + 0.055) / 1.055) ** 2.4
+        for value in channels
+    ]
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+
+def contrast_ratio(first: str, second: str) -> float:
+    lighter, darker = sorted(
+        (relative_luminance(first), relative_luminance(second)), reverse=True
+    )
+    return (lighter + 0.05) / (darker + 0.05)
+
+
 def build_site(destination: Path, base_url: str, content: Path) -> None:
     subprocess.run(
         [
@@ -140,23 +157,31 @@ class GoBoardStyleTests(unittest.TestCase):
             self.assertIsNotNone(match)
             strokes.append(match.group(1))
 
-        def luminance(color: str) -> float:
-            channels = [int(color[index:index + 2], 16) / 255 for index in (1, 3, 5)]
-            linear = [
-                value / 12.92 if value <= 0.04045
-                else ((value + 0.055) / 1.055) ** 2.4
-                for value in channels
-            ]
-            return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
-
-        def contrast(first: str, second: str) -> float:
-            lighter, darker = sorted(
-                (luminance(first), luminance(second)), reverse=True
-            )
-            return (lighter + 0.05) / (darker + 0.05)
-
         for board, stroke in (("#e0bb6c", strokes[0]), ("#caa35e", strokes[1])):
-            self.assertGreaterEqual(contrast(board, stroke), 3)
+            self.assertGreaterEqual(contrast_ratio(board, stroke), 3)
+
+    def test_automatic_branch_labels_are_bold_and_contrast_on_both_boards(self):
+        css = (ROOT / "assets/css/go-board.css").read_text(encoding="utf-8")
+        marker_rule = re.search(
+            r'''\.go-board text\[fill=["']#ff474c["']\]\s*\{(?P<body>[^}]*)\}''',
+            css,
+        )
+        self.assertIsNotNone(marker_rule)
+        body = marker_rule.group("body")
+        fill = re.search(r"fill:\s*(#[0-9a-fA-F]{6})", body)
+        halo = re.search(r"stroke:\s*(#[0-9a-fA-F]{6})", body)
+        weight = re.search(r"font-weight:\s*([0-9]+)", body)
+        stroke_width = re.search(r"stroke-width:\s*([0-9.]+)px", body)
+        self.assertIsNotNone(fill)
+        self.assertIsNotNone(halo)
+        self.assertIsNotNone(weight)
+        self.assertIsNotNone(stroke_width)
+        self.assertGreaterEqual(int(weight.group(1)), 700)
+        self.assertGreaterEqual(float(stroke_width.group(1)), 3)
+        self.assertRegex(body, r"paint-order:\s*stroke fill;")
+        for board in ("#e0bb6c", "#caa35e"):
+            self.assertGreaterEqual(contrast_ratio(board, fill.group(1)), 3)
+        self.assertGreaterEqual(contrast_ratio(halo.group(1), fill.group(1)), 3)
 
 
 class GoBoardGeneratedSiteTests(unittest.TestCase):

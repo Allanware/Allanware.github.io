@@ -30,6 +30,15 @@
   stroke: #5b4628;
 }
 
+.go-board text[fill="#ff474c"] {
+  fill: #8a001f;
+  font-weight: 700;
+  paint-order: stroke fill;
+  stroke: #fff4d6;
+  stroke-linejoin: round;
+  stroke-width: 3px;
+}
+
 .go-board__host:focus-visible {
   outline: 2px solid var(--link-color);
   outline-offset: 3px;

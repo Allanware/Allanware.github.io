@@ -9,6 +9,7 @@ import "../vendor/besogo/js/svgUtil.js";
 
 import {
   createSgfTextLoader,
+  loadSgfForReader,
   reloadPristine,
   selectAuthoredNode,
 } from "./go-board-core.mjs";
@@ -94,7 +95,7 @@ export function mountGoBoard(root, dependencies = {}) {
     try {
       parsed = besogo.parseSgf(pristineSgf);
       previewEditor = besogo.makeEditor(19, 19);
-      besogo.loadSgf(parsed, previewEditor);
+      loadSgfForReader({ besogo, editor: previewEditor, sgf: parsed });
     } catch (error) {
       fail(root.dataset.parseErrorLabel, error);
       return;
@@ -121,7 +122,7 @@ export function mountGoBoard(root, dependencies = {}) {
         shadows: "off",
       });
       editor = host.besogoEditor;
-      besogo.loadSgf(parsed, editor);
+      loadSgfForReader({ besogo, editor, sgf: parsed });
       editor.setVariantStyle(0);
       authoredTarget = selectAuthoredNode(editor.getRoot(), selector);
       editor.setCurrent(authoredTarget);
