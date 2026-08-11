@@ -2411,6 +2411,24 @@ interactionId = "resource-suffixes"
         self.assertIn("<blockquote>", english)
         self.assertRegex(english, r"<blockquote>\s*<p>Plain fixture quote")
 
+    def test_istanbul_working_session_is_folded_by_default(self):
+        with TemporaryDirectory() as temporary:
+            public = Path(temporary) / "public"
+            build_site(public, "https://example.test/")
+            page = read_html(public, "p/the-miracle-of-istanbul/index.html")
+
+        callout = re.search(
+            r'<details class="callout callout-note"([^>]*)>(.*?)</details>',
+            page,
+            re.DOTALL,
+        )
+        self.assertIsNotNone(callout)
+        self.assertNotIn("open", callout.group(1))
+        self.assertIn("<summary>My working session</summary>", callout.group(2))
+        callout_text = unescape(re.sub(r"<[^>]+>", "", callout.group(2)))
+        self.assertIn("sessionInfo()", callout_text)
+        self.assertIn("R version 4.1.0", callout_text)
+
     def test_upvoted_icon_adds_a_non_color_pressed_cue(self):
         kudos = (ROOT / "layouts/_partials/kudos.html").read_text(
             encoding="utf-8"
