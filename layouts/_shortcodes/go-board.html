@@ -2,6 +2,14 @@
 {{- if not .IsNamedParams -}}
   {{- errorf "go-board at %s: use named arguments (src, caption, and optional move or path)" $position -}}
 {{- else -}}
+  {{- $allowedParams := dict "src" true "caption" true "move" true "path" true -}}
+  {{- $valid := true -}}
+  {{- range $name, $_ := .Params -}}
+    {{- if not (isset $allowedParams $name) -}}
+      {{- $valid = false -}}
+      {{- errorf "go-board at %s: unknown named argument %q" $position $name -}}
+    {{- end -}}
+  {{- end -}}
   {{- $src := strings.TrimSpace (printf "%v" (.Get "src")) -}}
   {{- $caption := strings.TrimSpace (printf "%v" (.Get "caption")) -}}
   {{- $hasMove := isset .Params "move" -}}
@@ -14,7 +22,6 @@
   {{- if $hasPath -}}
     {{- $path = strings.TrimSpace (printf "%v" (.Get "path")) -}}
   {{- end -}}
-  {{- $valid := true -}}
 
   {{- if eq $src "" -}}
     {{- $valid = false -}}
@@ -57,6 +64,7 @@
     {{- $figureKey := printf "%s|%s|%s|%d" .Page.Permalink $selector $src .Ordinal -}}
     {{- $figureId := printf "go-board-%s" (substr (md5 $figureKey) 0 12) -}}
     {{- $captionId := printf "%s-caption" $figureId -}}
+    {{- $controlsId := printf "%s-controls-label" $figureId -}}
     {{- $noticeId := printf "%s-local-notice" $figureId -}}
     {{- $moveTemplate := T "goBoardMove" -}}
     <figure id="{{ $figureId }}" class="go-board" data-go-board
@@ -75,13 +83,14 @@
           aria-labelledby="{{ $captionId }}" aria-describedby="{{ $noticeId }}"></div>
         <p class="go-board__status" data-go-board-status role="status" aria-live="polite">{{ T "goBoardLoading" }}</p>
       </div>
-      <nav class="go-board__controls" aria-label="{{ T "goBoardControls" }}">
+      <div class="go-board__controls" role="group" aria-labelledby="{{ $controlsId }} {{ $captionId }}">
+        <span id="{{ $controlsId }}" class="visually-hidden">{{ T "goBoardControls" }}</span>
         <button type="button" data-go-board-previous aria-label="{{ T "goBoardPrevious" }}" disabled>{{ T "goBoardPrevious" }}</button>
         <output data-go-board-move aria-live="polite">{{ replace $moveTemplate "{move}" $move }}</output>
         <button type="button" data-go-board-next aria-label="{{ T "goBoardNext" }}" disabled>{{ T "goBoardNext" }}</button>
         <button type="button" data-go-board-try disabled>{{ T "goBoardTry" }}</button>
         <button type="button" data-go-board-return disabled>{{ T "goBoardReturn" }}</button>
-      </nav>
+      </div>
       <p class="go-board__note" data-go-board-note role="status" aria-live="polite" hidden>
         <strong>{{ T "goBoardNodeNote" }}:</strong>
         <span data-go-board-note-text></span>

@@ -110,6 +110,38 @@ class GoBoardStyleTests(unittest.TestCase):
         self.assertIsNotNone(board_rule)
         self.assertRegex(board_rule.group("body"), r"margin-inline:\s*0;")
 
+    def test_white_stones_have_contrasting_boundaries_in_both_color_schemes(self):
+        css = (ROOT / "assets/css/go-board.css").read_text(encoding="utf-8")
+        white_stone_rules = re.findall(
+            r"\.go-board \.besogo-svg-whiteStone\s*\{(?P<body>[^}]*)\}",
+            css,
+        )
+        self.assertEqual(2, len(white_stone_rules))
+
+        strokes = []
+        for rule in white_stone_rules:
+            match = re.search(r"stroke:\s*(#[0-9a-fA-F]{6})", rule)
+            self.assertIsNotNone(match)
+            strokes.append(match.group(1))
+
+        def luminance(color: str) -> float:
+            channels = [int(color[index:index + 2], 16) / 255 for index in (1, 3, 5)]
+            linear = [
+                value / 12.92 if value <= 0.04045
+                else ((value + 0.055) / 1.055) ** 2.4
+                for value in channels
+            ]
+            return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+        def contrast(first: str, second: str) -> float:
+            lighter, darker = sorted(
+                (luminance(first), luminance(second)), reverse=True
+            )
+            return (lighter + 0.05) / (darker + 0.05)
+
+        for board, stroke in (("#e0bb6c", strokes[0]), ("#caa35e", strokes[1])):
+            self.assertGreaterEqual(contrast(board, stroke), 3)
+
 
 class GoBoardGeneratedSiteTests(unittest.TestCase):
     def test_boards_are_localized_accessible_conditional_and_base_path_aware(self):
@@ -140,6 +172,22 @@ class GoBoardGeneratedSiteTests(unittest.TestCase):
                         2,
                         len(re.findall(r'<figure[^>]+data-go-board(?:\s|>)', english)),
                     )
+                    self.assertNotIn('<nav class="go-board__controls"', english)
+                    control_groups = re.findall(
+                        r'<div class="go-board__controls" role="group" '
+                        r'aria-labelledby="([^"]+-controls-label) '
+                        r'([^"]+-caption)">',
+                        english,
+                    )
+                    self.assertEqual(2, len(control_groups))
+                    self.assertEqual(2, len(set(control_groups)))
+                    for controls_id, caption_id in control_groups:
+                        self.assertIn(
+                            f'<span id="{controls_id}" class="visually-hidden">'
+                            "Go board controls</span>",
+                            english,
+                        )
+                        self.assertIn(f'<figcaption id="{caption_id}">', english)
                     self.assertEqual(
                         1,
                         len(re.findall(r'<figure[^>]+data-go-board(?:\s|>)', chinese)),
@@ -245,6 +293,11 @@ class GoBoardGeneratedSiteTests(unittest.TestCase):
                 "positional",
                 '{{< go-board "synthetic.sgf" "Caption" >}}',
                 r"go-board at .*named arguments",
+            ),
+            (
+                "unknown-parameter",
+                '{{< go-board src="synthetic.sgf" caption="Caption" mvoe="2" >}}',
+                r'go-board at .*unknown named argument "mvoe"',
             ),
             (
                 "missing-src",
