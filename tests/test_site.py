@@ -1951,9 +1951,9 @@ interactionId = "resource-suffixes"
                         self.assertRegex(
                             ending,
                             r'<svg\b(?=[^>]*\bdata-home-ending-train(?:\s|>))'
-                            r'(?=[^>]*\bviewBox="0 0 132 52")'
-                            r'(?=[^>]*\bwidth="132")'
-                            r'(?=[^>]*\bheight="52")'
+                            r'(?=[^>]*\bviewBox="0 0 168 64")'
+                            r'(?=[^>]*\bwidth="168")'
+                            r'(?=[^>]*\bheight="64")'
                             r'(?=[^>]*\baria-hidden="true")'
                             r'(?=[^>]*\bfocusable="false")[^>]*>',
                         )
@@ -1962,8 +1962,11 @@ interactionId = "resource-suffixes"
                             ending.count("data-home-ending-carriage"),
                         )
                         self.assertEqual(1, ending.count("data-home-ending-engine"))
-                        self.assertEqual(2, ending.count("data-home-ending-smoke"))
+                        self.assertEqual(3, ending.count("data-home-ending-smoke"))
                         self.assertEqual(4, ending.count("data-home-ending-wheel"))
+                        self.assertEqual(8, ending.count("data-home-ending-cutout"))
+                        self.assertIn('fill="currentColor"', ending)
+                        self.assertIn('stroke="none"', ending)
                         self.assertLess(
                             ending.index("data-home-ending-train"),
                             ending.index(thought),
