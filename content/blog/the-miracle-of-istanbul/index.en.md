@@ -9,28 +9,29 @@ interactionId = "the-miracle-of-istanbul"
 
 ## Introduction
 
-On May 25th 2005, the 2005 UEFA Champions league final took place at the
-Atatürk Olympic Stadium in Istanbul. 65000 audiences at the stadium and
-hundreds of millions of fans worldwide were about to witness a soccer
-game that would be later called the **Miracle of Istanbul**. The
-full-of-talent team AC Milan first took the lead within the first minute
-by their captain Maldini. They further scored two more goals before
-half-time, making it a 3-0 lead. Rumors said that the Milan team opened
-bottles of champagnes in the locker room during the half-time break to
-celebrate their soon-to-be 2nd champions league title in three years.
-However, in the second half Liverpool launched a comeback and scored 3
-goals in a dramatic six-minute spell to level the score at 3–3, and beat
-Milan 3-2 in the brutal penalty shoot-out stage. The English commentator
-said:“If this doesn’t prove fate exists, then nothing will” at the end
-of the game. To be sure, this epic comeback defies any words that try to
-describe it, but I will try to use visualizations to do this job and
-more importantly, try to figure out how the comeback happened.
+On May 25, 2005, the UEFA Champions League final took place at the
+Atatürk Olympic Stadium in Istanbul. Some 65,000 spectators in the
+stadium and hundreds of millions of fans worldwide were about to witness
+a soccer game that would later be called the **Miracle of Istanbul**.
+The star-studded AC Milan took the lead within the first minute through
+their captain, Maldini. They scored two more goals before half-time,
+making it a 3-0 lead. Rumors said that the Milan players opened bottles
+of champagne in the locker room during the half-time break to celebrate
+their soon-to-be second Champions League title in three years. However,
+in the second half Liverpool launched a comeback and scored 3 goals in a
+dramatic six-minute spell to level the score at 3-3. The game went to
+extra time and then to penalties, where Liverpool beat Milan 3-2. The
+English commentator said, “If this doesn’t prove fate exists, then
+nothing will” at the end of the game. To be sure, this epic comeback
+defies any words that try to describe it, but I will try to use
+visualizations to do this job and, more importantly, to figure out how
+the comeback happened.
 
 ### The underdog
 
-The Liverpool captain Steven Gerrard described his team as the underdog
+The Liverpool captain Steven Gerrard described his team as underdogs
 before the match, compared to the all-star Milan side, and he was right.
-According to data from the transfermarkt.co.uk,
+The market values below come from transfermarkt.co.uk.
 
 ``` r
 # get the data for the miracle of istanbul
@@ -63,10 +64,10 @@ mvtop10 %>%
 
 ![Ten highest-valued players across both starting elevens](unnamed-chunk-3-2.png)
 
-we can see that the market value of Milan’s starting XI is significantly
-higher than Liverpool’s. Individually, Milan’s players took 8 places out
-of the top 10 highest market value players of the joint teams. The
-captain Steven Gerrard and the striker Baros are the 2 exceptions for
+The two charts show that the market value of Milan’s starting XI was
+significantly higher than Liverpool’s. Individually, Milan’s players
+occupied 8 of the top 10 places by market value across both squads. The
+captain Steven Gerrard and the striker Baroš were the 2 exceptions for
 Liverpool.
 
 After setting the stage, let us go to the actual match.
@@ -75,11 +76,10 @@ After setting the stage, let us go to the actual match.
 
 ### Description
 
-The dataset comes from the open-source github repository of the soccer
-data analytic company *statsbomb*. They make public 878 datasets in JSON
-format, one per game, including this one. Every dataset contains
-thousands of events, each event is characterized by about 100 or more
-variables that describe the event.
+The dataset comes from the open-source GitHub repository of the soccer
+data analytics company *StatsBomb*. They make public 878 datasets in
+JSON format, one per game, including this one. Every dataset contains
+thousands of events, each characterized by 100 or more variables.
 
 ``` r
 dim(istanbul)
@@ -87,8 +87,8 @@ dim(istanbul)
 
     ## [1] 4648  126
 
-The dataset that records events about the miracle of Istanbul has 4648
-events, each is described by 126 variables.
+The dataset that records events from the Miracle of Istanbul has 4648
+events, each described by 126 variables.
 
 ``` r
 head(colnames(istanbul), n = 10)
@@ -99,20 +99,20 @@ head(colnames(istanbul), n = 10)
     ##  [9] "related_events" "location"
 
 The above shows the first 10 variables. The first variable `id` is the
-unique identifier of each event; `period` denotes which time period this
-event occurs (eg. 1 = the first half); `timestamp` records the exact
-time of each event; `location` is another important variable that
-records the coordinate information of the event. An example event
+unique identifier of each event; `period` denotes the time period in
+which the event occurs (e.g. 1 = the first half); `timestamp` records
+the exact time of each event; `location` is another important variable
+that records the coordinate information of the event. An example event
 therefore would be: player x at time 00:31:52.716 passes the ball at the
-pitch coordinate (24, 40) at mid-height with angle y…. As I go forward, we
-will use and visualize more interesting variables. 
+pitch coordinate (24, 40) at mid-height with angle y. As we go forward,
+we will use and visualize more interesting variables.
 
 ### Characteristics of the data
 
 -   The dataset is really sparse (lots of NULL or NA values). This makes
     sense, because at one time point only one player is able to make one
-    action. For example, Variable `dribble_nutmeg` is not NA if and only
-    if some player nutmugs someone else (ouch!).
+    action. For example, the variable `dribble.nutmeg` is not NA if and
+    only if some player nutmegs someone else (ouch!).
 
 ``` r
 length(which(!is.na(istanbul$dribble.nutmeg)))
@@ -123,13 +123,13 @@ length(which(!is.na(istanbul$dribble.nutmeg)))
 4 nutmegs in 120 minutes (90 mins regular time plus 30 mins extra), not
 bad!
 
--   We need to take special care of the `location` variable. The
-    `location` denotes the pitch coordinates of each event. The
-    coordinate is standardized as dimension 120 \* 80. However, soccer
-    pitch size varies and the Atatürk Olympic Stadium has dimension 105
-    meters \* 68 meters. We need to scale the coordinate from the
-    relative location to the actual meters, so that the event will show
-    up on the correct location on the pitch I draw.
+-   We need to take special care of the `location` variable, which
+    denotes the pitch coordinates of each event. The coordinates are
+    standardized to a 120 \* 80 pitch. However, pitch sizes vary, and
+    the Atatürk Olympic Stadium measures 105 meters \* 68 meters. We
+    need to rescale the coordinates from the standardized grid to actual
+    meters, so that each event shows up in the correct location on the
+    pitch I draw.
 
 ``` r
 location.x <- location.y <- rep(NA, nrow(istanbul))
@@ -145,10 +145,10 @@ istanbul$location.y <- location.y
 
 ## Timeline of the match
 
-To figure out how the game evolves, we need to know the milestones of
-the match. The milestones of a match are the key events, and according
-to convention, including match start, goals, 1st half ends, 2nd half
-starts, cards, substitution, penalties.
+To figure out how the game evolved, we need to know the milestones of
+the match. The milestones are the key events, which by convention
+include the match start, goals, the end of the 1st half, the start of
+the 2nd half, cards, substitutions, and penalties.
 
 ``` r
 # get the goals and penalties  
@@ -187,45 +187,45 @@ timevis(data, groups = timevisDataGroups)
 ![Timeline of the 2005 Champions League final](timeline.png)
 > *[auto-caption] A timeline chart of the 2005 UEFA Champions League Final (Liverpool vs Milan, Wed 25 May) spanning from approximately 19:50 to 22:10. It tracks match events across two rows — Liverpool and Milan — including substitutions (e.g., "Kewell out, Smicer in," "Gattuso out, Rui Costa in"), scoreline changes (1-0, 2-0, 3-0, 3-1, 3-2, 3-3), yellow cards, and penalty shootout results (marked with O for scored and X for missed). The timeline is divided into periods: First Half, Second Half, 1st Half Extra, 2nd Half Extra, and Penalty Shootout.*
 
-To summarize the timeline that we see above. In the first half, Milan
-scored immediately when the game began, and scored two more goals
-towards the end of the first half. On the other hand, Liverpool made a
-substitute because of injury. Before the start of the 2nd half,
-Liverpool was already 3-0 down and used one (out of total 3)
-substitution involuntarily. At the beginning of the 2nd half, Liverpool
-made yet another substitution. This substitution is due to the tactical
-consideration by the Liverpool manager, trying to turn things around,
-and it did. About 10 minutes later, Liverpool score their first goal,
-making it 3-1, and in this 6 minutes spell, they score three goals in
-total, levelling the score to 3-3. Both teams did not score in the later
-parts of the game, and Liverpool beat Milan 3-2 in Penalty shootout (the
-red X denotes penalty missing or being saved by the goalkeeper).
+To summarize the timeline above: in the first half, Milan scored
+immediately when the game began, and scored two more goals towards the
+end of the half. Liverpool, meanwhile, made a substitution because of
+injury. Before the start of the 2nd half, Liverpool were already 3-0
+down and had used one of their three substitutions involuntarily. At the
+beginning of the 2nd half, Liverpool made yet another substitution. This
+one was a tactical decision by the Liverpool manager, an attempt to turn
+things around, and it worked. About 10 minutes later, Liverpool scored
+their first goal, making it 3-1, and in a six-minute spell they scored
+three goals in total, levelling the score to 3-3. Neither team scored in
+the later parts of the game, and Liverpool beat Milan 3-2 in the penalty
+shootout (the red X denotes a penalty missed or saved by the
+goalkeeper).
 
-By seeing this timeline plot, all the key events are laid out clearly.
-Furthermore, we can immediately gain insights towards our question,
-which is, how the miracle happened:
+In this timeline plot, all the key events are laid out clearly.
+Furthermore, we can immediately gain insight into our question, which
+is, how the miracle happened:
 
 -   The three comeback goals were scored in 6 minutes! What happened in
     those 6 minutes?
--   The distribution of goals are quite “even”, in that Milan scored 3
-    in the first half and Liverpool scored 3 in the second half. Why
-    that is the case?
+-   The distribution of goals is quite “even”, in that Milan scored 3
+    in the first half and Liverpool scored 3 in the second half. Why is
+    that the case?
 
 Another thing that stands out from the timeline graph is that there were
-only 2 yellow cards (all from Liverpool) and 0 red card in the game.
+only 2 yellow cards (both from Liverpool) and no red cards in the game.
 That is extremely rare for a soccer game, especially for the Champions
-League final, the biggest game of the year. It shows how both teams were
-focusing on playing the game actively, not on playing the game passively
-(by fouling a lot to stop the other team’s play). It is truly a smooth
-and high quality game, and dramatic.
+League final, the biggest game of the year. It shows how both teams
+focused on playing actively rather than passively (that is, on fouling a
+lot to stop the other team’s play). It was a smooth, high-quality game,
+and a dramatic one.
 
 ## Heaven or Hell
 
 As the timeline suggested, we see a distinction between the 1st half and
-the 2nd half. Each team scored three goals and the other team scored
-nothing. Specifically, the 1st half is the heaven for Milan, the hell
-for Liverpool; the 2nd half is exactly the reverse of the 1st half. Can
-we visualize the difference, the difference between heaven and hell?
+the 2nd half. In each half, one team scored three goals and the other
+scored nothing. Specifically, the 1st half was heaven for Milan and hell
+for Liverpool; the 2nd half was exactly the reverse. Can we visualize
+that difference, the difference between heaven and hell?
 
 ### Shots
 
@@ -239,9 +239,9 @@ is %>%
 ![First-half shot map for AC Milan and Liverpool](unnamed-chunk-9-1.png)
 > *[auto-caption] A football pitch diagram showing shot locations from the match **AC Milan 3–0 Liverpool**. Orange circles on the left half represent AC Milan's shots (xG: 1.29), with two large circles near goal indicating high-quality chances; blue dots on both sides represent Liverpool's shots (xG: 0.19), all small, indicating low-quality attempts. Milan's shots were concentrated in dangerous central areas, reflecting their dominant performance.*
 
-As we can see, in the 1st half, Milan made 8 shots (8 dots on the pic
-above) and Liverpool made 5. However, most of the shots by Milan (6 out
-of 8) were inside the box, whereas Liverpool only had 2.
+As we can see, in the 1st half Milan made 8 shots (8 dots on the picture
+above) and Liverpool made 5. However, most of Milan’s shots (6 out of 8)
+were inside the box, whereas Liverpool only had 2.
 
 ``` r
 is %>%
@@ -252,15 +252,13 @@ is %>%
 ![Second-half shot map for Liverpool and AC Milan](unnamed-chunk-10-1.png)
 > *[auto-caption] A dark-background football pitch diagram showing shot locations from a match where **Liverpool beat AC Milan 3–0**. Orange circles represent AC Milan's shots (clustered near the left goal), while blue circles represent Liverpool's shots (spread across the right half and near the right goal). The numbers **0.81** and **1.03** indicate each team's expected goals (xG), with circle size reflecting shot quality.*
 
-In the 2nd half, we’d expect that Liverpool dominates the shots and
-shots in the box. On the contrary, Milan still dominates the number of
-shots and shots in the box. Liverpool made only 2 shots inside the box
-and they all made it into the net, and Liverpool also scored a
-long-ranger. However, Milan attempted 6 shots inside the box and 6 more
-outside the box, none of them made it.
+In the 2nd half, we’d expect Liverpool to dominate the shots and the
+shots in the box. On the contrary, Milan still dominated both counts.
+Liverpool made only 2 shots inside the box and both found the net, and
+Liverpool also scored a long-ranger. Milan, however, attempted 6 shots
+inside the box and 6 more outside it, none of which found the net.
 
-Let’s see the comparison between shots made by both teams in the extra
-time.
+Let’s compare the shots made by both teams in extra time.
 
 ``` r
 is %>%
@@ -272,15 +270,21 @@ is %>%
 > *[auto-caption] A dark-themed football pitch diagram showing **Liverpool 1:0 AC Milan**, with xG values of **0.04** (Liverpool, left half) and **0.71** (AC Milan, right half) displayed at the top. Blue dots of varying sizes are clustered in the right half near AC Milan's goal, representing shot locations and xG values — the largest dot indicates the highest-quality chance. A small notation reads **(+1 P)**, suggesting a penalty is included.*
 
 Surprisingly (or not so surprisingly after seeing the shots made in the
-2nd half of the game), Liverpool made no attempts and Milan made 7 more
-shots, 3 of them inside the box with 1 near the post of the goal (so
-close!) and yet, Milan scored nothing.
+2nd half of the game), Liverpool barely threatened while Milan made 7
+more shots, 3 of them inside the box with 1 near the post (so close!),
+and yet Milan scored nothing.
 
 ### Passes
 
-Passes are a essential part of a soccer game. By looking at the
-locations of the passes (both the starting locations and the end
-locations), we can also see the positions of the ball and the players.
+Passes are an essential part of a soccer game. By looking at the
+locations of the passes (both the starting and the ending locations), we
+can also see the positions of the ball and the players.
+
+One note on names before we start: StatsBomb records players under their
+full legal names, so the charts label some familiar players in
+unfamiliar ways. On the Milan side, **de Moraes** is Cafu, **Leite** is
+Kaká, and **Silva** is Dida; on the Liverpool side, **Sanz** is Luis
+García and **Olano** is Xabi Alonso.
 
 #### 1st half
 
@@ -323,35 +327,34 @@ is %>%
 
 ![Picture 4: Liverpool passing map after minute 24](unnamed-chunk-12-4.png)
 
-We break the 1st half into two halves. The **picture 1** shows the
-passing map of AC Milan in the first 24 minutes, with Pirlo being the
-center of the passing map (the biggest blue dot in the map), Milan’s
-transition (from attack to defense and vice versa) depended on him.
-Another thing to notice is that one of the Milan’s forward, Crespo, was
-not really involved in the game. The **picture 2** is the passing map
-of Milan in the second half of the 1st half. Compared to the first
-picture, Milan’s formation retrieved to their goal. For example, in the
-first 24 minutes, Maldini (left back), Gattuso, Seedorf, were standing
-in front of the Pirlo; they were behind Pirlo in the later half of the
-1st half. I would guess the reason was due to the increase in
-aggressiveness of Liverpool, as well as their own strategy of
-contracting their defensive lines and playing counterattack, since they
-led 1-0 as early as 1 minute into the game. And that strategy was
-fantastic! They scored two more goals on counter attack at 39’ and 44’
-when Liverpool tried really hard attacking (since they were 1-0 behind).
-The scorer of both goals is Crespo, the man who were not “involved” in
-terms of passing in the first 24 minutes, and he became lethal in the
-second part.
+We break the 1st half into two parts. **Picture 1** shows the passing
+map of AC Milan in the first 24 minutes, with Pirlo at the center of it
+(the biggest blue dot in the map); Milan’s transition (from attack to
+defense and vice versa) depended on him. Another thing to notice is that
+one of Milan’s forwards, Crespo, was not really involved in the game.
+**Picture 2** is the passing map of Milan in the second part of the 1st
+half. Compared to the first picture, Milan’s formation retreated toward
+their own goal. For example, in the first 24 minutes, Maldini (left
+back), Gattuso and Seedorf were standing in front of Pirlo; they were
+behind him in the later part of the 1st half. I would guess the reason
+was the increase in Liverpool’s aggressiveness, as well as Milan’s own
+strategy of contracting their defensive lines and playing on the
+counterattack, since they led 1-0 as early as 1 minute into the game.
+And that strategy was fantastic! They scored two more goals on the
+counterattack at 39’ and 44’, while Liverpool were pushing hard to
+attack (since they were behind). The scorer of both goals was Crespo,
+the man who was not “involved” in terms of passing in the first 24
+minutes, and he became lethal in the second part.
 
-The **picture 3 and 4** tell the Liverpool’s part of the story
-in the 1st half. The first thing to notice is that Kewell was out and
-Smicer was in for him (Kewell was in the 3rd pic but not in the 4th, and
-Smicer the opposite) because Kewell was injured. And compared the 4th
-with the 3rd picture, Gerrard and Sanz were pushing forward and to the
-center, while the two wingers Riise and Smicer were roughly in the same
-position as before.
+**Pictures 3 and 4** tell Liverpool’s part of the story in the 1st half.
+The first thing to notice is that Kewell went off and Smicer came on for
+him (Kewell is in the 3rd picture but not in the 4th, and Smicer the
+opposite) because Kewell was injured. And comparing the 4th picture with
+the 3rd, Gerrard and Sanz were pushing forward and towards the center,
+while the two wingers Riise and Smicer were roughly in the same
+positions as before.
 
-#### The six minute spell
+#### The six-minute spell
 
 ``` r
 is %>%
@@ -388,28 +391,27 @@ passMap(is, "Liverpool", 2, 54, 60)
 > *[auto-caption] A football pass map titled **"Liverpool's passes"** showing passing patterns across a pitch diagram during a six-minute spell. Cyan/teal arrows represent successful passes and pink/red arrows represent unsuccessful passes, concentrated heavily in the central and right-hand areas of the pitch. An arrow beneath the pitch indicates Liverpool's direction of attack (left to right).*
 
 We have seen the hell for Liverpool, i.e., the first half of the game,
-where Milan scored an early goal and player on counter and scored two
-more goals while Liverpool was struggling in attacking. However, as the
-timeline suggests, in the second half of the game, there was a 6-minute
-spell where Liverpool scored 3 goals. That spell was really the heaven
-for Liverpool and for Liverpool’s fans. What happened? Since we are in
-the passing section and analyzing passes are really effective in
-analyzing the whole game, let’s look at all the passes happened in that
-spell. In the **picture 1**, Milan achieved 27 passes with less than
-60% of them completed. Only 8 players of Milan were involved in passing
-the ball one or more times. Looking more closely, the **picture 2**
-indicated that the passes from defense to midfield and midfield to
-attack all failed (red: failure, blue: success).
+where Milan scored an early goal, played on the counter and scored two
+more goals while Liverpool struggled to attack. However, as the timeline
+suggests, in the second half of the game there was a 6-minute spell
+where Liverpool scored 3 goals. That spell was really heaven for
+Liverpool and for Liverpool’s fans. What happened? Since we are in the
+passing section, and analyzing passes is really effective for analyzing
+the whole game, let’s look at all the passes that happened in that
+spell. In **picture 1**, Milan attempted 27 passes and completed less
+than 60% of them. Only 8 Milan players were involved in passing the ball
+one or more times. Looking more closely, **picture 2** shows that the
+passes from defense to midfield and from midfield to attack all failed
+(red: failure, blue: success).
 
-On the contrary, the **picture 3** shows that all 10 players
-(excluding the goalkeeper) were involved in passing, and they achieved
-more than 75% passing accuracy. The **picture 4** shows the exact
-passes.
+By contrast, **picture 3** shows that all 10 Liverpool outfield players
+were involved in passing, and they achieved more than 75% passing
+accuracy. **Picture 4** shows the exact passes.
 
-In the 1st half, the passing accuracy was 78% for Milan. What causes
-this decline in passing accuracy and number of passes on the Milan side,
-whereas Liverpool somehow maintained their passing accuracy? I then look
-at the defensive acts by both teams in that six minutes. 
+In the 1st half, Milan’s passing accuracy was 78%. What caused this
+decline in passing accuracy and number of passes on the Milan side,
+while Liverpool somehow maintained theirs? To find out, I looked at the
+defensive actions by both teams in those six minutes.
 
 ``` r
 d2 <- is %>% 
@@ -437,20 +439,20 @@ soccerPitch(arrow = "r",
 ![Picture 2: AC Milan defensive actions during the six-minute spell](unnamed-chunk-14-2.png)
 > *[auto-caption] A football pitch diagram labeled **"Milan – Defensive actions"** plots five events during a six-minute spell, using color-coded dots: two green (Blocks), one teal (Dispossession), one pink (Ball Recovery), and one purple (Interception). The actions are scattered across both halves, with Milan's attacking direction indicated by a rightward arrow at the bottom.*
 
-The **picture 1** is the defensive actions done by Liverpool players
-in 6 minutes. What is staggering is that they managed to achieve 7 ball
-retrievals, leading to the decline in Milan’s passing accuracy. The
-**picture 2** shows the defensive actions done by Milan. The mere 1
-ball retrieve hardly influenced Liverpool’s passing and possession.
+**Picture 1** shows the defensive actions by Liverpool players in those
+6 minutes. What is staggering is that they managed to achieve 7 ball
+retrievals, which drove the decline in Milan’s passing accuracy.
+**Picture 2** shows the defensive actions by Milan. Their single ball
+retrieval hardly influenced Liverpool’s passing and possession.
 
 ### Position
 
-We have seen some visual information about the position of the players
-in the passing maps earlier, to the point that we saw some deliberate
+We have already seen some visual information about the positions of the
+players in the passing maps, enough that we could spot some deliberate
 position shifts from the Milan side in the 1st half when they contracted
-their defense lines. Through the viualizations below, we can see more
-about the shifts in positions in terms of the whole team (i.e. shifts in
-team formation) and individual key players.
+their defensive lines. Through the visualizations below, we can see more
+about the shifts in position at the level of the whole team (i.e. shifts
+in team formation) and of individual key players.
 
 #### 1st half
 
@@ -478,23 +480,23 @@ is %>%
 ![Picture 2: Liverpool average first-half positions](unnamed-chunk-15-2.png)
 > *[auto-caption] A football tactical diagram showing **Liverpool's average player positions during the 1st half**, displayed on a top-down green pitch graphic. Eleven blue dots represent players, each labeled with names including Dudek (goalkeeper), Carragher, Hyypiä, Traoré, Finnan, Smicer, Gerrard, Olano, Riise, Sanz, and Baroš. An arrow at the bottom indicates Liverpool's direction of play (left to right).*
 
-The **picture 1** is the average position of the Milan in the 1st
-half. The average position is defined as the average coordinates of
-players when they take any actions, not only the passing ones. As we can
-see, the Milan’s formation were really tight in the center of the
-midfield. In addition to the 4 midfielders, one of the forwards Crespo
-was close to midfield as well. And they were close together in the
-center for a reason (as explained below).
+**Picture 1** shows Milan’s average positions in the 1st half. The
+average position is defined as the average coordinates of a player when
+they take any action, not only passing ones. As we can see, Milan’s
+formation was really tight in the center of the midfield. In addition to
+the 4 midfielders, one of the forwards, Crespo, was close to midfield as
+well. And they were close together in the center for a reason (as
+explained below).
 
-In the **picture 2**, Liverpool’s formation in the 1st half was rather
-scattered acrossthe width of the field. This was due to their tactics of
-playing wide on the sides. Gerrard and Olano were together as a pair,
-sitting in the midfield. However, their attacks on the sides were not
-going very well, so Milan decided not to put too many players on the
-sides (indicated by the 1st pic) and focused their attacks and later
-their counter attacks in the center.
+In **picture 2**, Liverpool’s formation in the 1st half was rather
+scattered across the width of the field. This was due to their tactics
+of playing wide on the sides. Gerrard and Olano sat together as a pair
+in the midfield. However, their attacks on the sides were not going very
+well, so Milan decided not to put too many players out wide (as picture
+1 shows) and focused their attacks, and later their counterattacks, in
+the center.
 
-#### first 15 mins at 2nd half
+#### First 15 minutes of the 2nd half
 
 ``` r
 is %>% 
@@ -520,70 +522,72 @@ is %>%
 ![Picture 2: Liverpool average early second-half positions](unnamed-chunk-16-2.png)
 > *[auto-caption] A tactical football pitch diagram showing **Liverpool's average player positions during the first 15 minutes of the 2nd half**. Players marked with blue dots are labeled: **Dudek** (goalkeeper), **Hyypiä**, **Traoré**, **Carragher**, **Riise**, **Smicer**, **Hamann**, **Olano**, **Sanz**, **Gerrard**, **Baroš**. The team is attacking left-to-right (indicated by the arrow), with a compact defensive shape and Baroš isolated up front.*
 
-With 3-0 down, Liverpool took right back Finnan down (therefore
-forfeiting the attacking on the sides tactics) and put Hamman up
-immediately in the beginning of the 2nd half, and the result was
-astonishing! In the **picture 2**, Hamann took the position of where
-Gerrard was in the 1st half, and freed Gerrard. By sacrificing the right
-back, the Liverpool squeezed their formation towards the center.
-Gerrard, together with Sanz and Baros, were constantly charging to the
-Milan’s box carefree, since Hamann took care of his defensive duties.
-And Boom! Gerrard scored the first goal, a header inside the box, and
-created a penalty (later converted to the 3rd goal).
+3-0 down, Liverpool took right back Finnan off (thereby giving up the
+tactic of attacking on the sides) and put Hamann on right at the
+beginning of the 2nd half, and the result was astonishing! In **picture
+2**, Hamann took up the position where Gerrard had been in the 1st half,
+and freed Gerrard. By sacrificing the right back, Liverpool squeezed
+their formation towards the center. Gerrard, together with Sanz and
+Baroš, could charge into Milan’s box freely, since Hamann took care of
+his defensive duties. And boom! Gerrard scored the first goal, a header
+inside the box, and later won the penalty that became Liverpool’s third.
 
 ## Conclusion
 
 Some may say that there is no need to visualize a soccer match, since it
-is a visual art/sport in itself. I have to agree since I am a soccer fan
-and have had so much joy and pain watching the games. It is especially
-hard to try to visualize a miracle. However, I did it anyway because an
-EDA process on a soccer match dataset can achieve the following things:
+is a visual art/sport in itself. I have some sympathy for that, since I
+am a soccer fan and have had so much joy and pain watching the games,
+and it is especially hard to visualize a miracle. However, I did it
+anyway, because an EDA process on a soccer match dataset can achieve the
+following things:
 
-1.  A visual summary. In normal games, audiences see the motions of
-    players in terms of motions of pictures, and they do not have good
-    enough memory to remember everything and do not have time to
-    summarize those information, as they are concentrated on the game
-    itself. After the match, audiences will see lots of statistics about
-    the game, such as the number of shots, the possession rate, number
-    of passes, pass accuracy, etc, and they do not make much sense and
-    they are not even comparable. A 65% possession rate in a game by a
-    side is not the same thing as another team having 65% in another
+1.  A visual summary. During a game, the audience sees the players only
+    as a stream of moving images; they do not have good enough memories
+    to remember everything, and they have no time to summarize what they
+    see because they are concentrated on the game itself. After the
+    match, they are given lots of statistics about the game, such as the
+    number of shots, the possession rate, the number of passes, and pass
+    accuracy, which do not make much sense on their own and are not even
+    comparable across games. A 65% possession rate by one side in one
+    game is not the same thing as another team having 65% in another
     game. Go ask Barcelona fans. Their team used to have 65% possession
-    and ended up winning all trophies, and now win nothing with the same
-    possession rate. Visualizations like this can combine the visual
-    part with the summary part, providing fans with a more immersive and 
-    insightful perspective towards understanding the game.
-2.  A good starting point for models about soccer game. As the advance
-    of data science, models about soccer games are in dire need. A
-    prominent example would be the model to predict expected goals given
-    the data about soccer games. This EDA process is great for:
-    1. See the data and find the characteristics of the data. In my example, it would be a lot of None values in the dataset and incompatible field dimension that I need to manually change.
-    2. Visualize the key events that may lead to goals.
-    3. Find out directions that may worth pursuing. I find out the 6 minute Liverpool spell and think this may be the direction to look further into. 
+    and win every trophy; now they win nothing with the same possession
+    rate. Visualizations like these combine the visual part with the
+    summary part, giving fans a more immersive and insightful
+    perspective on the game.
+2.  A good starting point for models of soccer games. With the advance
+    of data science, models of soccer games are in high demand. A
+    prominent example would be a model that predicts expected goals from
+    match data. This EDA process is great for:
+    1. Seeing the data and finding its characteristics. In my example, those were the many NA values in the dataset and the mismatched pitch dimensions that I had to rescale manually.
+    2. Visualizing the key events that may lead to goals.
+    3. Finding directions that may be worth pursuing. I identified the six-minute Liverpool spell and think that may be the direction to look into further.
 
-Main lessons learnt: It is no doubt a miracle, because:
+Main lessons learnt. It was without doubt a miracle, because:
 
-1.  Super dramatic. Liverpool dominated the game for only 6 minutes, and
-    ended up scoring three goals. Milan took the show for 114 minutes,
-    including 7 shots in extra time, and they failed to score any after the 1st 
-    half. The inefficiency in shooting influenced their mindset in the final
-    penality shoot out, missing 3 out of 5. And Dudek’s (Liverpool’s
-    goalkeeper) double save from Shevchenko in the 117th minute was
-    voted the greatest Champions League moment of all time.
-2.  Some reasons behind the comeback drama. 6 minutes spell because of
-    the introduce of Hamann that freed Gerrard to attack. Milan’s
-    success in the 1st half was also due to the formation factor, where
-    Milan was tight in the center and Liverpool scattered.
-3.  Human factor. The hard part to visualize. The psychological change
-    of the Milan side as they went from ecstasy to doubt, and to fear.
-    Their change in mindset when they repeatedly attack but scored
-    nothing. On the other side, Gerrard and his influence on the
-    whole team.
+1.  It was super dramatic. Liverpool dominated the game for only 6
+    minutes and ended up scoring three goals. Milan ran the show for the
+    other 114 minutes, including 7 shots in extra time, and failed to
+    score at all after the 1st half. That inefficiency in front of goal
+    affected their mindset in the penalty shootout, where they missed 3
+    of 5. And Dudek’s (Liverpool’s goalkeeper) double save to deny
+    Shevchenko in the 117th minute was voted the greatest Champions
+    League moment of all time.
+2.  There are some identifiable reasons behind the comeback. The
+    six-minute spell came about because the introduction of Hamann freed
+    Gerrard to attack. Milan’s success in the 1st half was also due to
+    formation, where Milan were tight in the center and Liverpool
+    scattered.
+3.  The human factor is the hard part to visualize: the psychological
+    change on the Milan side as they went from ecstasy to doubt to fear,
+    and their change in mindset as they attacked repeatedly but scored
+    nothing. On the other side, Gerrard and his influence on the whole
+    team.
 
 ## Credits
 
 ### Data
-- Statsbomb 
+- StatsBomb
 
 ### Visualization package
 - soccermatics
@@ -631,5 +635,5 @@ sessionInfo()
     ## [41] crayon_1.4.1      pkgconfig_2.0.3   ellipsis_0.3.2    MASS_7.3-54      
     ## [45] xml2_1.3.2        rmarkdown_2.8     R6_2.5.0          compiler_4.1.0
 
-## source code
+## Source code
 - [Download the R Markdown source](2021-03-04-The-Miracle-of-Istanbul.Rmd)
