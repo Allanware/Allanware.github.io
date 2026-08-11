@@ -2415,6 +2415,30 @@ interactionId = "resource-suffixes"
                     )
                     self.assertGreaterEqual(ratio, 4.5)
 
+    def test_home_ending_has_large_gap_one_shot_motion_and_reduced_fallback(self):
+        css = (ROOT / "assets/css/site.css").read_text(encoding="utf-8")
+
+        self.assertRegex(
+            css,
+            r"\.home-ending\s*\{[^}]*"
+            r"margin-block-start:\s*clamp\(8rem,\s*25vh,\s*15rem\);",
+        )
+        for name in (
+            "home-ending-dot-one",
+            "home-ending-dot-two",
+            "home-ending-dot-three",
+            "home-ending-return",
+        ):
+            self.assertEqual(1, css.count(f"@keyframes {name}"))
+        self.assertIn("animation-iteration-count: 1", css)
+        reduced = re.search(
+            r"@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{([\s\S]*)\}\s*$",
+            css,
+        )
+        self.assertIsNotNone(reduced)
+        self.assertIn("animation: none", reduced.group(1))
+        self.assertIn("visibility: visible", reduced.group(1))
+
     def test_highlighted_code_follows_the_reader_color_scheme(self):
         with TemporaryDirectory() as temporary:
             public = Path(temporary) / "public"

@@ -245,3 +245,119 @@ ol.home-title-list {
 .title h1 {
   font-size: 1.5em;
 }
+
+.home-ending {
+  color: var(--text-color-tertiary);
+  margin-block-start: clamp(8rem, 25vh, 15rem);
+  min-height: 6rem;
+  padding-block-end: 2rem;
+  text-align: center;
+}
+
+.home-ending-thought {
+  margin: 0;
+}
+
+.home-ending-dots,
+[data-home-ending-dot] {
+  display: inline-block;
+}
+
+.home-ending-return {
+  display: inline-block;
+  font-size: 0.8em;
+  margin-block-start: 1.25rem;
+}
+
+[data-home-ending-enhanced="true"][data-home-ending-state="idle"] .home-ending-return {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+[data-home-ending-state="playing"] [data-home-ending-dot],
+[data-home-ending-state="playing"] .home-ending-return {
+  animation-fill-mode: forwards;
+  animation-iteration-count: 1;
+}
+
+[data-home-ending-state="playing"] [data-home-ending-dot]:nth-child(1) {
+  animation-duration: 900ms;
+  animation-name: home-ending-dot-one;
+}
+
+[data-home-ending-state="playing"] [data-home-ending-dot]:nth-child(2) {
+  animation-delay: 280ms;
+  animation-duration: 1s;
+  animation-name: home-ending-dot-two;
+}
+
+[data-home-ending-state="playing"] [data-home-ending-dot]:nth-child(3) {
+  animation-delay: 560ms;
+  animation-duration: 1.1s;
+  animation-name: home-ending-dot-three;
+}
+
+[data-home-ending-state="playing"] .home-ending-return {
+  animation-delay: 1.8s;
+  animation-duration: 600ms;
+  animation-name: home-ending-return;
+  opacity: 0;
+  visibility: hidden;
+}
+
+[data-home-ending-state="complete"] [data-home-ending-dot] {
+  opacity: 0;
+}
+
+[data-home-ending-state="complete"] .home-ending-return,
+[data-home-ending-state="reduced"] .home-ending-return {
+  opacity: 1;
+  visibility: visible;
+}
+
+@keyframes home-ending-dot-one {
+  to {
+    opacity: 0;
+    transform: translate(1.25rem, 0.35rem);
+  }
+}
+
+@keyframes home-ending-dot-two {
+  to {
+    opacity: 0;
+    transform: translate(2rem, 1rem);
+  }
+}
+
+@keyframes home-ending-dot-three {
+  to {
+    opacity: 0;
+    transform: translate(2.75rem, 1.75rem);
+  }
+}
+
+@keyframes home-ending-return {
+  from {
+    opacity: 0;
+    visibility: visible;
+  }
+
+  to {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-home-ending-dot],
+  .home-ending-return {
+    animation: none !important;
+  }
+
+  [data-home-ending] .home-ending-return {
+    opacity: 1;
+    pointer-events: auto;
+    visibility: visible;
+  }
+}
