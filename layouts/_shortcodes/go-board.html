@@ -96,11 +96,11 @@
         <span data-go-board-note-text></span>
       </p>
       <p id="{{ $noticeId }}" class="go-board__local-notice">{{ T "goBoardLocalOnly" }}</p>
-      <figcaption id="{{ $captionId }}">{{ $caption }}</figcaption>
       <p class="go-board__download"><a href="{{ $resource.RelPermalink }}" download>{{ T "goBoardDownload" }}</a></p>
       <noscript>
         <p>{{ T "goBoardRequiresJavaScript" }} <a href="{{ $resource.RelPermalink }}" download>{{ T "goBoardDownload" }}</a></p>
       </noscript>
+      <figcaption id="{{ $captionId }}">{{ $caption }}</figcaption>
     </figure>
   {{- end -}}
 {{- end -}}

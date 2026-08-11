@@ -110,6 +110,22 @@ class GoBoardStyleTests(unittest.TestCase):
         self.assertIsNotNone(board_rule)
         self.assertRegex(board_rule.group("body"), r"margin-inline:\s*0;")
 
+    def test_final_figcaption_keeps_caption_before_fallbacks_visually(self):
+        css = (ROOT / "assets/css/go-board.css").read_text(encoding="utf-8")
+        board_rule = re.search(r"\.go-board\s*\{(?P<body>[^}]*)\}", css)
+        self.assertIsNotNone(board_rule)
+        self.assertRegex(board_rule.group("body"), r"display:\s*flex;")
+        self.assertRegex(board_rule.group("body"), r"flex-direction:\s*column;")
+        for selector, order in (
+            (r"\.go-board figcaption", 1),
+            (r"\.go-board__download", 2),
+            (r"\.go-board noscript", 3),
+        ):
+            self.assertRegex(
+                css,
+                rf"{selector}\s*\{{[^}}]*order:\s*{order};[^}}]*\}}",
+            )
+
     def test_white_stones_have_contrasting_boundaries_in_both_color_schemes(self):
         css = (ROOT / "assets/css/go-board.css").read_text(encoding="utf-8")
         white_stone_rules = re.findall(
@@ -168,10 +184,21 @@ class GoBoardGeneratedSiteTests(unittest.TestCase):
                     )
                     sgf_url = f"{base_path}p/viewer/synthetic.SGF"
 
-                    self.assertEqual(
-                        2,
-                        len(re.findall(r'<figure[^>]+data-go-board(?:\s|>)', english)),
+                    figures = re.findall(
+                        r'<figure[^>]+data-go-board(?:\s|>).*?</figure>',
+                        english,
+                        flags=re.DOTALL,
                     )
+                    self.assertEqual(3, len(figures))
+                    for figure in figures:
+                        self.assertRegex(
+                            figure,
+                            re.compile(
+                                r'<figcaption id="[^"]+">.*?</figcaption>\s*'
+                                r'</figure>\Z',
+                                flags=re.DOTALL,
+                            ),
+                        )
                     self.assertNotIn('<nav class="go-board__controls"', english)
                     control_groups = re.findall(
                         r'<div class="go-board__controls" role="group" '
@@ -179,8 +206,8 @@ class GoBoardGeneratedSiteTests(unittest.TestCase):
                         r'([^"]+-caption)">',
                         english,
                     )
-                    self.assertEqual(2, len(control_groups))
-                    self.assertEqual(2, len(set(control_groups)))
+                    self.assertEqual(3, len(control_groups))
+                    self.assertEqual(3, len(set(control_groups)))
                     for controls_id, caption_id in control_groups:
                         self.assertIn(
                             f'<span id="{controls_id}" class="visually-hidden">'
@@ -196,20 +223,40 @@ class GoBoardGeneratedSiteTests(unittest.TestCase):
                     self.assertIn('data-selector-value="2"', english)
                     self.assertIn('data-selector-kind="path"', english)
                     self.assertIn('data-selector-value="N3B2"', english)
-                    self.assertEqual(2, english.count(f'data-sgf-url="{sgf_url}"'))
+                    start_figure = next(
+                        figure for figure in figures
+                        if ">Start position</figcaption>" in figure
+                    )
+                    self.assertIn('data-selector-kind="move"', start_figure)
+                    self.assertIn('data-selector-value="0"', start_figure)
+                    self.assertIn('>Move 0</output>', start_figure)
+                    self.assertEqual(3, english.count(f'data-sgf-url="{sgf_url}"'))
                     self.assertIn(f'href="{sgf_url}" download', english)
                     self.assertTrue((public / "p/viewer/synthetic.SGF").is_file())
 
                     figure_ids = re.findall(
                         r'<figure id="(go-board-[0-9a-f]{12})"', english
                     )
-                    self.assertEqual(2, len(figure_ids))
-                    self.assertEqual(2, len(set(figure_ids)))
+                    self.assertEqual(3, len(figure_ids))
+                    self.assertEqual(3, len(set(figure_ids)))
                     for figure_id in figure_ids:
                         self.assertIn(f'id="{figure_id}-caption"', english)
                         self.assertIn(
                             f'aria-labelledby="{figure_id}-caption"', english
                         )
+
+                    repeat_public = temporary_root / f"{name}-repeat" / "public"
+                    build_site(repeat_public, base_url, GO_BOARD_CONTENT)
+                    repeat_english = (
+                        repeat_public / "p/viewer/index.html"
+                    ).read_text(encoding="utf-8")
+                    self.assertEqual(
+                        figure_ids,
+                        re.findall(
+                            r'<figure id="(go-board-[0-9a-f]{12})"',
+                            repeat_english,
+                        ),
+                    )
 
                     self.assertIn(
                         "Main &amp; &lt;strong&gt;board&lt;/strong&gt;", english
@@ -242,11 +289,6 @@ class GoBoardGeneratedSiteTests(unittest.TestCase):
                     self.assertIn("<noscript>", english)
                     self.assertIn('role="status" aria-live="polite"', english)
                     self.assertIn('aria-busy="true"', english)
-                    self.assertNotRegex(
-                        english,
-                        r'https?://[^"\s]*(?:besogo|unpkg|jsdelivr|cdnjs)',
-                    )
-
                     css_links = re.findall(
                         rf'<link rel="stylesheet" href="{re.escape(base_path)}css/'
                         r'go-board(?:\.min)?\.[0-9a-f]+\.css" '
@@ -269,6 +311,10 @@ class GoBoardGeneratedSiteTests(unittest.TestCase):
                         len(scripts),
                         re.findall(r'<script[^>]+go-board[^>]*>', english),
                     )
+                    self.assertNotRegex(
+                        "\n".join([*figures, *css_links, *scripts]),
+                        r'https?://',
+                    )
                     self.assertEqual(1, len(re.findall(r"css/go-board", chinese)))
                     self.assertEqual(1, len(re.findall(r"js/go-board", chinese)))
                     self.assertNotIn("css/go-board", plain)
@@ -277,6 +323,20 @@ class GoBoardGeneratedSiteTests(unittest.TestCase):
                     built_scripts = list((public / "js").glob("go-board.*.js"))
                     self.assertEqual(1, len(built_scripts))
                     runtime = built_scripts[0].read_text(encoding="utf-8")
+                    built_styles = list((public / "css").glob("go-board.*.css"))
+                    self.assertEqual(1, len(built_styles))
+                    stylesheet = built_styles[0].read_text(encoding="utf-8")
+                    self.assertNotRegex(stylesheet, r'https?://')
+                    absolute_runtime_urls = set(
+                        re.findall(r'''https?://[^"'\s<>)]+''', runtime)
+                    )
+                    self.assertEqual(
+                        set(),
+                        absolute_runtime_urls - {
+                            "http://www.w3.org/1999/xlink",
+                            "http://www.w3.org/2000/svg",
+                        },
+                    )
                     for omitted_panel in (
                         "makeControlPanel",
                         "makeNamesPanel",

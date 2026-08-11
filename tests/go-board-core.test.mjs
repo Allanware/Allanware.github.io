@@ -166,11 +166,14 @@ test("SGF text loading caches one fetch promise per resource URL", async () => {
 
 function button() {
   const listeners = new Map();
-  return {
+  const control = {
     disabled: false,
     addEventListener: (name, handler) => listeners.set(name, handler),
-    click: () => listeners.get("click")(),
+    click: () => {
+      if (!control.disabled) listeners.get("click")();
+    },
   };
+  return control;
 }
 
 
@@ -265,10 +268,56 @@ test("board mounting parses and validates before creating BesoGo", async () => {
   await controller.ready;
 
   assert.equal(besogo.createCalls.length, 0);
-  assert.match(dom.status.textContent, /^Selector failed/);
+  assert.equal(dom.status.textContent, "Selector failed");
   assert.equal(dom.attributes.get("aria-busy"), "false");
   assert.equal(dom.previous.disabled, true);
   assert.equal(dom.tryButton.disabled, true);
+});
+
+
+test("failure status uses only its localized label and logs technical detail", async () => {
+  const dom = boardDom();
+  const technicalError = new Error("SGF request failed (503)");
+  const logged = [];
+  dom.root.dataset.fetchErrorLabel = "无法加载棋谱。";
+
+  const controller = mountGoBoard(dom.root, {
+    besogo: boardBesogo(),
+    loadSgfText: async () => { throw technicalError; },
+    logger: { error: (...details) => logged.push(details) },
+  });
+  await controller.ready;
+
+  assert.equal(dom.status.textContent, "无法加载棋谱。");
+  assert.deepEqual(logged, [["无法加载棋谱。", technicalError]]);
+});
+
+
+test("Return restores the published selector after read-only navigation", async () => {
+  const dom = boardDom();
+  const besogo = boardBesogo();
+  const controller = mountGoBoard(dom.root, {
+    besogo,
+    loadSgfText: async () => syntheticSgf,
+    logger: { error() {} },
+  });
+  await controller.ready;
+
+  const editor = dom.host.besogoEditor;
+  const publishedRoot = editor.getRoot();
+  assert.equal(editor.getCurrent().moveNumber, 2);
+  assert.equal(dom.returnButton.disabled, true);
+
+  dom.previous.click();
+  assert.equal(editor.getCurrent().moveNumber, 1);
+  assert.equal(dom.returnButton.disabled, false);
+
+  dom.returnButton.click();
+  assert.notEqual(editor.getRoot(), publishedRoot);
+  assert.equal(editor.getCurrent().moveNumber, 2);
+  assert.equal(editor.getTool(), "navOnly");
+  assert.equal(dom.returnButton.disabled, true);
+  assert.equal(dom.tryButton.disabled, false);
 });
 
 

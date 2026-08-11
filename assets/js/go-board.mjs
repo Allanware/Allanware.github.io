@@ -50,6 +50,7 @@ export function mountGoBoard(root, dependencies = {}) {
   const noteText = root.querySelector("[data-go-board-note-text]");
   const selector = selectorFor(root);
   let editor;
+  let authoredTarget;
   let pristineSgf;
 
   for (const button of [previous, next, tryButton, returnButton]) {
@@ -58,10 +59,7 @@ export function mountGoBoard(root, dependencies = {}) {
   setBusy(root, true);
 
   function fail(label, error) {
-    const detail = error && typeof error.message === "string"
-      ? ` ${error.message}`
-      : "";
-    status.textContent = `${label}${detail}`;
+    status.textContent = label;
     status.dataset.state = "error";
     root.dataset.state = "error";
     setBusy(root, false);
@@ -70,8 +68,11 @@ export function mountGoBoard(root, dependencies = {}) {
 
   function sync() {
     const current = editor.getCurrent();
+    const trying = editor.getTool() === "auto";
     previous.disabled = current.parent === null;
     next.disabled = current.children.length === 0;
+    tryButton.disabled = trying;
+    returnButton.disabled = !trying && current === authoredTarget;
     moveOutput.textContent = formatMove(
       root.dataset.moveTemplate,
       current.moveNumber,
@@ -122,7 +123,8 @@ export function mountGoBoard(root, dependencies = {}) {
       editor = host.besogoEditor;
       besogo.loadSgf(parsed, editor);
       editor.setVariantStyle(0);
-      editor.setCurrent(selectAuthoredNode(editor.getRoot(), selector));
+      authoredTarget = selectAuthoredNode(editor.getRoot(), selector);
+      editor.setCurrent(authoredTarget);
     } catch (error) {
       fail(root.dataset.parseErrorLabel, error);
       return;
@@ -147,7 +149,7 @@ export function mountGoBoard(root, dependencies = {}) {
     });
     returnButton.addEventListener("click", () => {
       try {
-        reloadPristine({
+        authoredTarget = reloadPristine({
           editor,
           sgfText: pristineSgf,
           selector,

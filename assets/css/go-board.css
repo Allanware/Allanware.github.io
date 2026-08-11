@@ -1,6 +1,8 @@
 .go-board {
   border: 1px solid var(--border-color);
   border-radius: 6px;
+  display: flex;
+  flex-direction: column;
   margin-block: 1.5rem;
   margin-inline: 0;
   padding: clamp(0.6rem, 2vw, 1rem);
@@ -97,7 +99,16 @@
 
 .go-board figcaption {
   font-weight: 700;
+  order: 1;
   text-align: center;
+}
+
+.go-board__download {
+  order: 2;
+}
+
+.go-board noscript {
+  order: 3;
 }
 
 @media (prefers-color-scheme: dark) {
