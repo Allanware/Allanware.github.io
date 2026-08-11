@@ -2444,7 +2444,7 @@ interactionId = "resource-suffixes"
                     )
                     self.assertGreaterEqual(ratio, 4.5)
 
-    def test_home_ending_has_large_gap_thought_balloon_and_reduced_fallback(self):
+    def test_home_ending_has_large_gap_train_sequence_and_reduced_fallback(self):
         css = (ROOT / "assets/css/site.css").read_text(encoding="utf-8")
 
         self.assertRegex(
@@ -2452,9 +2452,15 @@ interactionId = "resource-suffixes"
             r"\.home-ending\s*\{[^}]*"
             r"margin-block-start:\s*clamp\(8rem,\s*25vh,\s*15rem\);",
         )
-        for name in ("home-ending-balloon", "home-ending-return"):
+        for name in (
+            "home-ending-train-crossing",
+            "home-ending-train-bob",
+            "home-ending-caption",
+            "home-ending-return",
+        ):
             self.assertEqual(1, css.count(f"@keyframes {name}"))
         for removed_name in (
+            "home-ending-balloon",
             "home-ending-dot-one",
             "home-ending-dot-two",
             "home-ending-dot-three",
@@ -2462,12 +2468,22 @@ interactionId = "resource-suffixes"
             self.assertNotIn(removed_name, css)
         self.assertRegex(
             css,
-            r"\.home-ending-balloon\s*\{[^}]*"
+            r"\.home-ending-lane\s*\{[^}]*"
+            r"overflow:\s*hidden;[^}]*position:\s*relative;",
+        )
+        self.assertRegex(
+            css,
+            r"\.home-ending-train\s*\{[^}]*"
             r"color:\s*var\(--text-color-secondary\);[^}]*"
-            r"height:\s*1\.7em;[^}]*"
-            r"width:\s*2\.25em;",
+            r"height:\s*3\.25rem;[^}]*width:\s*8\.25rem;",
         )
         self.assertIn("animation-iteration-count: 1", css)
+        self.assertNotIn("animation-iteration-count: infinite", css)
+        self.assertRegex(
+            css,
+            r'\[data-home-ending-state="playing"\] \.home-ending-caption\s*'
+            r"\{[^}]*animation-delay:\s*3s;",
+        )
         reduced = re.search(
             r"@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{([\s\S]*)\}\s*$",
             css,

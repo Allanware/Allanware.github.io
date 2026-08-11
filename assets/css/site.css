@@ -249,27 +249,37 @@ ol.home-title-list {
 .home-ending {
   color: var(--text-color-tertiary);
   margin-block-start: clamp(8rem, 25vh, 15rem);
-  min-height: 6rem;
+  min-height: 10rem;
   padding-block-end: 2rem;
   text-align: center;
 }
 
-.home-ending-thought {
-  margin: 0;
+.home-ending-lane {
+  block-size: 4rem;
+  margin-inline: auto;
+  max-inline-size: 42rem;
+  overflow: hidden;
+  position: relative;
 }
 
-.home-ending-thought > [aria-hidden="true"] {
+.home-ending-train-runner {
   align-items: center;
-  display: inline-flex;
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  position: absolute;
 }
 
-.home-ending-balloon {
+.home-ending-train {
   color: var(--text-color-secondary);
   flex: none;
-  height: 1.7em;
-  margin-inline-start: 0.35em;
+  height: 3.25rem;
   overflow: visible;
-  width: 2.25em;
+  width: 8.25rem;
+}
+
+.home-ending-caption {
+  margin: 0.35rem 0 0;
 }
 
 .home-ending-return {
@@ -278,52 +288,106 @@ ol.home-title-list {
   margin-block-start: 1.25rem;
 }
 
+[data-home-ending-enhanced="true"][data-home-ending-state="idle"] .home-ending-train-runner {
+  justify-content: flex-end;
+  transform: translateX(-100%);
+}
+
+[data-home-ending-enhanced="true"][data-home-ending-state="idle"] .home-ending-caption,
 [data-home-ending-enhanced="true"][data-home-ending-state="idle"] .home-ending-return {
   opacity: 0;
   pointer-events: none;
   visibility: hidden;
 }
 
-[data-home-ending-state="playing"] .home-ending-balloon,
+[data-home-ending-state="playing"] .home-ending-train-runner,
+[data-home-ending-state="playing"] .home-ending-train,
+[data-home-ending-state="playing"] .home-ending-caption,
 [data-home-ending-state="playing"] .home-ending-return {
-  animation-fill-mode: forwards;
+  animation-fill-mode: both;
   animation-iteration-count: 1;
 }
 
-[data-home-ending-state="playing"] .home-ending-balloon {
-  animation-duration: 1.4s;
-  animation-name: home-ending-balloon;
-  animation-timing-function: cubic-bezier(0.22, 0.7, 0.28, 1);
-  transform-origin: center;
+[data-home-ending-state="playing"] .home-ending-train-runner {
+  animation-duration: 3s;
+  animation-name: home-ending-train-crossing;
+  animation-timing-function: cubic-bezier(0.45, 0.05, 0.3, 1);
+  justify-content: flex-end;
+}
+
+[data-home-ending-state="playing"] .home-ending-train {
+  animation-duration: 3s;
+  animation-name: home-ending-train-bob;
+  animation-timing-function: linear;
+}
+
+[data-home-ending-state="playing"] .home-ending-caption {
+  animation-delay: 3s;
+  animation-duration: 550ms;
+  animation-name: home-ending-caption;
+  opacity: 0;
+  visibility: hidden;
 }
 
 [data-home-ending-state="playing"] .home-ending-return {
-  animation-delay: 1.3s;
-  animation-duration: 600ms;
+  animation-delay: 3.4s;
+  animation-duration: 550ms;
   animation-name: home-ending-return;
   opacity: 0;
   visibility: hidden;
 }
 
-[data-home-ending-state="complete"] .home-ending-balloon {
+[data-home-ending-state="complete"] .home-ending-train-runner {
   opacity: 0;
 }
 
+[data-home-ending-state="complete"] .home-ending-caption,
 [data-home-ending-state="complete"] .home-ending-return,
+[data-home-ending-state="reduced"] .home-ending-caption,
 [data-home-ending-state="reduced"] .home-ending-return {
   opacity: 1;
   visibility: visible;
 }
 
-@keyframes home-ending-balloon {
-  45% {
-    opacity: 1;
-    transform: translate(1.5rem, -0.75rem) scale(1.06);
+@keyframes home-ending-train-crossing {
+  from {
+    transform: translateX(-100%);
   }
 
   to {
+    transform: translateX(50%);
+  }
+}
+
+@keyframes home-ending-train-bob {
+  0%, 100% {
+    transform: translateY(0) rotate(0);
+  }
+
+  20% {
+    transform: translateY(-0.12rem) rotate(0.35deg);
+  }
+
+  45% {
+    transform: translateY(0.08rem) rotate(-0.25deg);
+  }
+
+  70% {
+    transform: translateY(-0.08rem) rotate(0.2deg);
+  }
+}
+
+@keyframes home-ending-caption {
+  from {
     opacity: 0;
-    transform: translate(4.5rem, -2.75rem) scale(0.9);
+    transform: translateY(0.25rem);
+    visibility: visible;
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    visibility: visible;
   }
 }
 
@@ -340,11 +404,20 @@ ol.home-title-list {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .home-ending-balloon,
+  .home-ending-train-runner,
+  .home-ending-train,
+  .home-ending-caption,
   .home-ending-return {
     animation: none !important;
   }
 
+  [data-home-ending] .home-ending-train-runner {
+    justify-content: center;
+    opacity: 1;
+    transform: none;
+  }
+
+  [data-home-ending] .home-ending-caption,
   [data-home-ending] .home-ending-return {
     opacity: 1;
     pointer-events: auto;
