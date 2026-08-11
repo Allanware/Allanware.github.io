@@ -578,6 +578,7 @@ test("Return restores the published selector after read-only navigation", async 
   const editor = dom.host.besogoEditor;
   const publishedRoot = editor.getRoot();
   assert.equal(editor.getCurrent().moveNumber, 2);
+  assert.equal(editor.getVariantStyle(), 2);
   assert.equal(dom.returnButton.disabled, true);
 
   dom.previous.click();
@@ -587,9 +588,38 @@ test("Return restores the published selector after read-only navigation", async 
   dom.returnButton.click();
   assert.notEqual(editor.getRoot(), publishedRoot);
   assert.equal(editor.getCurrent().moveNumber, 2);
+  assert.equal(editor.getVariantStyle(), 2);
   assert.equal(editor.getTool(), "navOnly");
   assert.equal(dom.returnButton.disabled, true);
   assert.equal(dom.tryButton.disabled, false);
+});
+
+
+test("automatic board labels are enabled only at authored forks", async () => {
+  const dom = boardDom({ kind: "path", value: "N3" });
+  const controller = mountGoBoard(dom.root, {
+    besogo: boardBesogo(),
+    loadSgfText: async () => syntheticSgf,
+    logger: { error() {} },
+  });
+  await controller.ready;
+
+  const editor = dom.host.besogoEditor;
+  const fork = editor.getCurrent();
+  assert.equal(fork.children.length, 2);
+  assert.equal(editor.getVariantStyle(), 0);
+
+  editor.setCurrent(fork.children[0]);
+  assert.equal(editor.getVariantStyle(), 2);
+
+  dom.previous.click();
+  assert.equal(editor.getCurrent(), fork);
+  assert.equal(editor.getVariantStyle(), 0);
+
+  editor.setCurrent(fork.children[1]);
+  dom.returnButton.click();
+  assert.equal(editor.getCurrent().children.length, 2);
+  assert.equal(editor.getVariantStyle(), 0);
 });
 
 

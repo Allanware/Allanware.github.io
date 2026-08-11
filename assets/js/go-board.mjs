@@ -91,9 +91,17 @@ export function mountGoBoard(root, dependencies = {}) {
     logger.error(label, error);
   }
 
+  function syncVariantMarkers(current) {
+    const desiredStyle = current.children.length > 1 ? 0 : 2;
+    if (editor.getVariantStyle() !== desiredStyle) {
+      editor.setVariantStyle(desiredStyle);
+    }
+  }
+
   function sync() {
     const current = editor.getCurrent();
     const trying = editor.getTool() === "auto";
+    syncVariantMarkers(current);
     setTryControlsVisible(trying);
     previous.disabled = current.parent === null;
     next.disabled = current.children.length === 0;
@@ -247,7 +255,6 @@ export function mountGoBoard(root, dependencies = {}) {
       });
       editor = host.besogoEditor;
       loadSgfForReader({ besogo, editor, sgf: parsed });
-      editor.setVariantStyle(0);
       authoredTarget = selectAuthoredNode(editor.getRoot(), selector);
       editor.setCurrent(authoredTarget);
       populateTryCoordinates(size);
@@ -284,7 +291,6 @@ export function mountGoBoard(root, dependencies = {}) {
           selector,
           besogo,
         });
-        editor.setVariantStyle(0);
         resetTryEntry();
         setTryControlsVisible(false);
         tryButton.disabled = false;
