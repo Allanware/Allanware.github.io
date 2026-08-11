@@ -87,6 +87,6 @@ other = "Warning"
 [caution]
 other = "Caution"
 [homeEndingThought]
-other = "there goes my train of thought."
+other = "there goes my train of thought..."
 [homeEndingReturn]
-other = "↑ perhaps start over"
+other = "↑ Catch the next one"

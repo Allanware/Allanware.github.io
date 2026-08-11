@@ -1896,12 +1896,12 @@ interactionId = "resource-suffixes"
         )
         expected = {
             "en": (
-                "there goes my train of thought.",
-                "↑ perhaps start over",
+                "there goes my train of thought...",
+                "↑ Catch the next one",
             ),
             "zh": (
-                "思绪又飘走了。",
-                "↑ 要不从头再来",
+                "思绪又开走了。。。",
+                "↑ 那就赶下一班",
             ),
         }
 
@@ -1950,23 +1950,17 @@ interactionId = "resource-suffixes"
                         self.assertNotIn("data-home-ending-dot", ending)
                         self.assertRegex(
                             ending,
-                            r'<svg\b(?=[^>]*\bdata-home-ending-train(?:\s|>))'
-                            r'(?=[^>]*\bviewBox="0 0 168 64")'
-                            r'(?=[^>]*\bwidth="168")'
-                            r'(?=[^>]*\bheight="64")'
-                            r'(?=[^>]*\baria-hidden="true")'
-                            r'(?=[^>]*\bfocusable="false")[^>]*>',
+                            r'<span\b(?=[^>]*\bdata-home-ending-train(?:\s|>))'
+                            r'(?=[^>]*\baria-hidden="true")[^>]*>'
+                            r'\s*<span class="home-ending-train-glyphs">'
+                            r'🚂🚃🚃🚃</span>\s*</span>',
                         )
-                        self.assertEqual(
-                            1,
-                            ending.count("data-home-ending-carriage"),
-                        )
-                        self.assertEqual(1, ending.count("data-home-ending-engine"))
-                        self.assertEqual(3, ending.count("data-home-ending-smoke"))
-                        self.assertEqual(4, ending.count("data-home-ending-wheel"))
-                        self.assertEqual(7, ending.count("data-home-ending-cutout"))
-                        self.assertIn('fill="currentColor"', ending)
-                        self.assertIn('stroke="none"', ending)
+                        self.assertNotIn("<svg", ending)
+                        self.assertNotIn("data-home-ending-carriage", ending)
+                        self.assertNotIn("data-home-ending-engine", ending)
+                        self.assertNotIn("data-home-ending-smoke", ending)
+                        self.assertNotIn("data-home-ending-wheel", ending)
+                        self.assertNotIn("data-home-ending-cutout", ending)
                         self.assertLess(
                             ending.index("data-home-ending-train"),
                             ending.index(thought),
@@ -2458,8 +2452,6 @@ interactionId = "resource-suffixes"
         for name in (
             "home-ending-train-crossing",
             "home-ending-train-bob",
-            "home-ending-wheel-turn",
-            "home-ending-smoke-drift",
             "home-ending-caption",
             "home-ending-return",
         ):
@@ -2479,8 +2471,12 @@ interactionId = "resource-suffixes"
         self.assertRegex(
             css,
             r"\.home-ending-train\s*\{[^}]*"
-            r"color:\s*var\(--text-color-secondary\);[^}]*"
-            r"height:\s*4rem;[^}]*width:\s*10\.5rem;",
+            r"font-size:\s*2\.25rem;[^}]*white-space:\s*nowrap;",
+        )
+        self.assertRegex(
+            css,
+            r"\.home-ending-train-glyphs\s*\{[^}]*"
+            r"display:\s*inline-block;[^}]*transform:\s*scaleX\(-1\);",
         )
         self.assertIn("animation-iteration-count: 1", css)
         self.assertNotIn("animation-iteration-count: infinite", css)
@@ -2495,16 +2491,8 @@ interactionId = "resource-suffixes"
             r'\[data-home-ending-state="playing"\] \.home-ending-caption\s*'
             r"\{[^}]*animation-delay:\s*5\.5s;",
         )
-        self.assertRegex(
-            css,
-            r"\.home-ending-train-cutout\s*\{[^}]*"
-            r"fill:\s*var\(--bg-color-primary\);",
-        )
-        self.assertRegex(
-            css,
-            r"\.home-ending-wheel\s*\{[^}]*"
-            r"transform-box:\s*fill-box;",
-        )
+        self.assertNotIn("home-ending-wheel-turn", css)
+        self.assertNotIn("home-ending-smoke-drift", css)
         reduced = re.search(
             r"@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{([\s\S]*)\}\s*$",
             css,

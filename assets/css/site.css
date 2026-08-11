@@ -271,33 +271,15 @@ ol.home-title-list {
 }
 
 .home-ending-train {
-  color: var(--text-color-secondary);
   flex: none;
-  height: 4rem;
-  overflow: visible;
-  width: 10.5rem;
+  font-size: 2.25rem;
+  line-height: 1;
+  white-space: nowrap;
 }
 
-.home-ending-train-cutout {
-  fill: var(--bg-color-primary);
-}
-
-.home-ending-wheel-cut {
-  fill: none;
-  stroke: var(--bg-color-primary);
-  stroke-linecap: round;
-  stroke-width: 2;
-}
-
-.home-ending-wheel {
-  transform-box: fill-box;
-  transform-origin: center;
-}
-
-.home-ending-smoke-cloud {
-  opacity: 0.45;
-  transform-box: fill-box;
-  transform-origin: center;
+.home-ending-train-glyphs {
+  display: inline-block;
+  transform: scaleX(-1);
 }
 
 .home-ending-caption {
@@ -324,8 +306,6 @@ ol.home-title-list {
 
 [data-home-ending-state="playing"] .home-ending-train-runner,
 [data-home-ending-state="playing"] .home-ending-train,
-[data-home-ending-state="playing"] .home-ending-wheel,
-[data-home-ending-state="playing"] .home-ending-smoke-cloud,
 [data-home-ending-state="playing"] .home-ending-caption,
 [data-home-ending-state="playing"] .home-ending-return {
   animation-fill-mode: both;
@@ -343,18 +323,6 @@ ol.home-title-list {
   animation-duration: 5.5s;
   animation-name: home-ending-train-bob;
   animation-timing-function: linear;
-}
-
-[data-home-ending-state="playing"] .home-ending-wheel {
-  animation-duration: 5.5s;
-  animation-name: home-ending-wheel-turn;
-  animation-timing-function: linear;
-}
-
-[data-home-ending-state="playing"] .home-ending-smoke-cloud {
-  animation-duration: 5.5s;
-  animation-name: home-ending-smoke-drift;
-  animation-timing-function: ease-out;
 }
 
 [data-home-ending-state="playing"] .home-ending-caption {
@@ -413,28 +381,6 @@ ol.home-title-list {
   }
 }
 
-@keyframes home-ending-wheel-turn {
-  to {
-    transform: rotate(1080deg);
-  }
-}
-
-@keyframes home-ending-smoke-drift {
-  from {
-    opacity: 0.2;
-    transform: translate(0, 0.15rem) scale(0.9);
-  }
-
-  35% {
-    opacity: 0.5;
-  }
-
-  to {
-    opacity: 0;
-    transform: translate(-0.8rem, -0.65rem) scale(1.2);
-  }
-}
-
 @keyframes home-ending-caption {
   from {
     opacity: 0;
@@ -464,8 +410,6 @@ ol.home-title-list {
 @media (prefers-reduced-motion: reduce) {
   .home-ending-train-runner,
   .home-ending-train,
-  .home-ending-wheel,
-  .home-ending-smoke-cloud,
   .home-ending-caption,
   .home-ending-return {
     animation: none !important;
