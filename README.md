@@ -132,6 +132,51 @@ bundle-relative paths without a leading slash. Images need meaningful
 alternative text. To specify an authored display width, use the local
 `bundle-image` shortcode.
 
+## Interactive Go boards
+
+Use Sabaki to add variations, SGF node comments, and standard board marks. Save
+the `.sgf` file beside `index.en.md` and `index.zh.md` in the post's leaf
+bundle. Paired translations share the same SGF asset; do not duplicate it.
+
+Embed a position with the local shortcode:
+
+```go-html-template
+{{< go-board src="game.sgf" move="64" caption="Position after move 64." >}}
+```
+
+`src` and `caption` are required. The source must be a bundle-relative `.sgf`
+file, and the caption must not be empty. With no selector, the board defaults to
+move 0. The beginner-friendly `move` selector is a semantic mainline move count
+and skips non-move nodes. For exact advanced selection, `path=N64B2N3` uses
+BesoGo node counts in each `N` token and 1-based branch numbers in each `B`
+token. `move` and `path` are mutually exclusive.
+
+Three useful patterns cover most posts:
+
+- To compare branches, create variations in Sabaki. The viewer adds contextual
+  A/B buttons and matching board labels automatically.
+- To discuss one point, use the standard `CR`, `TR`, `SQ`, `MA`, `LB`, and `SL`
+  marks for circles, triangles, squares, crosses, labels, and selections.
+- To show a sequence, record it as a branch so readers can step through it.
+
+Supported SGF properties are moves (`B`/`W`), setup stones and removals
+(`AB`/`AW`/`AE`), those standard marks, and plain-text `C` node comments. Put
+the main translated explanation in the Markdown post. Because translations
+share one record, SGF notes should be language-neutral, bilingual, or omitted.
+
+The viewer ignores Sabaki arrows and lines, Markdown inside `C`, and custom
+engine values such as `SBKV` and `SBKS`. Readers get Previous and Next,
+contextual A/B variation buttons, the current node note, and Try and Return.
+Try is local and ephemeral, with no persistence; Return restores the published
+position.
+
+The board viewer itself makes no third-party requests. Existing Giscus remains
+the post-level comment system. Durable move-level multi-user discussion is
+deferred to a separate app or backend.
+
+The implementation uses a [pinned, trimmed BesoGo runtime](assets/vendor/besogo/UPSTREAM.md)
+under its [MIT license](assets/vendor/besogo/LICENSE).
+
 ## RSS
 
 The site publishes one feed per language:
