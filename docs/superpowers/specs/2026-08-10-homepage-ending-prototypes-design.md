@@ -27,27 +27,40 @@ horizontal overflow in either language or color scheme.
 
 The first review build renders:
 
-- English: `There was one more thing` followed by three individually addressable
-  dots.
-- Chinese: `好像还有件事` followed by three individually addressable dots.
+- English: `There was one more thing` followed by a small outlined thought
+  balloon.
+- Chinese: `好像还有件事` followed by the same thought balloon.
 
-When the ending first enters the viewport, the dots detach in sequence, drift
-down and to the right, and fade away. The movement plays once per page load and
-does not loop. After the final dot leaves, a small localized link fades in:
+The balloon is a monochrome inline SVG with a scalloped cloud and two trailing
+bubbles. It follows the site's text color, stays crisp at different pixel
+densities, and does not inherit platform-specific emoji styling. It is
+decorative and hidden from assistive technology; the paragraph's localized
+accessible label supplies the complete thought.
+
+When the ending enters the viewport, the balloon floats diagonally up and to the
+right, then fades away. The movement plays once per encounter and does not loop
+while the ending remains visible. After the balloon leaves, a small localized
+link fades in:
 
 - English: `↑ perhaps start over`
 - Chinese: `↑ 要不从头再来`
 
 The link targets the top of the current homepage and uses smooth scrolling when
-the browser permits it. It remains a normal fragment link so navigation still
-works when JavaScript is unavailable.
+the browser permits it. Clicking it also re-arms the ending. The observer waits
+until the ending has fully left the viewport, then allows the balloon to play
+again on the reader's next scroll to the bottom. It must not restart immediately
+while the smooth return-to-top scroll is still moving away from the ending. The
+link remains a normal fragment link so navigation still works when JavaScript
+is unavailable.
 
-An `IntersectionObserver` starts the one-shot sequence only when the ending is
+An `IntersectionObserver` starts each armed sequence only when the ending is
 actually encountered. If the API is unavailable, the ending settles into its
-completed, usable state rather than remaining hidden.
+completed, usable state rather than remaining hidden; the link still returns to
+the homepage fragment target.
 
-With `prefers-reduced-motion: reduce`, the dots remain static, the return link is
-visible immediately, and no smooth-scroll or drifting animation is applied.
+With `prefers-reduced-motion: reduce`, the balloon remains static, the return
+link is visible immediately, and no smooth-scroll or floating animation is
+applied.
 
 ## Prototype 2: Train of Thought
 
@@ -80,8 +93,8 @@ prototype.
 
 The ending is decorative editorial content, not a live status announcement, so
 its animation does not use an ARIA live region. Visible copy remains ordinary
-readable text. Decorative train pieces are hidden from assistive technology;
-the revealed sentence carries the meaning.
+readable text. The decorative thought balloon and train pieces are hidden from
+assistive technology; localized text carries their meaning.
 
 The return-to-top control is a keyboard-focusable link with the site's existing
 focus treatment. Script failure leaves meaningful text and a working link.
@@ -99,9 +112,11 @@ root and project-subpath base URLs and assert that the active ending:
 - emits base-path-safe assets and a working top fragment target; and
 - uses semantic markup without a looping media asset.
 
-Dependency-free Node tests cover one-shot viewport activation, fallback when
-`IntersectionObserver` is unavailable, the final visible state, return-to-top
-behavior, and reduced-motion behavior where it is controlled by script.
+Dependency-free Node tests cover armed viewport activation, no replay while the
+ending remains visible, re-arming through the return link, replay after a full
+viewport exit and re-entry, fallback when `IntersectionObserver` is unavailable,
+the final visible state, return-to-top behavior, and reduced-motion behavior
+where it is controlled by script.
 
 The full Python and Node test suites, the strict Hugo build, and a browser review
 at desktop and mobile widths verify each prototype before it is presented for
