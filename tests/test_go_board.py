@@ -1,4 +1,5 @@
 from pathlib import Path
+import gzip
 import hashlib
 import re
 import shutil
@@ -161,6 +162,31 @@ class GoBoardStyleTests(unittest.TestCase):
         self.assertIsNotNone(shell_rule)
         self.assertRegex(shell_rule.group("body"), r"inline-size:\s*100%;")
         self.assertRegex(shell_rule.group("body"), r"max-width:\s*38rem;")
+
+    def test_unmounted_board_reserves_a_stable_square(self):
+        css = (ROOT / "assets/css/go-board.css").read_text(encoding="utf-8")
+        shell_rule = re.search(r"\.go-board__shell\s*\{(?P<body>[^}]*)\}", css)
+        host_rule = re.search(r"\.go-board__host\s*\{(?P<body>[^}]*)\}", css)
+        status_rule = re.search(r"\.go-board__status\s*\{(?P<body>[^}]*)\}", css)
+        ready_rule = re.search(
+            r'\.go-board__status\[data-state="ready"\]\s*\{(?P<body>[^}]*)\}',
+            css,
+        )
+
+        for rule in (shell_rule, host_rule, status_rule, ready_rule):
+            self.assertIsNotNone(rule)
+
+        self.assertRegex(shell_rule.group("body"), r"position:\s*relative;")
+        self.assertRegex(host_rule.group("body"), r"aspect-ratio:\s*1;")
+        self.assertRegex(host_rule.group("body"), r"inline-size:\s*100%;")
+        self.assertRegex(status_rule.group("body"), r"position:\s*absolute;")
+        self.assertRegex(status_rule.group("body"), r"inset:\s*50%\s+auto\s+auto\s+50%;")
+        self.assertRegex(
+            status_rule.group("body"), r"transform:\s*translate\(-50%,\s*-50%\);"
+        )
+        self.assertRegex(ready_rule.group("body"), r"inset:\s*auto;")
+        self.assertRegex(ready_rule.group("body"), r"margin:\s*-1px;")
+        self.assertRegex(ready_rule.group("body"), r"transform:\s*none;")
 
     def test_final_figcaption_keeps_caption_before_fallbacks_visually(self):
         css = (ROOT / "assets/css/go-board.css").read_text(encoding="utf-8")
@@ -525,6 +551,15 @@ class GoBoardGeneratedSiteTests(unittest.TestCase):
                     built_styles = list((public / "css").glob("go-board.*.css"))
                     self.assertEqual(1, len(built_styles))
                     stylesheet = built_styles[0].read_text(encoding="utf-8")
+                    js_payload = built_scripts[0].read_bytes()
+                    css_payload = built_styles[0].read_bytes()
+                    js_gzip = len(gzip.compress(js_payload, compresslevel=9, mtime=0))
+                    css_gzip = len(gzip.compress(css_payload, compresslevel=9, mtime=0))
+                    self.assertLessEqual(len(js_payload), 32_000)
+                    self.assertLessEqual(js_gzip, 11_000)
+                    self.assertLessEqual(len(css_payload), 5_000)
+                    self.assertLessEqual(css_gzip, 1_500)
+                    self.assertLessEqual(js_gzip + css_gzip, 12_500)
                     self.assertNotRegex(stylesheet, r'https?://')
                     absolute_runtime_urls = set(
                         re.findall(r'''https?://[^"'\s<>)]+''', runtime)

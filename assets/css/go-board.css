@@ -12,6 +12,12 @@
   inline-size: 100%;
   margin-inline: auto;
   max-width: 38rem;
+  position: relative;
+}
+
+.go-board__host {
+  aspect-ratio: 1;
+  inline-size: 100%;
 }
 
 .go-board__host.besogo-container,
@@ -156,12 +162,25 @@
   margin-block: 0.65rem 0;
 }
 
+.go-board__status {
+  inset: 50% auto auto 50%;
+  margin: 0;
+  max-width: calc(100% - 2rem);
+  position: absolute;
+  text-align: center;
+  transform: translate(-50%, -50%);
+  width: max-content;
+}
+
 .go-board__status[data-state="ready"] {
   clip: rect(0 0 0 0);
   clip-path: inset(50%);
   height: 1px;
+  inset: auto;
+  margin: -1px;
   overflow: hidden;
   position: absolute;
+  transform: none;
   white-space: nowrap;
   width: 1px;
 }
