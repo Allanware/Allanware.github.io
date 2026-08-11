@@ -86,3 +86,9 @@ other = "重要"
 other = "警告"
 [caution]
 other = "注意"
+[homeEndingLead]
+other = "好像还有件事"
+[homeEndingThought]
+other = "好像还有件事……"
+[homeEndingReturn]
+other = "↑ 要不从头再来"

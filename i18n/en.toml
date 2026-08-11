@@ -86,3 +86,9 @@ other = "Important"
 other = "Warning"
 [caution]
 other = "Caution"
+[homeEndingLead]
+other = "There was one more thing"
+[homeEndingThought]
+other = "There was one more thing..."
+[homeEndingReturn]
+other = "↑ perhaps start over"

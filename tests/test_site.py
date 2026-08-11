@@ -1888,6 +1888,100 @@ interactionId = "resource-suffixes"
                 self.assertNotRegex(chinese_latest, r"<time|data-post-count|#[\w-]+")
                 self.assertEqual(2, chinese_latest.count("<li>"))
 
+    def test_escaping_thought_is_localized_home_only_and_base_path_safe(self):
+        module_pattern = re.compile(
+            r'<script(?=[^>]*\btype="module")'
+            r'(?=[^>]*\bsrc="([^"]*home-ending[^"]*)")'
+            r'(?=[^>]*\bintegrity="([^"]+)")[^>]*></script>'
+        )
+        expected = {
+            "en": (
+                "There was one more thing...",
+                "↑ perhaps start over",
+            ),
+            "zh": (
+                "好像还有件事……",
+                "↑ 要不从头再来",
+            ),
+        }
+
+        with TemporaryDirectory() as temporary:
+            for name, base_url, base_path in (
+                ("root", "https://example.test/", "/"),
+                ("project", "https://example.test/example-blog/", "/example-blog/"),
+            ):
+                public = Path(temporary) / name
+                build_site(
+                    public,
+                    base_url,
+                    "--config",
+                    "hugo.toml,tests/fixtures/interactions.toml",
+                    "--contentDir",
+                    "tests/fixtures/content",
+                )
+                pages = {
+                    "en": read_html(public, "index.html"),
+                    "zh": read_html(public, "zh/index.html"),
+                }
+
+                for language, html in pages.items():
+                    with self.subTest(build=name, language=language):
+                        thought, return_label = expected[language]
+                        self.assertEqual(
+                            1,
+                            len(re.findall(
+                                r'<div\b[^>]*\sdata-home-ending(?:\s|>)',
+                                html,
+                            )),
+                        )
+                        self.assertIn('id="home-top"', html)
+                        self.assertIn('data-home-ending-state="static"', html)
+                        self.assertIn(f'aria-label="{thought}"', html)
+                        self.assertIn(f'href="#home-top">{return_label}</a>', html)
+                        self.assertEqual(3, html.count("data-home-ending-dot"))
+                        self.assertLess(
+                            html.index('data-home-section="popular"'),
+                            html.index("data-home-ending"),
+                        )
+                        self.assertLess(
+                            html.index("data-home-ending"),
+                            html.index("<footer>"),
+                        )
+                        self.assertNotRegex(
+                            html[html.index("data-home-ending"):html.index("<footer>")],
+                            r"<(?:img|picture|video)\b",
+                        )
+
+                        modules = module_pattern.findall(html)
+                        self.assertEqual(1, len(modules))
+                        source, integrity = modules[0]
+                        self.assertRegex(
+                            source,
+                            rf"^{re.escape(base_path)}js/"
+                            r"home-ending\.[0-9a-f]{64}\.mjs$",
+                        )
+                        asset = public / urlsplit(source).path.removeprefix(base_path)
+                        self.assertTrue(asset.is_file(), source)
+                        expected_integrity = "sha256-" + base64.b64encode(
+                            hashlib.sha256(asset.read_bytes()).digest()
+                        ).decode("ascii")
+                        self.assertEqual(expected_integrity, unescape(integrity))
+
+                for relative in (
+                    "p/shared-article/index.html",
+                    "zh/p/shared-article/index.html",
+                    "blog/index.html",
+                    "zh/blog/index.html",
+                    "tags/index.html",
+                    "zh/tags/index.html",
+                    "404.html",
+                ):
+                    with self.subTest(build=name, non_home=relative):
+                        self.assertNotIn(
+                            "data-home-ending",
+                            read_html(public, relative),
+                        )
+
     def test_home_latest_is_capped_at_three_visible_posts(self):
         with TemporaryDirectory() as temporary:
             temporary_root = Path(temporary)

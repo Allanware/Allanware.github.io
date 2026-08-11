@@ -12,7 +12,7 @@
   {{- $posts = where $posts "Draft" false -}}
   {{- $posts = where $posts "Params.hidden" "ne" true -}}
   {{- $posts = $posts.ByDate.Reverse -}}
-  <content class="home-content">
+  <content id="home-top" class="home-content">
     <div class="home-intro">{{ .Content }}</div>
     <section data-home-section="projects">
       <h2>{{ T "projects" }}</h2>
@@ -26,5 +26,6 @@
       {{ partial "home-title-list.html" (dict "Pages" (first 3 $posts) "EmptyKey" "noPosts") }}
     </section>
     {{ partial "popular-posts.html" . }}
+    {{ partial "home-ending.html" . }}
   </content>
 {{ end }}

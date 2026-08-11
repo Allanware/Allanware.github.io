@@ -1,0 +1,8 @@
+<div class="home-ending" data-home-ending data-home-ending-state="static">
+  <p class="home-ending-thought" aria-label="{{ T "homeEndingThought" }}">
+    <span aria-hidden="true">{{ T "homeEndingLead" }}<span class="home-ending-dots"><span data-home-ending-dot>.</span><span data-home-ending-dot>.</span><span data-home-ending-dot>.</span></span></span>
+  </p>
+  <a class="home-ending-return" data-home-ending-return href="#home-top">{{ T "homeEndingReturn" }}</a>
+</div>
+{{- $script := resources.Get "js/home-ending.mjs" | fingerprint "sha256" }}
+<script type="module" src="{{ $script.RelPermalink }}" integrity="{{ $script.Data.Integrity }}"></script>
