@@ -3,9 +3,9 @@
 ## Goal
 
 Compare two quiet, homepage-only endings in the real Hugo site without adding a
-second mascot or competing with the writing. Review them sequentially: first an
-escaping thought, then a tiny train of thought. Only one prototype is present in
-the working tree at a time.
+second mascot or competing with the writing. The escaping-thought prototype has
+been reviewed and rejected. The active second prototype is a tiny train of
+thought. Only one prototype is present in the working tree at a time.
 
 ## Shared Placement and Tone
 
@@ -23,9 +23,9 @@ English and Chinese homepages receive equivalent localized copy through the
 existing i18n catalogs. The interaction must fit narrow screens without
 horizontal overflow in either language or color scheme.
 
-## Prototype 1: Escaping Thought
+## Prototype 1: Escaping Thought (Rejected)
 
-The first review build renders:
+The first review build rendered:
 
 - English: `There was one more thing` followed by a small outlined thought
   balloon.
@@ -62,21 +62,30 @@ With `prefers-reduced-motion: reduce`, the balloon remains static, the return
 link is visible immediately, and no smooth-scroll or floating animation is
 applied.
 
-## Prototype 2: Train of Thought
+## Prototype 2: Train of Thought (Selected for Review)
 
-After the first prototype has been reviewed, it is replaced in the same
-homepage-only slot by a second review build. A small typographic/line-drawn train
-crosses the available width once when the ending first enters the viewport.
-After it exits, localized copy appears:
+The second review build replaces the balloon in the same homepage-only slot. A
+small, rounded line-drawn toy train crosses a clipped lane from left to right
+once when the ending enters the viewport. The train consists of a locomotive,
+one carriage, visible wheels, and two smoke puffs so the silhouette reads
+immediately without relying on an emoji or platform font. A gentle vertical bob
+adds personality while the overall motion remains quiet.
+
+Only after the train has left the lane does localized copy fade in:
 
 - English: `there goes my train of thought.`
-- Chinese: `思路又跑了。`
+- Chinese: `思绪又飘走了。`
 
-The train uses text and CSS rather than an animated GIF, keeping the result
-monochrome, crisp, responsive, and non-looping. The reduced-motion version omits
-the crossing animation and shows the final line immediately. Exact train glyphs,
-speed, and spacing can be tuned during the second in-site review without
-changing the shared placement or accessibility contract.
+The existing localized return link fades in beneath the line and keeps the
+replay contract established during the first review: clicking it scrolls to the
+top, the observer waits for the ending to leave the viewport, and the train may
+play again only after the reader returns to the bottom.
+
+The train is an inline SVG animated with CSS rather than an animated GIF. It
+inherits the site's secondary text color, stays crisp and responsive, never
+loops, and adds no external asset. The reduced-motion version omits the crossing
+and fade sequence, centers the train in its lane, and shows the final line and
+return link immediately.
 
 ## Implementation Boundaries
 
@@ -124,9 +133,11 @@ visual judgment.
 
 ## Review Sequence
 
-1. Implement and render the escaping-thought prototype.
-2. Pause for the user's in-site review.
-3. Replace it with the train-of-thought prototype.
+1. Implement and render the escaping-thought prototype. (Complete.)
+2. Review it in site. (Complete; rejected as insufficiently interesting or
+   cute.)
+3. Replace it with the train-of-thought prototype using `思绪又飘走了。` for the
+   Chinese analogy. (Active.)
 4. Pause for a second in-site review.
 5. Keep the preferred prototype and remove temporary comparison code.
 
