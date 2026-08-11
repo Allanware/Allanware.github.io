@@ -37,14 +37,10 @@
     {{ range $pages.GroupByDate "2006" }}
       {{ if $page.Site.Params.groupByYear }}<li class="post-year" data-post-year="{{ .Key }}"><h3>{{ .Key }}</h3></li>{{ end }}
       {{ range .Pages }}
-        {{- /* The date column is a fixed width, so full month names longer than
-               five characters wrap onto a second line. Those render abbreviated
-               (Jan, Feb, Aug, Sep, Oct, Nov, Dec) while the short ones stay
-               spelled out. Formats without a full-month token are untouched. */ -}}
-        {{ $rowDateFormat := $dateFormat }}
-        {{ if gt (strings.RuneCount (.Date | time.Format "January")) 5 }}
-          {{ $rowDateFormat = replace $rowDateFormat "January" "Jan" }}
-        {{ end }}
+        {{- /* Keep every month label to a consistent three characters in the
+               fixed-width date column. Formats without a full-month token are
+               untouched. */ -}}
+        {{ $rowDateFormat := replace $dateFormat "January" "Jan" }}
         <li data-post-item data-post-year="{{ .Date.Year }}" data-post-title="{{ .Title }}">
           <span class="{{ if $page.Site.Params.groupByYear }}grouped{{ else }}ungrouped{{ end }}">
             <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date | time.Format $rowDateFormat }}</time>

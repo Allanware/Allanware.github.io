@@ -2959,18 +2959,16 @@ projectStatus = "past"
                 chinese_ungrouped,
             )
 
-    def test_grouped_list_abbreviates_long_month_names(self):
-        # The grouped date column is a fixed width, so month names longer than
-        # five characters render abbreviated instead of wrapping onto a second
-        # line. Shorter names stay spelled out.
+    def test_grouped_list_abbreviates_all_month_names(self):
+        # The grouped date column uses consistent three-character month names.
         expected = {
             "2025-01-22": "Jan 22",
             "2025-02-22": "Feb 22",
-            "2025-03-22": "March 22",
-            "2025-04-22": "April 22",
+            "2025-03-22": "Mar 22",
+            "2025-04-22": "Apr 22",
             "2025-05-22": "May 22",
-            "2025-06-22": "June 22",
-            "2025-07-22": "July 22",
+            "2025-06-22": "Jun 22",
+            "2025-07-22": "Jul 22",
             "2025-08-22": "Aug 22",
             "2025-09-22": "Sep 22",
             "2025-10-22": "Oct 22",
