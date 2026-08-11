@@ -2431,7 +2431,7 @@ interactionId = "resource-suffixes"
                     )
                     self.assertGreaterEqual(ratio, 4.5)
 
-    def test_home_ending_has_large_gap_one_shot_motion_and_reduced_fallback(self):
+    def test_home_ending_has_large_gap_thought_balloon_and_reduced_fallback(self):
         css = (ROOT / "assets/css/site.css").read_text(encoding="utf-8")
 
         self.assertRegex(
@@ -2439,13 +2439,21 @@ interactionId = "resource-suffixes"
             r"\.home-ending\s*\{[^}]*"
             r"margin-block-start:\s*clamp\(8rem,\s*25vh,\s*15rem\);",
         )
-        for name in (
+        for name in ("home-ending-balloon", "home-ending-return"):
+            self.assertEqual(1, css.count(f"@keyframes {name}"))
+        for removed_name in (
             "home-ending-dot-one",
             "home-ending-dot-two",
             "home-ending-dot-three",
-            "home-ending-return",
         ):
-            self.assertEqual(1, css.count(f"@keyframes {name}"))
+            self.assertNotIn(removed_name, css)
+        self.assertRegex(
+            css,
+            r"\.home-ending-balloon\s*\{[^}]*"
+            r"color:\s*var\(--text-color-secondary\);[^}]*"
+            r"height:\s*1\.7em;[^}]*"
+            r"width:\s*2\.25em;",
+        )
         self.assertIn("animation-iteration-count: 1", css)
         reduced = re.search(
             r"@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{([\s\S]*)\}\s*$",
