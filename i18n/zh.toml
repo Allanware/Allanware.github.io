@@ -102,6 +102,24 @@ other = "已选择变化 {label}"
 other = "第 {move} 手"
 [goBoardTry]
 other = "试走变化"
+[goBoardTryControls]
+other = "选择试走位置"
+[goBoardColumn]
+other = "列"
+[goBoardRow]
+other = "行"
+[goBoardChooseColumn]
+other = "选择列"
+[goBoardChooseRow]
+other = "选择行"
+[goBoardPlayMove]
+other = "落子"
+[goBoardPointRequired]
+other = "请选择列和行。"
+[goBoardPointUnavailable]
+other = "该位置无法落子。"
+[goBoardPointPlayed]
+other = "已在 {coordinate} 落子。"
 [goBoardReturn]
 other = "返回指定局面"
 [goBoardNodeNote]

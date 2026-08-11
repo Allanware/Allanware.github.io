@@ -47,6 +47,11 @@ export function mountGoBoard(root, dependencies = {}) {
   const next = root.querySelector("[data-go-board-next]");
   const tryButton = root.querySelector("[data-go-board-try]");
   const returnButton = root.querySelector("[data-go-board-return]");
+  const tryControls = root.querySelector("[data-go-board-try-controls]");
+  const tryColumn = root.querySelector("[data-go-board-try-column]");
+  const tryRow = root.querySelector("[data-go-board-try-row]");
+  const playMoveButton = root.querySelector("[data-go-board-play-move]");
+  const tryStatus = root.querySelector("[data-go-board-try-status]");
   const moveOutput = root.querySelector("[data-go-board-move]");
   const note = root.querySelector("[data-go-board-note]");
   const noteText = root.querySelector("[data-go-board-note-text]");
@@ -61,9 +66,24 @@ export function mountGoBoard(root, dependencies = {}) {
   for (const button of [previous, next, tryButton, returnButton]) {
     button.disabled = true;
   }
+  resetTryEntry();
+  setTryControlsVisible(false);
   setBusy(root, true);
 
+  function resetTryEntry() {
+    tryColumn.value = "";
+    tryRow.value = "";
+    tryStatus.textContent = "";
+  }
+
+  function setTryControlsVisible(visible) {
+    tryControls.hidden = !visible;
+    tryButton.setAttribute("aria-expanded", String(visible));
+  }
+
   function fail(label, error) {
+    resetTryEntry();
+    setTryControlsVisible(false);
     status.textContent = label;
     status.dataset.state = "error";
     root.dataset.state = "error";
@@ -74,6 +94,7 @@ export function mountGoBoard(root, dependencies = {}) {
   function sync() {
     const current = editor.getCurrent();
     const trying = editor.getTool() === "auto";
+    setTryControlsVisible(trying);
     previous.disabled = current.parent === null;
     next.disabled = current.children.length === 0;
     tryButton.disabled = trying;
@@ -127,6 +148,63 @@ export function mountGoBoard(root, dependencies = {}) {
     }
   }
 
+  function makeOption(value, label) {
+    const option = root.ownerDocument.createElement("option");
+    option.value = String(value);
+    option.textContent = label;
+    return option;
+  }
+
+  function populateTryCoordinates(size) {
+    const coordinates = besogo.coord.western(size.x, size.y);
+    const columns = [makeOption("", root.dataset.columnPlaceholder)];
+    const rows = [makeOption("", root.dataset.rowPlaceholder)];
+    for (let x = 1; x <= size.x; x += 1) {
+      columns.push(makeOption(x, coordinates.x[x]));
+    }
+    for (let y = 1; y <= size.y; y += 1) {
+      rows.push(makeOption(y, coordinates.y[y]));
+    }
+    tryColumn.replaceChildren(...columns);
+    tryRow.replaceChildren(...rows);
+  }
+
+  function playSelectedPoint() {
+    if (editor.getTool() !== "auto") return;
+    if (!tryColumn.value || !tryRow.value) {
+      tryStatus.textContent = root.dataset.pointRequiredLabel;
+      return;
+    }
+
+    const x = Number(tryColumn.value);
+    const y = Number(tryRow.value);
+    const size = editor.getRoot().getSize();
+    if (!Number.isSafeInteger(x) || !Number.isSafeInteger(y)
+        || x < 1 || x > size.x || y < 1 || y > size.y) {
+      tryStatus.textContent = root.dataset.pointUnavailableLabel;
+      return;
+    }
+
+    const before = editor.getCurrent();
+    const beforeMove = before.move;
+    editor.click(x, y, false, false);
+    const after = editor.getCurrent();
+    if (after === before && after.move === beforeMove) {
+      tryStatus.textContent = root.dataset.pointUnavailableLabel;
+      return;
+    }
+
+    const coordinates = besogo.coord.western(size.x, size.y);
+    const label = `${coordinates.x[x]}${coordinates.y[y]}`;
+    tryStatus.textContent = root.dataset.pointPlayedTemplate.replace(
+      "{coordinate}",
+      label,
+    );
+    tryColumn.value = "";
+    tryRow.value = "";
+    tryColumn.focus();
+  }
+
   async function initialize() {
     try {
       pristineSgf = await loadSgfText(root.dataset.sgfUrl);
@@ -172,6 +250,7 @@ export function mountGoBoard(root, dependencies = {}) {
       editor.setVariantStyle(0);
       authoredTarget = selectAuthoredNode(editor.getRoot(), selector);
       editor.setCurrent(authoredTarget);
+      populateTryCoordinates(size);
     } catch (error) {
       fail(root.dataset.parseErrorLabel, error);
       return;
@@ -187,13 +266,16 @@ export function mountGoBoard(root, dependencies = {}) {
     previous.addEventListener("click", () => editor.prevNode(1));
     next.addEventListener("click", () => editor.nextNode(1));
     tryButton.addEventListener("click", () => {
+      resetTryEntry();
       editor.setTool("auto");
       tryButton.disabled = true;
       returnButton.disabled = false;
       status.textContent = root.dataset.tryReadyLabel;
       status.dataset.state = "ready";
       root.dataset.state = "trying";
+      tryColumn.focus();
     });
+    playMoveButton.addEventListener("click", playSelectedPoint);
     returnButton.addEventListener("click", () => {
       try {
         authoredTarget = reloadPristine({
@@ -203,6 +285,8 @@ export function mountGoBoard(root, dependencies = {}) {
           besogo,
         });
         editor.setVariantStyle(0);
+        resetTryEntry();
+        setTryControlsVisible(false);
         tryButton.disabled = false;
         returnButton.disabled = true;
         status.textContent = root.dataset.returnedLabel;

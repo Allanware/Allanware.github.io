@@ -9,6 +9,7 @@
 }
 
 .go-board__shell {
+  inline-size: 100%;
   margin-inline: auto;
   max-width: 38rem;
 }
@@ -54,6 +55,8 @@
 }
 
 .go-board__controls button,
+.go-board__try-controls button,
+.go-board__try-controls select,
 .go-board__variations button {
   background: var(--bg-color-secondary);
   border: 1px solid var(--border-color);
@@ -63,6 +66,38 @@
   font: inherit;
   min-height: 2.25rem;
   padding: 0.35rem 0.65rem;
+}
+
+.go-board__try-controls {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-block-start: 0.75rem;
+}
+
+.go-board__try-controls[hidden] {
+  display: none;
+}
+
+.go-board__try-controls-label,
+.go-board__try-status {
+  flex-basis: 100%;
+  text-align: center;
+}
+
+.go-board__try-controls-label {
+  font-weight: 700;
+}
+
+.go-board__try-coordinate {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.go-board__try-status {
+  min-height: 1.4em;
 }
 
 .go-board__variations {
@@ -96,6 +131,8 @@
 }
 
 .go-board__controls button:focus-visible,
+.go-board__try-controls button:focus-visible,
+.go-board__try-controls select:focus-visible,
 .go-board__variations button:focus-visible {
   outline: 2px solid var(--link-color);
   outline-offset: 2px;
@@ -199,5 +236,21 @@
 
   .go-board [data-go-board-variation-buttons] {
     display: flex;
+  }
+
+  .go-board__try-controls {
+    align-items: stretch;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .go-board__try-controls-label,
+  .go-board__try-controls > button,
+  .go-board__try-status {
+    grid-column: 1 / -1;
+  }
+
+  .go-board__try-coordinate select {
+    inline-size: 100%;
   }
 }

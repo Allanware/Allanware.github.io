@@ -102,6 +102,24 @@ other = "Variation {label} selected"
 other = "Move {move}"
 [goBoardTry]
 other = "Try your own line"
+[goBoardTryControls]
+other = "Choose a point to play"
+[goBoardColumn]
+other = "Column"
+[goBoardRow]
+other = "Row"
+[goBoardChooseColumn]
+other = "Choose column"
+[goBoardChooseRow]
+other = "Choose row"
+[goBoardPlayMove]
+other = "Play move"
+[goBoardPointRequired]
+other = "Choose a column and row."
+[goBoardPointUnavailable]
+other = "That point cannot be played."
+[goBoardPointPlayed]
+other = "Played {coordinate}."
 [goBoardReturn]
 other = "Return to position"
 [goBoardNodeNote]

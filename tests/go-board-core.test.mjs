@@ -357,7 +357,23 @@ function button() {
     getAttribute: (name) => attributes.get(name),
     setAttribute: (name, value) => attributes.set(name, String(value)),
     click: () => {
-      if (!control.disabled) listeners.get("click")();
+      const listener = listeners.get("click");
+      if (!control.disabled && listener) listener();
+    },
+  };
+  return control;
+}
+
+
+function select() {
+  const control = {
+    children: [],
+    focused: false,
+    value: "",
+    focus: () => { control.focused = true; },
+    replaceChildren(...children) {
+      this.children = children;
+      this.value = children[0]?.value ?? "";
     },
   };
   return control;
@@ -370,6 +386,14 @@ function boardDom(selector = { kind: "move", value: "2" }) {
   const next = button();
   const tryButton = button();
   const returnButton = button();
+  const tryControls = { hidden: true };
+  const tryColumn = select();
+  const tryRow = select();
+  const playMoveButton = button();
+  playMoveButton.type = "button";
+  const tryStatus = { textContent: "" };
+  tryButton.setAttribute("aria-controls", "go-board-fixture-try-controls");
+  tryButton.setAttribute("aria-expanded", "false");
   const move = { textContent: "" };
   const note = { hidden: true };
   const noteText = { textContent: "" };
@@ -397,6 +421,11 @@ function boardDom(selector = { kind: "move", value: "2" }) {
     "[data-go-board-next]": next,
     "[data-go-board-try]": tryButton,
     "[data-go-board-return]": returnButton,
+    "[data-go-board-try-controls]": tryControls,
+    "[data-go-board-try-column]": tryColumn,
+    "[data-go-board-try-row]": tryRow,
+    "[data-go-board-play-move]": playMoveButton,
+    "[data-go-board-try-status]": tryStatus,
     "[data-go-board-move]": move,
     "[data-go-board-note]": note,
     "[data-go-board-note-text]": noteText,
@@ -419,11 +448,17 @@ function boardDom(selector = { kind: "move", value: "2" }) {
       selectorErrorLabel: "Selector failed",
       variationTemplate: "Variation {label}",
       variationSelectedTemplate: "Variation {label} selected",
+      columnPlaceholder: "Choose column",
+      rowPlaceholder: "Choose row",
+      pointRequiredLabel: "Choose a column and row.",
+      pointUnavailableLabel: "That point cannot be played.",
+      pointPlayedTemplate: "Played {coordinate}.",
     },
     ownerDocument: {
       createElement(name) {
-        assert.equal(name, "button");
-        return button();
+        if (name === "button") return button();
+        if (name === "option") return { textContent: "", value: "" };
+        assert.fail(`Unexpected element: ${name}`);
       },
     },
     setAttribute: (name, value) => attributes.set(name, value),
@@ -437,6 +472,11 @@ function boardDom(selector = { kind: "move", value: "2" }) {
     next,
     tryButton,
     returnButton,
+    tryControls,
+    tryColumn,
+    tryRow,
+    playMoveButton,
+    tryStatus,
     move,
     note,
     noteText,
@@ -489,6 +529,8 @@ test("failure status uses only its localized label and logs technical detail", a
   const technicalError = new Error("SGF request failed (503)");
   const logged = [];
   dom.root.dataset.fetchErrorLabel = "无法加载棋谱。";
+  dom.tryControls.hidden = false;
+  dom.tryButton.setAttribute("aria-expanded", "true");
 
   const controller = mountGoBoard(dom.root, {
     besogo: boardBesogo(),
@@ -499,6 +541,8 @@ test("failure status uses only its localized label and logs technical detail", a
 
   assert.equal(dom.status.textContent, "无法加载棋谱。");
   assert.deepEqual(logged, [["无法加载棋谱。", technicalError]]);
+  assert.equal(dom.tryControls.hidden, true);
+  assert.equal(dom.tryButton.getAttribute("aria-expanded"), "false");
 });
 
 
@@ -599,6 +643,94 @@ test("named branch controls expose, choose, and identify authored A/B variations
   dom.returnButton.click();
   assert.equal(editor.getCurrent().moveNumber, 2);
   assert.equal(dom.variations.hidden, true);
+});
+
+
+test("keyboard move controls expose western coordinates only in Try mode", async () => {
+  const dom = boardDom();
+  dom.tryButton.setAttribute("aria-expanded", "true");
+  const controller = mountGoBoard(dom.root, {
+    besogo: boardBesogo(),
+    loadSgfText: async () => syntheticSgf,
+    logger: { error() {} },
+  });
+  await controller.ready;
+
+  assert.equal(dom.tryControls.hidden, true);
+  assert.equal(dom.tryButton.getAttribute("aria-expanded"), "false");
+  assert.equal(
+    dom.tryButton.getAttribute("aria-controls"),
+    "go-board-fixture-try-controls",
+  );
+  assert.equal(dom.playMoveButton.type, "button");
+  assert.deepEqual(
+    dom.tryColumn.children.map((option) => [option.value, option.textContent]),
+    [["", "Choose column"], ["1", "A"], ["2", "B"], ["3", "C"],
+      ["4", "D"], ["5", "E"]],
+  );
+  assert.deepEqual(
+    dom.tryRow.children.map((option) => [option.value, option.textContent]),
+    [["", "Choose row"], ["1", "5"], ["2", "4"], ["3", "3"],
+      ["4", "2"], ["5", "1"]],
+  );
+
+  dom.tryButton.click();
+  assert.equal(dom.tryControls.hidden, false);
+  assert.equal(dom.tryButton.getAttribute("aria-expanded"), "true");
+  assert.equal(dom.tryColumn.focused, true);
+
+  dom.tryColumn.value = "3";
+  dom.tryRow.value = "4";
+  dom.tryStatus.textContent = "old status";
+  dom.returnButton.click();
+  assert.equal(dom.tryControls.hidden, true);
+  assert.equal(dom.tryButton.getAttribute("aria-expanded"), "false");
+  assert.equal(dom.tryColumn.value, "");
+  assert.equal(dom.tryRow.value, "");
+  assert.equal(dom.tryStatus.textContent, "");
+});
+
+
+test("native Play move contains invalid choices and plays a legal intersection", async () => {
+  const dom = boardDom();
+  dom.root.dataset.pointRequiredLabel = "请选择列和行。";
+  dom.root.dataset.pointUnavailableLabel = "该位置无法落子。";
+  dom.root.dataset.pointPlayedTemplate = "已在 {coordinate} 落子。";
+  const controller = mountGoBoard(dom.root, {
+    besogo: boardBesogo(),
+    loadSgfText: async () => syntheticSgf,
+    logger: { error() {} },
+  });
+  await controller.ready;
+
+  dom.tryButton.click();
+  const editor = dom.host.besogoEditor;
+  const startingPosition = editor.getCurrent();
+
+  dom.playMoveButton.click();
+  assert.equal(editor.getCurrent(), startingPosition);
+  assert.equal(dom.tryStatus.textContent, "请选择列和行。");
+
+  dom.tryColumn.value = "2";
+  dom.tryRow.value = "3";
+  dom.playMoveButton.click();
+  assert.equal(editor.getCurrent(), startingPosition);
+  assert.equal(dom.tryStatus.textContent, "该位置无法落子。");
+
+  dom.tryColumn.value = "1";
+  dom.tryRow.value = "5";
+  dom.tryColumn.focused = false;
+  dom.playMoveButton.click();
+  assert.notEqual(editor.getCurrent(), startingPosition);
+  assert.deepEqual(
+    { x: editor.getCurrent().move.x, y: editor.getCurrent().move.y },
+    { x: 1, y: 5 },
+  );
+  assert.equal(dom.move.textContent, "Move 3");
+  assert.equal(dom.tryStatus.textContent, "已在 A1 落子。");
+  assert.equal(dom.tryColumn.value, "");
+  assert.equal(dom.tryRow.value, "");
+  assert.equal(dom.tryColumn.focused, true);
 });
 
 
