@@ -1888,7 +1888,7 @@ interactionId = "resource-suffixes"
                 self.assertNotRegex(chinese_latest, r"<time|data-post-count|#[\w-]+")
                 self.assertEqual(2, chinese_latest.count("<li>"))
 
-    def test_escaping_thought_is_localized_home_only_and_base_path_safe(self):
+    def test_train_of_thought_is_localized_home_only_and_base_path_safe(self):
         module_pattern = re.compile(
             r'<script(?=[^>]*\btype="module")'
             r'(?=[^>]*\bsrc="([^"]*home-ending[^"]*)")'
@@ -1896,11 +1896,11 @@ interactionId = "resource-suffixes"
         )
         expected = {
             "en": (
-                "There was one more thing...",
+                "there goes my train of thought.",
                 "↑ perhaps start over",
             ),
             "zh": (
-                "好像还有件事……",
+                "思绪又飘走了。",
                 "↑ 要不从头再来",
             ),
         }
@@ -1936,25 +1936,38 @@ interactionId = "resource-suffixes"
                         )
                         self.assertIn('id="home-top"', html)
                         self.assertIn('data-home-ending-state="static"', html)
-                        self.assertIn(f'aria-label="{thought}"', html)
                         self.assertIn(f'href="#home-top">{return_label}</a>', html)
                         ending = html[
                             html.index('<div class="home-ending"'):
                             html.index("<footer>")
                         ]
-                        self.assertEqual(1, ending.count("data-home-ending-balloon"))
+                        self.assertIn(
+                            f'<p class="home-ending-caption">{thought}</p>',
+                            ending,
+                        )
+                        self.assertEqual(1, ending.count("data-home-ending-train"))
+                        self.assertNotIn("data-home-ending-balloon", ending)
                         self.assertNotIn("data-home-ending-dot", ending)
                         self.assertRegex(
                             ending,
-                            r'<svg\b(?=[^>]*\bdata-home-ending-balloon(?:\s|>))'
-                            r'(?=[^>]*\bviewBox="0 0 64 48")'
-                            r'(?=[^>]*\bwidth="36")'
-                            r'(?=[^>]*\bheight="27")'
+                            r'<svg\b(?=[^>]*\bdata-home-ending-train(?:\s|>))'
+                            r'(?=[^>]*\bviewBox="0 0 132 52")'
+                            r'(?=[^>]*\bwidth="132")'
+                            r'(?=[^>]*\bheight="52")'
                             r'(?=[^>]*\baria-hidden="true")'
                             r'(?=[^>]*\bfocusable="false")[^>]*>',
                         )
-                        self.assertEqual(1, ending.count("<path "))
-                        self.assertEqual(2, ending.count("<circle "))
+                        self.assertEqual(
+                            1,
+                            ending.count("data-home-ending-carriage"),
+                        )
+                        self.assertEqual(1, ending.count("data-home-ending-engine"))
+                        self.assertEqual(2, ending.count("data-home-ending-smoke"))
+                        self.assertEqual(4, ending.count("data-home-ending-wheel"))
+                        self.assertLess(
+                            ending.index("data-home-ending-train"),
+                            ending.index(thought),
+                        )
                         self.assertLess(
                             html.index('data-home-section="popular"'),
                             html.index("data-home-ending"),
