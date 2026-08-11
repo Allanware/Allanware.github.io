@@ -317,16 +317,45 @@ export function mountGoBoard(root, dependencies = {}) {
 }
 
 
-function mountAll() {
-  for (const root of document.querySelectorAll("[data-go-board]")) {
-    mountGoBoard(root);
+export function scheduleGoBoards(roots, dependencies = {}) {
+  const mount = dependencies.mount ?? mountGoBoard;
+  const Observer = dependencies.IntersectionObserver === undefined
+    ? globalThis.IntersectionObserver
+    : dependencies.IntersectionObserver;
+  const boards = Array.from(roots);
+
+  if (typeof Observer !== "function") {
+    for (const root of boards) mount(root);
+    return null;
   }
+
+  const mounted = new WeakSet();
+  const observer = new Observer((entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting || mounted.has(entry.target)) continue;
+      mounted.add(entry.target);
+      observer.unobserve(entry.target);
+      mount(entry.target);
+    }
+  }, { rootMargin: "400px 0px" });
+
+  for (const root of boards) observer.observe(root);
+  return observer;
+}
+
+
+export function mountAll(dependencies = {}) {
+  const documentObject = dependencies.document ?? globalThis.document;
+  return scheduleGoBoards(
+    documentObject.querySelectorAll("[data-go-board]"),
+    dependencies,
+  );
 }
 
 
 if (typeof document !== "undefined") {
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", mountAll, { once: true });
+    document.addEventListener("DOMContentLoaded", () => mountAll(), { once: true });
   } else {
     mountAll();
   }

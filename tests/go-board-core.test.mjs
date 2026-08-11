@@ -19,7 +19,9 @@ await import("../assets/vendor/besogo/js/gameRoot.js");
 await import("../assets/vendor/besogo/js/editor.js");
 await import("../assets/vendor/besogo/js/parseSgf.js");
 await import("../assets/vendor/besogo/js/loadSgf.js");
-const { mountGoBoard } = await import("../assets/js/go-board.mjs");
+const { mountAll, mountGoBoard, scheduleGoBoards } = await import(
+  "../assets/js/go-board.mjs"
+);
 
 const syntheticSgf = readFileSync(
   new URL("fixtures/go-board/synthetic.sgf", import.meta.url),
@@ -374,6 +376,105 @@ test("SGF text loading caches one fetch promise per resource URL", async () => {
 });
 
 
+function fakeIntersectionObserver() {
+  const instances = [];
+
+  class FakeIntersectionObserver {
+    constructor(callback, options) {
+      this.callback = callback;
+      this.options = options;
+      this.observed = [];
+      this.unobserved = [];
+      instances.push(this);
+    }
+
+    observe(root) {
+      this.observed.push(root);
+    }
+
+    unobserve(root) {
+      this.unobserved.push(root);
+    }
+  }
+
+  return { FakeIntersectionObserver, instances };
+}
+
+
+test("offscreen boards mount only when they intersect and share URL fetches", async () => {
+  const roots = [
+    { dataset: { sgfUrl: "/p/game.sgf" } },
+    { dataset: { sgfUrl: "/p/game.sgf" } },
+    { dataset: { sgfUrl: "/p/pro.sgf" } },
+  ];
+  const requests = [];
+  const mounted = [];
+  const mountStates = [];
+  const loader = createSgfTextLoader(async (url) => {
+    requests.push(url);
+    return { ok: true, status: 200, text: async () => syntheticSgf };
+  });
+  const { FakeIntersectionObserver, instances } = fakeIntersectionObserver();
+  let observer;
+  const mount = (root) => {
+    mounted.push(root);
+    mountStates.push([...observer.unobserved]);
+    return loader(root.dataset.sgfUrl);
+  };
+
+  observer = scheduleGoBoards(roots, {
+    IntersectionObserver: FakeIntersectionObserver,
+    mount,
+  });
+
+  assert.equal(instances.length, 1);
+  assert.equal(observer, instances[0]);
+  assert.deepEqual(observer.options, { rootMargin: "400px 0px" });
+  assert.deepEqual(observer.observed, roots);
+  assert.deepEqual(mounted, []);
+  assert.deepEqual(requests, []);
+
+  observer.callback([{ target: roots[0], isIntersecting: false }]);
+  assert.deepEqual(mounted, []);
+  assert.deepEqual(requests, []);
+
+  observer.callback([
+    { target: roots[0], isIntersecting: true },
+    { target: roots[1], isIntersecting: true },
+  ]);
+  assert.deepEqual(mounted, roots.slice(0, 2));
+  assert.deepEqual(mountStates, [[roots[0]], [roots[0], roots[1]]]);
+  assert.deepEqual(observer.unobserved, roots.slice(0, 2));
+  assert.deepEqual(requests, ["/p/game.sgf"]);
+
+  observer.callback([{ target: roots[0], isIntersecting: true }]);
+  assert.deepEqual(mounted, roots.slice(0, 2));
+  assert.deepEqual(requests, ["/p/game.sgf"]);
+  assert.deepEqual(observer.unobserved, roots.slice(0, 2));
+  assert.equal(mounted.includes(roots[2]), false);
+
+  observer.callback([{ target: roots[2], isIntersecting: true }]);
+  assert.deepEqual(mounted, roots);
+  assert.deepEqual(observer.unobserved, roots);
+  assert.deepEqual(requests, ["/p/game.sgf", "/p/pro.sgf"]);
+  await Promise.all(mounted.map((root) => loader(root.dataset.sgfUrl)));
+});
+
+
+test("mount eagerly when IntersectionObserver is unavailable", () => {
+  const roots = [{ dataset: {} }, { dataset: {} }, { dataset: {} }];
+  const mounted = [];
+
+  const observer = scheduleGoBoards(roots, {
+    IntersectionObserver: null,
+    mount: (root) => mounted.push(root),
+  });
+
+  assert.equal(observer, null);
+  assert.deepEqual(mounted, roots);
+});
+
+
 function button() {
   const listeners = new Map();
   const attributes = new Map();
@@ -533,6 +634,69 @@ function boardBesogo() {
     createCalls,
   };
 }
+
+
+test("independent board editors mount through the page bootstrap", async () => {
+  const fixtures = [boardDom(), boardDom(), boardDom()];
+  const urls = ["/p/game.sgf", "/p/game.sgf", "/p/pro.sgf"];
+  const captionIds = ["board-caption-one", "board-caption-two", "board-caption-three"];
+  for (const [index, fixture] of fixtures.entries()) {
+    fixture.root.dataset.sgfUrl = urls[index];
+    fixture.root.dataset.captionId = captionIds[index];
+  }
+
+  const requests = [];
+  const loader = createSgfTextLoader(async (url) => {
+    requests.push(url);
+    return { ok: true, status: 200, text: async () => syntheticSgf };
+  });
+  const besogo = boardBesogo();
+  const controllers = [];
+  const documentObject = {
+    queries: [],
+    querySelectorAll(query) {
+      this.queries.push(query);
+      return fixtures.map((fixture) => fixture.root);
+    },
+  };
+  const { FakeIntersectionObserver, instances } = fakeIntersectionObserver();
+  const mount = (root) => {
+    const controller = mountGoBoard(root, {
+      besogo,
+      loadSgfText: loader,
+      logger: { error() {} },
+    });
+    controllers.push(controller);
+    return controller;
+  };
+
+  const observer = mountAll({
+    document: documentObject,
+    IntersectionObserver: FakeIntersectionObserver,
+    mount,
+  });
+
+  assert.equal(observer, instances[0]);
+  assert.deepEqual(documentObject.queries, ["[data-go-board]"]);
+  observer.callback(fixtures.map((fixture) => ({
+    target: fixture.root,
+    isIntersecting: true,
+  })));
+  await Promise.all(controllers.map((controller) => controller.ready));
+
+  assert.deepEqual(requests, ["/p/game.sgf", "/p/pro.sgf"]);
+  const editors = fixtures.map((fixture) => fixture.host.besogoEditor);
+  assert.notEqual(editors[0], editors[1]);
+  assert.notEqual(editors[1], editors[2]);
+  assert.notEqual(editors[0], editors[2]);
+  for (const [index, fixture] of fixtures.entries()) {
+    assert.equal(fixture.svgAttributes.get("role"), "img");
+    assert.equal(
+      fixture.svgAttributes.get("aria-labelledby"),
+      captionIds[index],
+    );
+  }
+});
 
 
 test("board mounting parses and validates before creating BesoGo", async () => {
