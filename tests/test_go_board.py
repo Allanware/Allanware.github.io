@@ -103,6 +103,14 @@ class GoBoardVendorTests(unittest.TestCase):
         self.assertIn(PINNED_COMMIT, provenance)
 
 
+class GoBoardStyleTests(unittest.TestCase):
+    def test_board_cancels_figure_gutters_on_narrow_screens(self):
+        css = (ROOT / "assets/css/go-board.css").read_text(encoding="utf-8")
+        board_rule = re.search(r"\.go-board\s*\{(?P<body>[^}]*)\}", css)
+        self.assertIsNotNone(board_rule)
+        self.assertRegex(board_rule.group("body"), r"margin-inline:\s*0;")
+
+
 class GoBoardGeneratedSiteTests(unittest.TestCase):
     def test_boards_are_localized_accessible_conditional_and_base_path_aware(self):
         with TemporaryDirectory() as temporary:

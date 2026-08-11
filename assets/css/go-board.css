@@ -2,6 +2,7 @@
   border: 1px solid var(--border-color);
   border-radius: 6px;
   margin-block: 1.5rem;
+  margin-inline: 0;
   padding: clamp(0.6rem, 2vw, 1rem);
 }
 
