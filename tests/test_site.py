@@ -147,6 +147,69 @@ def wcag_contrast_ratio(foreground: str, background: str) -> float:
     return (luminances[0] + 0.05) / (luminances[1] + 0.05)
 
 
+# Chroma classes that never paint a glyph over the code background: the block
+# chrome, line wrappers, and the line-number and whitespace helpers the site
+# does not render.
+CHROMA_NON_TEXT_CLASSES = frozenset(
+    {"bg", "cl", "hl", "line", "ln", "lnlinks", "lnt", "lntable", "lntd", "w"}
+)
+
+
+def expand_hex_color(value: str) -> str:
+    """Normalize a CSS color, expanding the three-digit hex shorthand."""
+    value = value.strip().lower()
+    match = re.fullmatch(r"#([0-9a-f]{3})", value)
+    return f"#{''.join(channel * 2 for channel in match.group(1))}" if match else value
+
+
+def semantic_color_tokens() -> dict[str, dict[str, str]]:
+    """Resolve the theme and site custom properties for each color scheme."""
+    theme_css = (
+        ROOT / "themes/hugo-bearneo/layouts/partials/style.html"
+    ).read_text(encoding="utf-8")
+    site_css = (ROOT / "assets/css/site.css").read_text(encoding="utf-8")
+    return {
+        "light": {
+            **css_root_custom_properties(theme_css),
+            **css_root_custom_properties(site_css),
+            **css_root_custom_properties(site_css, scheme="light"),
+        },
+        "dark": {
+            **css_root_custom_properties(theme_css),
+            **css_root_custom_properties(theme_css, scheme="dark"),
+            **css_root_custom_properties(site_css),
+            **css_root_custom_properties(site_css, scheme="dark"),
+        },
+    }
+
+
+def chroma_rules(css: str, scheme: str) -> dict[str, tuple[str | None, str | None]]:
+    """Map Chroma class to its (color, background-color) for one color scheme."""
+    sections = [
+        (match.group(1), match.end())
+        for match in re.finditer(
+            r"@media\s*\(prefers-color-scheme:\s*(light|dark)\)",
+            css,
+        )
+    ]
+    rules: dict[str, tuple[str | None, str | None]] = {}
+    for index, (name, start) in enumerate(sections):
+        if name != scheme:
+            continue
+        end = sections[index + 1][1] if index + 1 < len(sections) else len(css)
+        for selector, body in re.findall(
+            r"\.chroma(?:\s+\.([a-zA-Z0-9-]+))?\s*\{([^}]*)\}",
+            css[start:end],
+        ):
+            color = re.search(r"(?<![-\w])color:\s*([^;}]+)", body)
+            background = re.search(r"background-color:\s*([^;}]+)", body)
+            rules[selector] = (
+                expand_hex_color(color.group(1)) if color else None,
+                expand_hex_color(background.group(1)) if background else None,
+            )
+    return rules
+
+
 class MetadataParser(HTMLParser):
     DESCRIPTION_SELECTORS = {
         ("name", "description"): "description",
@@ -2242,31 +2305,14 @@ interactionId = "resource-suffixes"
                     )
 
     def test_semantic_colors_meet_text_contrast_in_both_color_schemes(self):
-        theme_css = (
-            ROOT / "themes/hugo-bearneo/layouts/partials/style.html"
-        ).read_text(encoding="utf-8")
         site_css = (ROOT / "assets/css/site.css").read_text(encoding="utf-8")
-        theme_base = css_root_custom_properties(theme_css)
         site_base = css_root_custom_properties(site_css)
         site_light = css_root_custom_properties(site_css, scheme="light")
         for token in ("--text-color-tertiary", "--upvoted-color"):
             self.assertIn(token, site_light)
             self.assertNotIn(token, site_base)
 
-        schemes = {
-            "light": {
-                **theme_base,
-                **site_base,
-                **site_light,
-            },
-            "dark": {
-                **theme_base,
-                **css_root_custom_properties(theme_css, scheme="dark"),
-                **site_base,
-                **css_root_custom_properties(site_css, scheme="dark"),
-            },
-        }
-        for scheme, properties in schemes.items():
+        for scheme, properties in semantic_color_tokens().items():
             for token in ("--text-color-tertiary", "--upvoted-color"):
                 with self.subTest(scheme=scheme, token=token):
                     ratio = wcag_contrast_ratio(
@@ -2274,6 +2320,63 @@ interactionId = "resource-suffixes"
                         properties["--bg-color-primary"],
                     )
                     self.assertGreaterEqual(ratio, 4.5)
+
+    def test_highlighted_code_follows_the_reader_color_scheme(self):
+        with TemporaryDirectory() as temporary:
+            public = Path(temporary) / "public"
+            build_site(
+                public,
+                "https://example.test/",
+                "--contentDir",
+                "tests/fixtures/content",
+            )
+            article = read_html(public, "p/shared-article/index.html")
+            stylesheets = [
+                (public / urlsplit(href).path.lstrip("/")).read_text(
+                    encoding="utf-8"
+                )
+                for href in re.findall(
+                    r'<link[^>]+rel="stylesheet"[^>]+href="([^"]+)"',
+                    article,
+                )
+            ]
+
+        highlighted = re.search(
+            r'<div class="highlight">(.*?)</div>',
+            article,
+            re.DOTALL,
+        )
+        self.assertIsNotNone(highlighted)
+        block = highlighted.group(1)
+        self.assertIn('class="chroma"', block)
+        # Inline colors cannot answer prefers-color-scheme, so highlighting has
+        # to come from a stylesheet the page actually loads.
+        self.assertNotRegex(block, r"(?<![-\w])color:\s*#")
+        syntax = [css for css in stylesheets if ".chroma" in css]
+        self.assertEqual(1, len(syntax))
+
+        tokens = semantic_color_tokens()
+        for scheme in ("light", "dark"):
+            rules = chroma_rules(syntax[0], scheme)
+            self.assertTrue(rules, scheme)
+            background = tokens[scheme]["--bg-color-secondary"]
+            with self.subTest(scheme=scheme, token="block"):
+                self.assertEqual("var(--bg-color-secondary)", rules[""][1])
+                self.assertGreaterEqual(
+                    wcag_contrast_ratio(
+                        rules[""][0] or tokens[scheme]["--text-color-primary"],
+                        background,
+                    ),
+                    4.5,
+                )
+            for name, (color, own_background) in rules.items():
+                if not name or name in CHROMA_NON_TEXT_CLASSES or color is None:
+                    continue
+                with self.subTest(scheme=scheme, token=name):
+                    self.assertGreaterEqual(
+                        wcag_contrast_ratio(color, own_background or background),
+                        4.5,
+                    )
 
     def test_upvoted_icon_adds_a_non_color_pressed_cue(self):
         kudos = (ROOT / "layouts/_partials/kudos.html").read_text(

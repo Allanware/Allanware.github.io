@@ -4,3 +4,5 @@
 <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
 {{ $siteCSS := resources.Get "css/site.css" | minify | fingerprint }}
 <link rel="stylesheet" href="{{ $siteCSS.RelPermalink }}" integrity="{{ $siteCSS.Data.Integrity }}">
+{{ $syntaxCSS := resources.Get "css/syntax.css" | minify | fingerprint }}
+<link rel="stylesheet" href="{{ $syntaxCSS.RelPermalink }}" integrity="{{ $syntaxCSS.Data.Integrity }}">

@@ -13,4 +13,9 @@ English fixture content.
 
 ![Shared fixture diagram](diagram.svg)
 
+``` r
+# fixture comment
+fixture <- c("string", 1.5)
+```
+
 [Download shared fixture notes](notes.txt)

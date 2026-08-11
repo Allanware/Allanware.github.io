@@ -26,6 +26,11 @@ capitalizeListTitles = false
 [markup.goldmark.parser]
   wrapStandAloneImageWithinParagraph = false
 
+# Class-based highlighting so assets/css/syntax.css can follow the reader's
+# color scheme; inline Chroma colors cannot.
+[markup.highlight]
+  noClasses = false
+
 [markup.tableOfContents]
   startLevel = 2
   endLevel = 3
