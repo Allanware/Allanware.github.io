@@ -16,6 +16,9 @@ export function mountHomeEnding(root, options = {}) {
     matchMediaImpl?.("(prefers-reduced-motion: reduce)")?.matches,
   );
   const returnLink = root.querySelector("[data-home-ending-return]");
+  let observer = null;
+  let armed = true;
+  let waitingForExit = false;
 
   root.dataset.homeEndingEnhanced = "true";
   returnLink?.addEventListener("animationend", () => {
@@ -23,15 +26,19 @@ export function mountHomeEnding(root, options = {}) {
       root.dataset.homeEndingState = "complete";
     }
   });
-  if (returnLink && typeof scrollToImpl === "function") {
-    returnLink.addEventListener("click", (event) => {
+  returnLink?.addEventListener("click", (event) => {
+    if (observer) {
+      armed = false;
+      waitingForExit = true;
+    }
+    if (typeof scrollToImpl === "function") {
       event.preventDefault();
       scrollToImpl({
         top: 0,
         behavior: reducedMotion ? "auto" : "smooth",
       });
-    });
-  }
+    }
+  });
 
   if (reducedMotion) {
     root.dataset.homeEndingState = "reduced";
@@ -43,11 +50,18 @@ export function mountHomeEnding(root, options = {}) {
   }
 
   root.dataset.homeEndingState = "idle";
-  let started = false;
-  const observer = new IntersectionObserverImpl((entries) => {
-    if (started || !entries.some(({ isIntersecting }) => isIntersecting)) return;
-    started = true;
-    observer.disconnect();
+  observer = new IntersectionObserverImpl((entries) => {
+    const isIntersecting = entries.some((entry) => entry.isIntersecting);
+    if (!isIntersecting) {
+      if (waitingForExit) {
+        waitingForExit = false;
+        armed = true;
+        root.dataset.homeEndingState = "idle";
+      }
+      return;
+    }
+    if (!armed) return;
+    armed = false;
     root.dataset.homeEndingState = "playing";
   });
   observer.observe(root);

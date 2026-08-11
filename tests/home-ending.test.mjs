@@ -49,7 +49,7 @@ function observerHarness() {
 }
 
 
-test("viewport entry starts the escaping thought only once", () => {
+test("return link re-arms the thought only after a full viewport exit", () => {
   const { link, root } = endingDom();
   const { FakeIntersectionObserver, instances } = observerHarness();
   const scrollCalls = [];
@@ -66,7 +66,7 @@ test("viewport entry starts the escaping thought only once", () => {
   assert.equal(root.dataset.homeEndingState, "idle");
   instances[0].trigger(true);
   assert.equal(root.dataset.homeEndingState, "playing");
-  assert.equal(instances[0].disconnected, true);
+  assert.equal(instances[0].disconnected, false);
   instances[0].trigger(true);
   assert.equal(root.dataset.homeEndingState, "playing");
 
@@ -76,6 +76,14 @@ test("viewport entry starts the escaping thought only once", () => {
   link.dispatch("click", { preventDefault: () => { prevented = true; } });
   assert.equal(prevented, true);
   assert.deepEqual(scrollCalls, [{ top: 0, behavior: "smooth" }]);
+  assert.equal(root.dataset.homeEndingState, "complete");
+
+  instances[0].trigger(true);
+  assert.equal(root.dataset.homeEndingState, "complete");
+  instances[0].trigger(false);
+  assert.equal(root.dataset.homeEndingState, "idle");
+  instances[0].trigger(true);
+  assert.equal(root.dataset.homeEndingState, "playing");
 });
 
 
