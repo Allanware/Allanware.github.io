@@ -3,7 +3,7 @@ title = "Shapes and Functions of the Lekythos"
 date = 2022-11-08
 lastmod = 2023-11-05
 draft = false
-tags = ["Greek", "Pottery"]
+tags = ["greek", "pottery"]
 interactionId = "lekythos-a-shape"
 +++
 
