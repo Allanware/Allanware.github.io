@@ -24,6 +24,17 @@ const syntheticSgf = readFileSync(
   new URL("fixtures/go-board/synthetic.sgf", import.meta.url),
   "utf8",
 );
+const goReviewSgf = readFileSync(
+  new URL(
+    "../content/blog/go-game-review-2026-07-26/2026-7-26.sgf",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const authoringReadme = readFileSync(
+  new URL("../README.md", import.meta.url),
+  "utf8",
+);
 const rootMoveSgf = "(;GM[1]FF[4]SZ[5]KM[6.5]C[Root move]B[aa](;W[bb])(;W[cc]))";
 const rootMoveWithSetupSgf = "(;GM[1]FF[4]SZ[5]KM[6.5]AB[cc][ee]AW[dd]AE[ee]C[Root setup and move]B[aa];W[bb])";
 const setupRootSgf = "(;GM[1]FF[4]SZ[5]KM[6.5]AB[cc]C[Setup root];B[aa](;W[bb])(;W[dd]))";
@@ -164,6 +175,40 @@ test("path selection counts exact nodes and uses one-based branch tokens", () =>
   const { root, branchNext } = authoredTree();
 
   assert.equal(selectPath(root, "N4B2N2"), branchNext);
+});
+
+
+test("the documented exact path resolves against the bundled Go review", () => {
+  const advancedExample = Array.from(
+    authoringReadme.matchAll(/{{<\s*go-board\s+([^>]+)>}}/g),
+    (shortcode) => Object.fromEntries(
+      Array.from(
+        shortcode[1].matchAll(/([a-zA-Z][\w-]*)="([^"]*)"/g),
+        (attribute) => [attribute[1], attribute[2]],
+      ),
+    ),
+  ).find((example) => (
+    example.src === "2026-7-26.sgf" && example.path && example.caption
+  ));
+  assert.ok(advancedExample, "README must include the bundled exact-path example");
+
+  const parsed = globalThis.besogo.parseSgf(goReviewSgf);
+  const editor = globalThis.besogo.makeEditor(19, 19);
+  goBoardCore.loadSgfForReader({
+    besogo: globalThis.besogo,
+    editor,
+    sgf: parsed,
+  });
+
+  const branchPoint = selectPath(editor.getRoot(), "N64");
+  const selected = selectPath(editor.getRoot(), advancedExample.path);
+  assert.equal(branchPoint.children.length, 2);
+  assert.equal(selected, branchPoint.children[1]);
+  assert.equal(selected.moveNumber, 65);
+  assert.deepEqual(
+    { x: selected.move.x, y: selected.move.y },
+    { x: 2, y: 14 },
+  );
 });
 
 

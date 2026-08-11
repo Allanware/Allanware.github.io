@@ -147,9 +147,18 @@ Embed a position with the local shortcode:
 `src` and `caption` are required. The source must be a bundle-relative `.sgf`
 file, and the caption must not be empty. With no selector, the board defaults to
 move 0. The beginner-friendly `move` selector is a semantic mainline move count
-and skips non-move nodes. For exact advanced selection, `path=N64B2N3` uses
-BesoGo node counts in each `N` token and 1-based branch numbers in each `B`
-token. `move` and `path` are mutually exclusive.
+and skips non-move nodes. An exact `path` starts at the authored first SGF node.
+`N` advances through that many first-child node transitions and counts all
+nodes, not moves; `B` chooses the 1-based child at the current node. `N0` keeps
+the authored root, including its move if the root itself contains one. `move`
+and `path` are mutually exclusive.
+
+For example, this selects the second continuation after move 64 in the bundled
+review record:
+
+```go-html-template
+{{< go-board src="2026-7-26.sgf" path="N64B2" caption="Second continuation after move 64." >}}
+```
 
 Three useful patterns cover most posts:
 
@@ -160,15 +169,15 @@ Three useful patterns cover most posts:
 - To show a sequence, record it as a branch so readers can step through it.
 
 Supported SGF properties are moves (`B`/`W`), setup stones and removals
-(`AB`/`AW`/`AE`), those standard marks, and plain-text `C` node comments. Put
-the main translated explanation in the Markdown post. Because translations
-share one record, SGF notes should be language-neutral, bilingual, or omitted.
+(`AB`/`AW`/`AE`), those standard marks, and `C` node comments. SGF `C` comments
+are rendered as plain text; Markdown is not formatted there. Put the main
+translated explanation in the Markdown post. Because translations share one
+record, SGF notes should be language-neutral, bilingual, or omitted.
 
-The viewer ignores Sabaki arrows and lines, Markdown inside `C`, and custom
-engine values such as `SBKV` and `SBKS`. Readers get Previous and Next,
-contextual A/B variation buttons, the current node note, and Try and Return.
-Try is local and ephemeral, with no persistence; Return restores the published
-position.
+The viewer does not display Sabaki arrows and lines or custom engine values
+such as `SBKV` and `SBKS`. Readers get Previous and Next, contextual A/B
+variation buttons, the current node note, and Try and Return. Try is local and
+ephemeral, with no persistence; Return restores the published position.
 
 The board viewer itself makes no third-party requests. Existing Giscus remains
 the post-level comment system. Durable move-level multi-user discussion is

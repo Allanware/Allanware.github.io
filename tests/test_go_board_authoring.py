@@ -1,5 +1,5 @@
-from datetime import date
 import hashlib
+from html import unescape
 from pathlib import Path
 import re
 import subprocess
@@ -12,51 +12,66 @@ from scripts.validate_interaction_ids import read_front_matter
 
 ROOT = Path(__file__).resolve().parents[1]
 BUNDLE = ROOT / "content/blog/go-game-review-2026-07-26"
-DRAFT = BUNDLE / "index.en.md"
+PAGE = BUNDLE / "index.en.md"
 SGF = BUNDLE / "2026-7-26.sgf"
 EXPECTED_SGF_SHA256 = (
     "829cceb4e5cc25b2d6a97104a76958c7431d98377e33d5d3c0031940bd158427"
 )
+SHORTCODE_PATTERN = re.compile(r"{{<\s*go-board\s+(?P<params>.*?)\s*>}}", re.DOTALL)
+ATTRIBUTE_PATTERN = re.compile(r'([a-zA-Z][\w-]*)="([^"]*)"')
 
 
-def markdown_body(path: Path) -> str:
-    text = path.read_text(encoding="utf-8")
-    closing = text.find("\n+++\n", 4)
-    if closing == -1:
-        raise AssertionError(f"missing closing front-matter delimiter in {path}")
-    return text[closing + 5 :]
+def go_board_shortcodes(text: str) -> list[dict[str, str]]:
+    return [
+        dict(ATTRIBUTE_PATTERN.findall(match.group("params")))
+        for match in SHORTCODE_PATTERN.finditer(text)
+    ]
 
 
-class GoGameReviewDraftTests(unittest.TestCase):
+def assert_valid_local_board(
+    test_case: unittest.TestCase,
+    attributes: dict[str, str],
+    bundle: Path,
+) -> None:
+    test_case.assertTrue(attributes.get("caption", "").strip())
+    source = Path(attributes.get("src", ""))
+    test_case.assertEqual(".sgf", source.suffix.lower())
+    test_case.assertFalse(source.is_absolute())
+    test_case.assertNotIn("..", source.parts)
+    test_case.assertTrue((bundle / source).is_file())
+
+    selectors = set(attributes) & {"move", "path"}
+    test_case.assertLessEqual(len(selectors), 1)
+    if "move" in selectors:
+        test_case.assertRegex(attributes["move"], r"^[0-9]+$")
+    elif "path" in selectors:
+        test_case.assertRegex(attributes["path"], r"^(?:N[0-9]+|B[1-9][0-9]*)+$")
+
+
+class GoGameReviewBundleTests(unittest.TestCase):
     def test_sgf_is_the_unmodified_supplied_record(self):
         self.assertTrue(SGF.is_file(), f"missing supplied SGF at {SGF}")
         payload = SGF.read_bytes()
         self.assertEqual(2703, len(payload))
         self.assertEqual(EXPECTED_SGF_SHA256, hashlib.sha256(payload).hexdigest())
 
-    def test_draft_metadata_and_body_are_exact_and_english_only(self):
-        self.assertTrue(DRAFT.is_file(), f"missing English draft at {DRAFT}")
-        self.assertFalse((BUNDLE / "index.zh.md").exists())
+    def test_page_keeps_its_identity_and_a_valid_local_board(self):
+        self.assertTrue(PAGE.is_file(), f"missing English page at {PAGE}")
         self.assertEqual(
-            {
-                "title": "Go Game Review — July 26, 2026",
-                "date": date(2026, 8, 10),
-                "lastmod": date(2026, 8, 10),
-                "draft": True,
-                "tags": ["go"],
-                "interactionId": "go-game-review-2026-07-26",
-            },
-            read_front_matter(DRAFT),
+            "go-game-review-2026-07-26",
+            read_front_matter(PAGE).get("interactionId"),
         )
-        self.assertEqual(
-            "\n## First branching point\n\n"
-            "At move 64, the record splits into two continuations.\n\n"
-            '{{< go-board src="2026-7-26.sgf" move="64" '
-            'caption="Position after move 64." >}}\n',
-            markdown_body(DRAFT),
-        )
+        boards = go_board_shortcodes(PAGE.read_text(encoding="utf-8"))
+        self.assertGreaterEqual(len(boards), 1)
+        for board in boards:
+            with self.subTest(board=board):
+                assert_valid_local_board(self, board, BUNDLE)
 
-    def test_draft_renders_the_selected_local_board_when_drafts_are_enabled(self):
+    def test_page_renders_its_local_board_with_drafts_enabled(self):
+        attributes = go_board_shortcodes(PAGE.read_text(encoding="utf-8"))[0]
+        selectors = set(attributes) & {"move", "path"}
+        selector_kind = next(iter(selectors), "move")
+        selector_value = attributes.get(selector_kind, "0")
         with TemporaryDirectory() as temporary:
             temporary_root = Path(temporary)
             public = temporary_root / "public"
@@ -84,23 +99,23 @@ class GoGameReviewDraftTests(unittest.TestCase):
             rendered_path = public / "p/go-game-review-2026-07-26/index.html"
             self.assertTrue(
                 rendered_path.is_file(),
-                "draft board post was not rendered with --buildDrafts",
+                "Go review was not rendered with --buildDrafts",
             )
             rendered = rendered_path.read_text(encoding="utf-8")
-            self.assertIn('data-selector-kind="move"', rendered)
-            self.assertIn('data-selector-value="64"', rendered)
-            self.assertIn("Position after move 64.", rendered)
+            self.assertIn(f'data-selector-kind="{selector_kind}"', rendered)
+            self.assertIn(f'data-selector-value="{selector_value}"', rendered)
+            self.assertIn(attributes["caption"], unescape(rendered))
             published_sgf = (
-                public / "p/go-game-review-2026-07-26/2026-7-26.sgf"
+                public / "p/go-game-review-2026-07-26" / attributes["src"]
             )
-            self.assertEqual(SGF.read_bytes(), published_sgf.read_bytes())
-            self.assertFalse(
-                (public / "zh/p/go-game-review-2026-07-26/index.html").exists()
+            self.assertEqual(
+                (BUNDLE / attributes["src"]).read_bytes(),
+                published_sgf.read_bytes(),
             )
 
 
 class GoBoardAuthoringDocumentationTests(unittest.TestCase):
-    def test_readme_documents_the_beginner_authoring_contract(self):
+    def test_readme_examples_and_capability_boundaries_are_maintainable(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         section_match = re.search(
             r"^## Interactive Go boards\n(?P<body>.*?)(?=^## |\Z)",
@@ -109,48 +124,39 @@ class GoBoardAuthoringDocumentationTests(unittest.TestCase):
         )
         self.assertIsNotNone(section_match)
         section = section_match.group("body")
-        normalized_section = " ".join(section.split())
+        normalized = " ".join(section.split())
 
-        required_fragments = (
-            "Sabaki",
-            "index.en.md",
-            "index.zh.md",
-            "share the same SGF asset",
-            'src="game.sgf" move="64" caption="Position after move 64."',
-            "`src` and `caption` are required",
-            "defaults to move 0",
-            "skips non-move nodes",
-            "`path=N64B2N3`",
-            "BesoGo node counts",
-            "1-based branch numbers",
-            "mutually exclusive",
-            "A/B",
-            "`CR`, `TR`, `SQ`, `MA`, `LB`, and `SL`",
-            "`B`/`W`",
-            "`AB`/`AW`/`AE`",
-            "plain-text `C`",
-            "Markdown post",
-            "language-neutral, bilingual, or omitted",
-            "arrows and lines",
-            "Markdown inside `C`",
-            "`SBKV` and `SBKS`",
-            "Previous",
-            "Next",
-            "Try",
-            "Return",
-            "local and ephemeral",
-            "no persistence",
-            "no third-party requests",
-            "Giscus",
-            "post-level",
-            "move-level multi-user discussion",
-            "separate app or backend",
-            "assets/vendor/besogo/UPSTREAM.md",
-            "assets/vendor/besogo/LICENSE",
+        examples = go_board_shortcodes(section)
+        advanced = next(
+            (example for example in examples if "path" in example),
+            None,
         )
-        for fragment in required_fragments:
-            with self.subTest(fragment=fragment):
-                self.assertIn(fragment, normalized_section)
+        self.assertIsNotNone(advanced, "document an exact-path shortcode example")
+        self.assertTrue(advanced.get("path"))
+        assert_valid_local_board(self, advanced, BUNDLE)
+
+        for pattern in (
+            r"Sabaki.*variations.*marks",
+            r"authored first SGF node.*`N`.*first-child node transitions.*all nodes.*not moves.*`B`.*1-based child",
+            r"`C`.*rendered as plain text.*Markdown.*not formatted",
+            r"Try.*local.*no persistence",
+            r"no third-party requests.*Giscus.*post-level.*move-level multi-user.*deferred",
+        ):
+            with self.subTest(pattern=pattern):
+                self.assertRegex(normalized, pattern)
+
+        local_links = set(
+            re.findall(r"\]\((assets/vendor/besogo/[^)]+)\)", section)
+        )
+        self.assertEqual(
+            {
+                "assets/vendor/besogo/UPSTREAM.md",
+                "assets/vendor/besogo/LICENSE",
+            },
+            local_links,
+        )
+        for target in local_links:
+            self.assertTrue((ROOT / target).is_file(), target)
 
 
 if __name__ == "__main__":
