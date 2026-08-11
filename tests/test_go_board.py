@@ -1,5 +1,11 @@
 from pathlib import Path
+import re
+import shutil
+import subprocess
+from tempfile import TemporaryDirectory
 import unittest
+
+from scripts.check_site import check_site
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,6 +21,65 @@ REQUIRED_JS = {
     "parseSgf.js",
     "svgUtil.js",
 }
+SYNTHETIC_SGF = ROOT / "tests/fixtures/go-board/synthetic.sgf"
+GO_BOARD_CONTENT = ROOT / "tests/fixtures/go-board-content"
+
+
+def build_site(destination: Path, base_url: str, content: Path) -> None:
+    subprocess.run(
+        [
+            "hugo",
+            "--source", str(ROOT),
+            "--destination", str(destination),
+            "--baseURL", base_url,
+            "--contentDir", str(content),
+            "--cleanDestinationDir",
+            "--panicOnWarning",
+            "--noBuildLock",
+            "--cacheDir", str(destination.parent / "cache"),
+            "--environment", "production",
+        ],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
+def run_hugo(destination: Path, content: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [
+            "hugo",
+            "--source", str(ROOT),
+            "--destination", str(destination),
+            "--baseURL", "https://example.test/project/",
+            "--contentDir", str(content),
+            "--panicOnWarning",
+            "--noBuildLock",
+            "--cacheDir", str(destination.parent / "cache"),
+            "--environment", "production",
+        ],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+
+def write_page(path: Path, *, title: str, interaction_id: str, body: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        f'''+++
+title = "{title}"
+date = 2026-08-10
+draft = false
+interactionId = "{interaction_id}"
++++
+
+{body}
+''',
+        encoding="utf-8",
+    )
 
 
 class GoBoardVendorTests(unittest.TestCase):
@@ -36,6 +101,228 @@ class GoBoardVendorTests(unittest.TestCase):
         provenance = (VENDOR / "UPSTREAM.md").read_text(encoding="utf-8")
         self.assertIn("https://github.com/yewang/besogo", provenance)
         self.assertIn(PINNED_COMMIT, provenance)
+
+
+class GoBoardGeneratedSiteTests(unittest.TestCase):
+    def test_boards_are_localized_accessible_conditional_and_base_path_aware(self):
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+
+            for name, base_url, base_path in (
+                ("root", "https://example.test/", "/"),
+                ("project", "https://example.test/project/", "/project/"),
+            ):
+                with self.subTest(build=name):
+                    public = temporary_root / name / "public"
+                    build_site(public, base_url, GO_BOARD_CONTENT)
+                    self.assertEqual([], check_site(public, base_url))
+
+                    english = (public / "p/viewer/index.html").read_text(
+                        encoding="utf-8"
+                    )
+                    chinese = (public / "zh/p/viewer/index.html").read_text(
+                        encoding="utf-8"
+                    )
+                    plain = (public / "p/plain/index.html").read_text(
+                        encoding="utf-8"
+                    )
+                    sgf_url = f"{base_path}p/viewer/synthetic.SGF"
+
+                    self.assertEqual(
+                        2,
+                        len(re.findall(r'<figure[^>]+data-go-board(?:\s|>)', english)),
+                    )
+                    self.assertEqual(
+                        1,
+                        len(re.findall(r'<figure[^>]+data-go-board(?:\s|>)', chinese)),
+                    )
+                    self.assertIn('data-selector-kind="move"', english)
+                    self.assertIn('data-selector-value="2"', english)
+                    self.assertIn('data-selector-kind="path"', english)
+                    self.assertIn('data-selector-value="N3B2"', english)
+                    self.assertEqual(2, english.count(f'data-sgf-url="{sgf_url}"'))
+                    self.assertIn(f'href="{sgf_url}" download', english)
+                    self.assertTrue((public / "p/viewer/synthetic.SGF").is_file())
+
+                    figure_ids = re.findall(
+                        r'<figure id="(go-board-[0-9a-f]{12})"', english
+                    )
+                    self.assertEqual(2, len(figure_ids))
+                    self.assertEqual(2, len(set(figure_ids)))
+                    for figure_id in figure_ids:
+                        self.assertIn(f'id="{figure_id}-caption"', english)
+                        self.assertIn(
+                            f'aria-labelledby="{figure_id}-caption"', english
+                        )
+
+                    self.assertIn(
+                        "Main &amp; &lt;strong&gt;board&lt;/strong&gt;", english
+                    )
+                    self.assertNotIn("<strong>board</strong>", english)
+                    for label in (
+                        "Previous",
+                        "Move {move}",
+                        "Next",
+                        "Try your own line",
+                        "Return to position",
+                        "Current-position note",
+                        "Your variations stay in this browser",
+                        "Download SGF",
+                        "Enable JavaScript to use the interactive board",
+                    ):
+                        self.assertIn(label, english)
+                    for label in (
+                        "上一步",
+                        "第 {move} 手",
+                        "下一步",
+                        "试走变化",
+                        "返回指定局面",
+                        "当前节点注释",
+                        "试走变化只保存在当前浏览器中",
+                        "下载 SGF 棋谱",
+                        "请启用 JavaScript 以使用交互式棋盘",
+                    ):
+                        self.assertIn(label, chinese)
+                    self.assertIn("<noscript>", english)
+                    self.assertIn('role="status" aria-live="polite"', english)
+                    self.assertIn('aria-busy="true"', english)
+                    self.assertNotRegex(
+                        english,
+                        r'https?://[^"\s]*(?:besogo|unpkg|jsdelivr|cdnjs)',
+                    )
+
+                    css_links = re.findall(
+                        rf'<link rel="stylesheet" href="{re.escape(base_path)}css/'
+                        r'go-board(?:\.min)?\.[0-9a-f]+\.css" '
+                        r'integrity="sha256-[^"]+">',
+                        english,
+                    )
+                    scripts = re.findall(
+                        rf'<script defer src="{re.escape(base_path)}js/'
+                        r'go-board\.[0-9a-f]+\.js" '
+                        r'integrity="sha256-[^"]+"></script>',
+                        english,
+                    )
+                    self.assertEqual(
+                        1,
+                        len(css_links),
+                        re.findall(r'<link[^>]+go-board[^>]*>', english),
+                    )
+                    self.assertEqual(
+                        1,
+                        len(scripts),
+                        re.findall(r'<script[^>]+go-board[^>]*>', english),
+                    )
+                    self.assertEqual(1, len(re.findall(r"css/go-board", chinese)))
+                    self.assertEqual(1, len(re.findall(r"js/go-board", chinese)))
+                    self.assertNotIn("css/go-board", plain)
+                    self.assertNotIn("js/go-board", plain)
+
+                    built_scripts = list((public / "js").glob("go-board.*.js"))
+                    self.assertEqual(1, len(built_scripts))
+                    runtime = built_scripts[0].read_text(encoding="utf-8")
+                    for omitted_panel in (
+                        "makeControlPanel",
+                        "makeNamesPanel",
+                        "makeCommentPanel",
+                        "makeToolPanel",
+                        "makeTreePanel",
+                        "makeFilePanel",
+                    ):
+                        self.assertNotIn(omitted_panel, runtime)
+
+    def test_shortcode_rejects_invalid_arguments_and_resources(self):
+        cases = (
+            (
+                "positional",
+                '{{< go-board "synthetic.sgf" "Caption" >}}',
+                r"go-board at .*named arguments",
+            ),
+            (
+                "missing-src",
+                '{{< go-board caption="Caption" >}}',
+                r"go-board at .*src must be non-empty",
+            ),
+            (
+                "empty-caption",
+                '{{< go-board src="synthetic.sgf" caption="  " >}}',
+                r"go-board at .*caption must be non-empty",
+            ),
+            (
+                "wrong-extension",
+                '{{< go-board src="record.txt" caption="Caption" >}}',
+                r"go-board at .*src must name a local \.sgf resource",
+            ),
+            (
+                "missing-resource",
+                '{{< go-board src="missing.sgf" caption="Caption" >}}',
+                r"go-board at .*resource .*missing\.sgf.*not found.*page bundle",
+            ),
+            (
+                "negative-move",
+                '{{< go-board src="synthetic.sgf" caption="Caption" move="-1" >}}',
+                r"go-board at .*move .*non-negative integer",
+            ),
+            (
+                "fractional-move",
+                '{{< go-board src="synthetic.sgf" caption="Caption" move="1.5" >}}',
+                r"go-board at .*move .*non-negative integer",
+            ),
+            (
+                "move-path-conflict",
+                '{{< go-board src="synthetic.sgf" caption="Caption" move="0" path="N1" >}}',
+                r"go-board at .*move and path are mutually exclusive",
+            ),
+            (
+                "empty-path",
+                '{{< go-board src="synthetic.sgf" caption="Caption" path="" >}}',
+                r"go-board at .*path .*N<number> and B<positive-number>",
+            ),
+            (
+                "bad-path-zero-branch",
+                '{{< go-board src="synthetic.sgf" caption="Caption" path="N1B0" >}}',
+                r"go-board at .*path .*N<number> and B<positive-number>",
+            ),
+            (
+                "bad-path-spacing",
+                '{{< go-board src="synthetic.sgf" caption="Caption" path="N1 B2" >}}',
+                r"go-board at .*path .*N<number> and B<positive-number>",
+            ),
+            (
+                "bad-path-case",
+                '{{< go-board src="synthetic.sgf" caption="Caption" path="N1b2" >}}',
+                r"go-board at .*path .*N<number> and B<positive-number>",
+            ),
+        )
+
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            for name, shortcode, error_pattern in cases:
+                with self.subTest(case=name):
+                    content = temporary_root / name / "content"
+                    bundle = content / "blog/invalid"
+                    write_page(
+                        bundle / "index.en.md",
+                        title="Invalid Go board",
+                        interaction_id=f"invalid-go-board-{name}",
+                        body=shortcode,
+                    )
+                    shutil.copyfile(SYNTHETIC_SGF, bundle / "synthetic.sgf")
+                    (bundle / "record.txt").write_text(
+                        SYNTHETIC_SGF.read_text(encoding="utf-8"),
+                        encoding="utf-8",
+                    )
+                    result = run_hugo(
+                        temporary_root / name / "public",
+                        content,
+                    )
+                    self.assertNotEqual(0, result.returncode)
+                    output = "\n".join((result.stdout, result.stderr))
+                    self.assertRegex(output, error_pattern)
+                    self.assertNotRegex(
+                        output,
+                        r"(?i)nil pointer|index out of range|can't evaluate field",
+                    )
 
 
 if __name__ == "__main__":

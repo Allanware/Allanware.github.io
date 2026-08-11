@@ -86,3 +86,37 @@ other = "重要"
 other = "警告"
 [caution]
 other = "注意"
+[goBoardControls]
+other = "围棋棋盘控件"
+[goBoardPrevious]
+other = "上一步"
+[goBoardNext]
+other = "下一步"
+[goBoardMove]
+other = "第 {move} 手"
+[goBoardTry]
+other = "试走变化"
+[goBoardReturn]
+other = "返回指定局面"
+[goBoardNodeNote]
+other = "当前节点注释"
+[goBoardLocalOnly]
+other = "试走变化只保存在当前浏览器中；返回时将被清除。"
+[goBoardDownload]
+other = "下载 SGF 棋谱"
+[goBoardLoading]
+other = "正在加载棋盘"
+[goBoardReady]
+other = "棋盘已加载"
+[goBoardTryReady]
+other = "试走模式已开启；变化只保存在当前浏览器中。"
+[goBoardReturned]
+other = "已返回指定局面。"
+[goBoardFetchFailed]
+other = "无法加载棋谱。"
+[goBoardParseFailed]
+other = "无法读取棋谱。"
+[goBoardSelectorFailed]
+other = "找不到指定的棋局位置。"
+[goBoardRequiresJavaScript]
+other = "请启用 JavaScript 以使用交互式棋盘。"

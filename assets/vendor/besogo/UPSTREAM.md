@@ -6,5 +6,9 @@ The files in this directory are the minimal Go-board runtime vendored from
 
 Only the eight JavaScript sources required for parsing and displaying SGF game
 trees are included, together with the flat SVG board theme. BesoGo's panels,
-file tooling, and raster image assets are intentionally omitted. The files are
-otherwise unmodified and remain covered by the adjacent MIT `LICENSE`.
+file tooling, and raster image assets are intentionally omitted. The vendored
+`besogo.js` is a board-only downstream adaptation: its panel factory,
+auto-initialization, XHR loading, wheel handler, and panel-aware resizing paths
+were removed. SGF fetching, validation, and responsive sizing live in the site
+wrapper. The other upstream sources are unmodified. All files remain covered
+by the adjacent MIT `LICENSE`.

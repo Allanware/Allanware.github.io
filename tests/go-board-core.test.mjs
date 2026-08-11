@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
+  createSgfTextLoader,
   reloadPristine,
   selectMainlineMove,
   selectPath,
@@ -15,6 +16,7 @@ await import("../assets/vendor/besogo/js/gameRoot.js");
 await import("../assets/vendor/besogo/js/editor.js");
 await import("../assets/vendor/besogo/js/parseSgf.js");
 await import("../assets/vendor/besogo/js/loadSgf.js");
+const { mountGoBoard } = await import("../assets/js/go-board.mjs");
 
 const syntheticSgf = readFileSync(
   new URL("fixtures/go-board/synthetic.sgf", import.meta.url),
@@ -139,4 +141,189 @@ test("pristine reload discards reader nodes, restores nav-only, and reapplies se
     { x: 5, y: 4 },
   );
   assert.equal(selectMainlineMove(editor.getRoot(), 2).children.length, 1);
+});
+
+
+test("SGF text loading caches one fetch promise per resource URL", async () => {
+  const requests = [];
+  const load = createSgfTextLoader(async (url) => {
+    requests.push(url);
+    return {
+      ok: true,
+      status: 200,
+      text: async () => syntheticSgf,
+    };
+  });
+
+  const first = load("/p/viewer/synthetic.sgf");
+  const second = load("/p/viewer/synthetic.sgf");
+
+  assert.equal(first, second);
+  assert.equal(await first, syntheticSgf);
+  assert.deepEqual(requests, ["/p/viewer/synthetic.sgf"]);
+});
+
+
+function button() {
+  const listeners = new Map();
+  return {
+    disabled: false,
+    addEventListener: (name, handler) => listeners.set(name, handler),
+    click: () => listeners.get("click")(),
+  };
+}
+
+
+function boardDom(selector = { kind: "move", value: "2" }) {
+  const attributes = new Map();
+  const previous = button();
+  const next = button();
+  const tryButton = button();
+  const returnButton = button();
+  const move = { textContent: "" };
+  const note = { hidden: true };
+  const noteText = { textContent: "" };
+  const status = { textContent: "Loading", dataset: {} };
+  const svgAttributes = new Map();
+  const svg = {
+    setAttribute: (name, value) => svgAttributes.set(name, value),
+  };
+  const host = {
+    besogoEditor: null,
+    querySelector: (query) => query === "svg" ? svg : null,
+  };
+  const elements = {
+    "[data-go-board-host]": host,
+    "[data-go-board-status]": status,
+    "[data-go-board-previous]": previous,
+    "[data-go-board-next]": next,
+    "[data-go-board-try]": tryButton,
+    "[data-go-board-return]": returnButton,
+    "[data-go-board-move]": move,
+    "[data-go-board-note]": note,
+    "[data-go-board-note-text]": noteText,
+  };
+  const root = {
+    dataset: {
+      sgfUrl: "/p/viewer/synthetic.sgf",
+      selectorKind: selector.kind,
+      selectorValue: selector.value,
+      captionId: "go-board-fixture-caption",
+      moveTemplate: "Move {move}",
+      readyLabel: "Ready",
+      tryReadyLabel: "Try mode",
+      returnedLabel: "Returned",
+      fetchErrorLabel: "Fetch failed",
+      parseErrorLabel: "Parse failed",
+      selectorErrorLabel: "Selector failed",
+    },
+    setAttribute: (name, value) => attributes.set(name, value),
+    querySelector: (query) => elements[query],
+  };
+  return {
+    root,
+    host,
+    status,
+    previous,
+    next,
+    tryButton,
+    returnButton,
+    move,
+    note,
+    noteText,
+    attributes,
+    svgAttributes,
+  };
+}
+
+
+function boardBesogo() {
+  const createCalls = [];
+  return {
+    ...globalThis.besogo,
+    create(host, options) {
+      createCalls.push(options);
+      const size = globalThis.besogo.parseSize(options.size);
+      host.besogoEditor = globalThis.besogo.makeEditor(size.x, size.y);
+      host.besogoEditor.setTool(options.tool);
+      host.besogoEditor.setCoordStyle(options.coord);
+    },
+    createCalls,
+  };
+}
+
+
+test("board mounting parses and validates before creating BesoGo", async () => {
+  const dom = boardDom({ kind: "move", value: "99" });
+  const besogo = boardBesogo();
+
+  const controller = mountGoBoard(dom.root, {
+    besogo,
+    loadSgfText: async () => syntheticSgf,
+    logger: { error() {} },
+  });
+  await controller.ready;
+
+  assert.equal(besogo.createCalls.length, 0);
+  assert.match(dom.status.textContent, /^Selector failed/);
+  assert.equal(dom.attributes.get("aria-busy"), "false");
+  assert.equal(dom.previous.disabled, true);
+  assert.equal(dom.tryButton.disabled, true);
+});
+
+
+test("guided controls sync notes, enable local play, and restore pristine SGF", async () => {
+  const dom = boardDom();
+  const besogo = boardBesogo();
+  const controller = mountGoBoard(dom.root, {
+    besogo,
+    loadSgfText: async () => syntheticSgf,
+    logger: { error() {} },
+  });
+  await controller.ready;
+
+  assert.deepEqual(besogo.createCalls, [{
+    size: "5:5",
+    panels: [],
+    tool: "navOnly",
+    variants: 0,
+    coord: "western",
+    nowheel: true,
+    resize: "none",
+    realstones: false,
+    shadows: "off",
+  }]);
+  assert.equal(dom.move.textContent, "Move 2");
+  assert.equal(dom.noteText.textContent, "White passes");
+  assert.equal(dom.note.hidden, false);
+  assert.equal(dom.previous.disabled, false);
+  assert.equal(dom.next.disabled, false);
+  assert.equal(dom.tryButton.disabled, false);
+  assert.equal(dom.returnButton.disabled, true);
+  assert.equal(dom.svgAttributes.get("role"), "img");
+  assert.equal(
+    dom.svgAttributes.get("aria-labelledby"),
+    "go-board-fixture-caption",
+  );
+
+  dom.tryButton.click();
+  const editor = dom.host.besogoEditor;
+  assert.equal(editor.getTool(), "auto");
+  assert.equal(dom.tryButton.disabled, true);
+  assert.equal(dom.returnButton.disabled, false);
+  const authoredRoot = editor.getRoot();
+  editor.click(1, 5, false, false);
+  assert.equal(editor.getCurrent().parent.children.length, 2);
+
+  dom.returnButton.click();
+  assert.notEqual(editor.getRoot(), authoredRoot);
+  assert.equal(editor.getTool(), "navOnly");
+  assert.equal(editor.getCurrent().moveNumber, 2);
+  assert.equal(editor.getCurrent().children.length, 1);
+  assert.equal(dom.tryButton.disabled, false);
+  assert.equal(dom.returnButton.disabled, true);
+  assert.equal(dom.status.textContent, "Returned");
+
+  dom.previous.click();
+  assert.equal(dom.move.textContent, "Move 1");
 });

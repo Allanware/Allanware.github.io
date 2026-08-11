@@ -90,3 +90,20 @@ export function reloadPristine({ editor, sgfText, selector, besogo }) {
   editor.setCurrent(selected);
   return selected;
 }
+
+
+export function createSgfTextLoader(fetchImpl = globalThis.fetch) {
+  const requests = new Map();
+  return function loadSgfText(url) {
+    if (!requests.has(url)) {
+      requests.set(url, (async () => {
+        const response = await fetchImpl(url);
+        if (!response.ok) {
+          throw new Error(`SGF request failed (${response.status})`);
+        }
+        return response.text();
+      })());
+    }
+    return requests.get(url);
+  };
+}

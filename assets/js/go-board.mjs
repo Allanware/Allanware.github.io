@@ -1,0 +1,194 @@
+import "../vendor/besogo/js/besogo.js";
+import "../vendor/besogo/js/boardDisplay.js";
+import "../vendor/besogo/js/coord.js";
+import "../vendor/besogo/js/editor.js";
+import "../vendor/besogo/js/gameRoot.js";
+import "../vendor/besogo/js/loadSgf.js";
+import "../vendor/besogo/js/parseSgf.js";
+import "../vendor/besogo/js/svgUtil.js";
+
+import {
+  createSgfTextLoader,
+  reloadPristine,
+  selectAuthoredNode,
+} from "./go-board-core.mjs";
+
+
+const loadSharedSgfText = createSgfTextLoader();
+
+
+function selectorFor(root) {
+  return {
+    kind: root.dataset.selectorKind,
+    value: root.dataset.selectorValue,
+  };
+}
+
+
+function setBusy(root, busy) {
+  root.setAttribute("aria-busy", String(busy));
+}
+
+
+function formatMove(template, moveNumber) {
+  return template.replace("{move}", String(moveNumber));
+}
+
+
+export function mountGoBoard(root, dependencies = {}) {
+  const besogo = dependencies.besogo ?? globalThis.besogo;
+  const loadSgfText = dependencies.loadSgfText ?? loadSharedSgfText;
+  const logger = dependencies.logger ?? console;
+  const host = root.querySelector("[data-go-board-host]");
+  const status = root.querySelector("[data-go-board-status]");
+  const previous = root.querySelector("[data-go-board-previous]");
+  const next = root.querySelector("[data-go-board-next]");
+  const tryButton = root.querySelector("[data-go-board-try]");
+  const returnButton = root.querySelector("[data-go-board-return]");
+  const moveOutput = root.querySelector("[data-go-board-move]");
+  const note = root.querySelector("[data-go-board-note]");
+  const noteText = root.querySelector("[data-go-board-note-text]");
+  const selector = selectorFor(root);
+  let editor;
+  let pristineSgf;
+
+  for (const button of [previous, next, tryButton, returnButton]) {
+    button.disabled = true;
+  }
+  setBusy(root, true);
+
+  function fail(label, error) {
+    const detail = error && typeof error.message === "string"
+      ? ` ${error.message}`
+      : "";
+    status.textContent = `${label}${detail}`;
+    status.dataset.state = "error";
+    root.dataset.state = "error";
+    setBusy(root, false);
+    logger.error(label, error);
+  }
+
+  function sync() {
+    const current = editor.getCurrent();
+    previous.disabled = current.parent === null;
+    next.disabled = current.children.length === 0;
+    moveOutput.textContent = formatMove(
+      root.dataset.moveTemplate,
+      current.moveNumber,
+    );
+    noteText.textContent = current.comment || "";
+    note.hidden = !current.comment;
+  }
+
+  async function initialize() {
+    try {
+      pristineSgf = await loadSgfText(root.dataset.sgfUrl);
+    } catch (error) {
+      fail(root.dataset.fetchErrorLabel, error);
+      return;
+    }
+
+    let parsed;
+    let previewEditor;
+    try {
+      parsed = besogo.parseSgf(pristineSgf);
+      previewEditor = besogo.makeEditor(19, 19);
+      besogo.loadSgf(parsed, previewEditor);
+    } catch (error) {
+      fail(root.dataset.parseErrorLabel, error);
+      return;
+    }
+
+    try {
+      selectAuthoredNode(previewEditor.getRoot(), selector);
+    } catch (error) {
+      fail(root.dataset.selectorErrorLabel, error);
+      return;
+    }
+
+    const size = previewEditor.getRoot().getSize();
+    try {
+      besogo.create(host, {
+        size: `${size.x}:${size.y}`,
+        panels: [],
+        tool: "navOnly",
+        variants: 0,
+        coord: "western",
+        nowheel: true,
+        resize: "none",
+        realstones: false,
+        shadows: "off",
+      });
+      editor = host.besogoEditor;
+      besogo.loadSgf(parsed, editor);
+      editor.setVariantStyle(0);
+      editor.setCurrent(selectAuthoredNode(editor.getRoot(), selector));
+    } catch (error) {
+      fail(root.dataset.parseErrorLabel, error);
+      return;
+    }
+
+    const svg = host.querySelector("svg");
+    if (svg) {
+      svg.setAttribute("role", "img");
+      svg.setAttribute("aria-labelledby", root.dataset.captionId);
+    }
+
+    editor.addListener(sync);
+    previous.addEventListener("click", () => editor.prevNode(1));
+    next.addEventListener("click", () => editor.nextNode(1));
+    tryButton.addEventListener("click", () => {
+      editor.setTool("auto");
+      tryButton.disabled = true;
+      returnButton.disabled = false;
+      status.textContent = root.dataset.tryReadyLabel;
+      status.dataset.state = "ready";
+      root.dataset.state = "trying";
+    });
+    returnButton.addEventListener("click", () => {
+      try {
+        reloadPristine({
+          editor,
+          sgfText: pristineSgf,
+          selector,
+          besogo,
+        });
+        editor.setVariantStyle(0);
+        tryButton.disabled = false;
+        returnButton.disabled = true;
+        status.textContent = root.dataset.returnedLabel;
+        status.dataset.state = "ready";
+        root.dataset.state = "ready";
+        sync();
+      } catch (error) {
+        fail(root.dataset.parseErrorLabel, error);
+      }
+    });
+
+    tryButton.disabled = false;
+    returnButton.disabled = true;
+    status.textContent = root.dataset.readyLabel;
+    status.dataset.state = "ready";
+    root.dataset.state = "ready";
+    setBusy(root, false);
+    sync();
+  }
+
+  return { ready: initialize() };
+}
+
+
+function mountAll() {
+  for (const root of document.querySelectorAll("[data-go-board]")) {
+    mountGoBoard(root);
+  }
+}
+
+
+if (typeof document !== "undefined") {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", mountAll, { once: true });
+  } else {
+    mountAll();
+  }
+}
