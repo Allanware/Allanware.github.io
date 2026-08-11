@@ -30,6 +30,18 @@ function advanceMainlineMoves(start, count) {
 }
 
 
+function advanceMainlineNodes(start, count) {
+  let current = start;
+  for (let index = 0; index < count; index += 1) {
+    if (current.children.length === 0) {
+      throw new RangeError("Main line ended before the requested node");
+    }
+    current = current.children[0];
+  }
+  return current;
+}
+
+
 export function selectPath(root, path) {
   if (!/^(?:N[0-9]+|B[1-9][0-9]*)+$/.test(path)) {
     throw new TypeError(`Invalid path selector: ${path}`);
@@ -43,9 +55,9 @@ export function selectPath(root, path) {
     }
     if (match[1] === "N") {
       try {
-        current = advanceMainlineMoves(current, value);
+        current = advanceMainlineNodes(current, value);
       } catch {
-        throw new RangeError(`Move token ${match[0]} exceeds the authored line`);
+        throw new RangeError(`Node token ${match[0]} exceeds the authored line`);
       }
     } else {
       const child = current.children[value - 1];
@@ -56,4 +68,25 @@ export function selectPath(root, path) {
     }
   }
   return current;
+}
+
+
+export function selectAuthoredNode(root, selector) {
+  if (selector.kind === "path") {
+    return selectPath(root, selector.value);
+  }
+  if (selector.kind !== "move" || !/^[0-9]+$/.test(String(selector.value))) {
+    throw new TypeError("Invalid authored Go-board selector");
+  }
+  return selectMainlineMove(root, Number(selector.value));
+}
+
+
+export function reloadPristine({ editor, sgfText, selector, besogo }) {
+  const parsed = besogo.parseSgf(sgfText);
+  besogo.loadSgf(parsed, editor);
+  editor.setTool("navOnly");
+  const selected = selectAuthoredNode(editor.getRoot(), selector);
+  editor.setCurrent(selected);
+  return selected;
 }

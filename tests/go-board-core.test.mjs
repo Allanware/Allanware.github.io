@@ -1,10 +1,25 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
+  reloadPristine,
   selectMainlineMove,
   selectPath,
 } from "../assets/js/go-board-core.mjs";
+
+
+globalThis.window = globalThis;
+await import("../assets/vendor/besogo/js/besogo.js");
+await import("../assets/vendor/besogo/js/gameRoot.js");
+await import("../assets/vendor/besogo/js/editor.js");
+await import("../assets/vendor/besogo/js/parseSgf.js");
+await import("../assets/vendor/besogo/js/loadSgf.js");
+
+const syntheticSgf = readFileSync(
+  new URL("fixtures/go-board/synthetic.sgf", import.meta.url),
+  "utf8",
+);
 
 
 function node(name, move = null) {
@@ -40,10 +55,10 @@ test("main-line move selection ignores nodes without moves", () => {
 });
 
 
-test("path selection uses one-based branch tokens and semantic move tokens", () => {
+test("path selection counts exact nodes and uses one-based branch tokens", () => {
   const { root, branchNext } = authoredTree();
 
-  assert.equal(selectPath(root, "N2B2N1"), branchNext);
+  assert.equal(selectPath(root, "N4B2N2"), branchNext);
 });
 
 
@@ -55,7 +70,73 @@ test("selectors reject unavailable moves and branches", () => {
     /Move 99 is not available/,
   );
   assert.throws(
-    () => selectPath(root, "N2B3"),
+    () => selectPath(root, "N4B3"),
     /Branch 3 is not available/,
   );
+});
+
+
+function loadSyntheticEditor() {
+  const parsed = globalThis.besogo.parseSgf(syntheticSgf);
+  const editor = globalThis.besogo.makeEditor(19, 19);
+  globalThis.besogo.loadSgf(parsed, editor);
+  return editor;
+}
+
+
+test("the vendored parser loads comments, pass, capture, setup, markup, and branches", () => {
+  const editor = loadSyntheticEditor();
+  const root = editor.getRoot();
+  const capture = root.children[0];
+  const pass = capture.children[0];
+  const branchPoint = pass.children[0];
+
+  assert.deepEqual(root.getSize(), { x: 5, y: 5 });
+  assert.equal(root.comment, "Root <strong>unsafe</strong> comment");
+  assert.equal(root.getStone(2, 3), -1);
+  assert.equal(root.getStone(3, 3), 1);
+  assert.equal(root.getMarkup(1, 1), 1);
+  assert.equal(root.getMarkup(1, 2), 3);
+  assert.equal(root.getMarkup(1, 3), 2);
+  assert.equal(root.getMarkup(1, 4), 4);
+  assert.equal(root.getMarkup(1, 5), "A");
+  assert.equal(root.getMarkup(2, 1), 5);
+  assert.equal(capture.move.captures, 1);
+  assert.equal(capture.getStone(3, 3), 0);
+  assert.deepEqual(
+    { x: pass.move.x, y: pass.move.y },
+    { x: 0, y: 0 },
+  );
+  assert.equal(branchPoint.move, null);
+  assert.equal(branchPoint.children.length, 2);
+  assert.equal(selectMainlineMove(root, 3), branchPoint.children[0]);
+  assert.equal(selectPath(root, "N3B2N1"), branchPoint.children[1].children[0]);
+});
+
+
+test("pristine reload discards reader nodes, restores nav-only, and reapplies selector", () => {
+  const editor = loadSyntheticEditor();
+  const oldRoot = editor.getRoot();
+  const pass = selectMainlineMove(oldRoot, 2);
+  const readerNode = pass.makeChild();
+  readerNode.playMove(1, 5, 0, true);
+  pass.addChild(readerNode);
+  editor.setCurrent(readerNode);
+  editor.setTool("auto");
+
+  const selected = reloadPristine({
+    editor,
+    sgfText: syntheticSgf,
+    selector: { kind: "path", value: "N3B2" },
+    besogo: globalThis.besogo,
+  });
+
+  assert.notEqual(editor.getRoot(), oldRoot);
+  assert.equal(editor.getTool(), "navOnly");
+  assert.equal(editor.getCurrent(), selected);
+  assert.deepEqual(
+    { x: selected.move.x, y: selected.move.y },
+    { x: 5, y: 4 },
+  );
+  assert.equal(selectMainlineMove(editor.getRoot(), 2).children.length, 1);
 });
