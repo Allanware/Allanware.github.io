@@ -65,6 +65,43 @@ The draft will use three short sections:
 Captions identify the record and move. Prose describes only the mechanics of
 the example, leaving actual Go analysis for later authoring.
 
+## Performance policy
+
+The current network footprint is already appropriately small and conditional:
+posts without a `go-board` shortcode receive no viewer assets, while a viewer
+page receives one fingerprinted CSS file and one fingerprinted JavaScript file.
+The shared URL-keyed promise cache means the three-board example makes two SGF
+requests, not three. Parsing these small records is negligible and parsed-tree
+caching would add mutable-state risk without a useful payoff.
+
+Eager board construction is the material cost. A 19×19 BesoGo board creates 361
+pointer targets and roughly 566–612 SVG subtree nodes with about 1,085 event
+listeners. Mounting all three example boards immediately would create about
+1,774 nodes and 3,255 listeners even when the later boards are below the
+viewport.
+
+The wrapper will therefore use `IntersectionObserver` to mount a board only
+when it enters a 400-pixel vertical margin around the viewport. It will
+unobserve the figure before mounting and guard against duplicate mounts. If the
+API is unavailable, all boards mount eagerly so functionality is preserved.
+No vendor code changes are required.
+
+The server-rendered board host will reserve its square aspect ratio and full
+available width before JavaScript mounts BesoGo. Loading and failure status will
+overlay that reserved area, preventing the board from shifting the surrounding
+article when it initializes.
+
+The follow-up adopts these build budgets, which leave modest headroom over the
+measured implementation:
+
+- viewer JavaScript: at most 32,000 bytes minified and 11,000 bytes gzip;
+- viewer CSS: at most 5,000 bytes minified and 1,500 bytes gzip;
+- combined viewer assets: at most 12,500 bytes gzip.
+
+These budgets apply only to the conditional viewer assets. SGF files remain
+ordinary page resources and are fetched only when their board approaches the
+viewport.
+
 ## Validation
 
 Test-first coverage will establish:
@@ -77,6 +114,13 @@ Test-first coverage will establish:
 - the first two boards use the same local SGF URL and the third uses the new
   local SGF URL;
 - both tracked SGFs match their supplied byte checksums;
+- an offscreen board performs no fetch or BesoGo mount before observer
+  intersection, mounts exactly once after intersection, and falls back to eager
+  mounting without `IntersectionObserver`;
+- mounting all three boards produces three independent SVGs and only two SGF
+  requests, while an unvisited third board does not fetch the second SGF;
+- the server-rendered host reserves a stable square before and after mount;
+- minified and gzip viewer assets remain within the stated budgets;
 - conditional assets remain single, self-hosted, fingerprinted, and valid at
   both root and project-subpath builds.
 
