@@ -65,12 +65,16 @@
     {{- $figureId := printf "go-board-%s" (substr (md5 $figureKey) 0 12) -}}
     {{- $captionId := printf "%s-caption" $figureId -}}
     {{- $controlsId := printf "%s-controls-label" $figureId -}}
+    {{- $variationsId := printf "%s-variations" $figureId -}}
+    {{- $variationsLabelId := printf "%s-variations-label" $figureId -}}
     {{- $noticeId := printf "%s-local-notice" $figureId -}}
     {{- $moveTemplate := T "goBoardMove" -}}
     <figure id="{{ $figureId }}" class="go-board" data-go-board
       data-sgf-url="{{ $resource.RelPermalink }}"
       data-selector-kind="{{ $selectorKind }}" data-selector-value="{{ $selectorValue }}"
       data-caption-id="{{ $captionId }}" data-move-template="{{ $moveTemplate }}"
+      data-variation-template="{{ T "goBoardVariation" }}"
+      data-variation-selected-template="{{ T "goBoardVariationSelected" }}"
       data-ready-label="{{ T "goBoardReady" }}"
       data-try-ready-label="{{ T "goBoardTryReady" }}"
       data-returned-label="{{ T "goBoardReturned" }}"
@@ -90,6 +94,12 @@
         <button type="button" data-go-board-next aria-label="{{ T "goBoardNext" }}" disabled>{{ T "goBoardNext" }}</button>
         <button type="button" data-go-board-try disabled>{{ T "goBoardTry" }}</button>
         <button type="button" data-go-board-return disabled>{{ T "goBoardReturn" }}</button>
+      </div>
+      <div id="{{ $variationsId }}" class="go-board__variations" data-go-board-variations
+        role="group" aria-labelledby="{{ $variationsLabelId }} {{ $captionId }}" hidden>
+        <span id="{{ $variationsLabelId }}" class="go-board__variations-label">{{ T "goBoardVariations" }}</span>
+        <span data-go-board-variation-buttons></span>
+        <span class="visually-hidden" data-go-board-variation-status role="status" aria-live="polite"></span>
       </div>
       <p class="go-board__note" data-go-board-note role="status" aria-live="polite" hidden>
         <strong>{{ T "goBoardNodeNote" }}:</strong>

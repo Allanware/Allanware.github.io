@@ -181,6 +181,38 @@ test("selectors reject unavailable moves and branches", () => {
 });
 
 
+test("FF4 move validation accepts empty pass and rejects malformed or out-of-board points", () => {
+  assert.equal(typeof goBoardCore.validateSgfMoves, "function");
+  assert.doesNotThrow(() => goBoardCore.validateSgfMoves(
+    globalThis.besogo.parseSgf("(;FF[4]SZ[5];B[];W[aa])"),
+  ));
+  assert.doesNotThrow(() => goBoardCore.validateSgfMoves(
+    globalThis.besogo.parseSgf("(;FF[4]SZ[52];B[ZZ])"),
+  ));
+  assert.throws(
+    () => goBoardCore.validateSgfMoves(
+      globalThis.besogo.parseSgf("(;FF[4]SZ[5];B[aaa])"),
+    ),
+    /invalid B coordinate/,
+  );
+  assert.throws(
+    () => goBoardCore.validateSgfMoves(
+      globalThis.besogo.parseSgf("(;FF[4]SZ[5];W[fa])"),
+    ),
+    /outside the 5:5 board/,
+  );
+  assert.throws(
+    () => goBoardCore.validateSgfMoves(
+      globalThis.besogo.parseSgf("(;FF[4]SZ[5 : 5];W[fa])"),
+    ),
+    /outside the 5:5 board/,
+  );
+  assert.doesNotThrow(() => goBoardCore.validateSgfMoves(
+    globalThis.besogo.parseSgf("(;FF[3]SZ[19];B[tt])"),
+  ));
+});
+
+
 function loadSyntheticEditor() {
   const parsed = globalThis.besogo.parseSgf(syntheticSgf);
   const editor = globalThis.besogo.makeEditor(19, 19);
@@ -269,9 +301,16 @@ test("SGF text loading caches one fetch promise per resource URL", async () => {
 
 function button() {
   const listeners = new Map();
+  const attributes = new Map();
   const control = {
     disabled: false,
+    focused: false,
+    textContent: "",
+    type: "",
     addEventListener: (name, handler) => listeners.set(name, handler),
+    focus: () => { control.focused = true; },
+    getAttribute: (name) => attributes.get(name),
+    setAttribute: (name, value) => attributes.set(name, String(value)),
     click: () => {
       if (!control.disabled) listeners.get("click")();
     },
@@ -290,6 +329,14 @@ function boardDom(selector = { kind: "move", value: "2" }) {
   const note = { hidden: true };
   const noteText = { textContent: "" };
   const status = { textContent: "Loading", dataset: {} };
+  const variations = { hidden: true };
+  const variationButtons = {
+    children: [],
+    replaceChildren(...children) {
+      this.children = children;
+    },
+  };
+  const variationStatus = { textContent: "" };
   const svgAttributes = new Map();
   const svg = {
     setAttribute: (name, value) => svgAttributes.set(name, value),
@@ -308,6 +355,9 @@ function boardDom(selector = { kind: "move", value: "2" }) {
     "[data-go-board-move]": move,
     "[data-go-board-note]": note,
     "[data-go-board-note-text]": noteText,
+    "[data-go-board-variations]": variations,
+    "[data-go-board-variation-buttons]": variationButtons,
+    "[data-go-board-variation-status]": variationStatus,
   };
   const root = {
     dataset: {
@@ -322,6 +372,14 @@ function boardDom(selector = { kind: "move", value: "2" }) {
       fetchErrorLabel: "Fetch failed",
       parseErrorLabel: "Parse failed",
       selectorErrorLabel: "Selector failed",
+      variationTemplate: "Variation {label}",
+      variationSelectedTemplate: "Variation {label} selected",
+    },
+    ownerDocument: {
+      createElement(name) {
+        assert.equal(name, "button");
+        return button();
+      },
     },
     setAttribute: (name, value) => attributes.set(name, value),
     querySelector: (query) => elements[query],
@@ -337,6 +395,9 @@ function boardDom(selector = { kind: "move", value: "2" }) {
     move,
     note,
     noteText,
+    variations,
+    variationButtons,
+    variationStatus,
     attributes,
     svgAttributes,
   };
@@ -396,6 +457,25 @@ test("failure status uses only its localized label and logs technical detail", a
 });
 
 
+test("malformed FF4 coordinates fail with the localized parse label before mounting", async () => {
+  const dom = boardDom();
+  const besogo = boardBesogo();
+  const logged = [];
+  dom.root.dataset.parseErrorLabel = "无法读取棋谱。";
+
+  const controller = mountGoBoard(dom.root, {
+    besogo,
+    loadSgfText: async () => "(;FF[4]SZ[5];B[zz])",
+    logger: { error: (...details) => logged.push(details) },
+  });
+  await controller.ready;
+
+  assert.equal(besogo.createCalls.length, 0);
+  assert.equal(dom.status.textContent, "无法读取棋谱。");
+  assert.match(logged[0][1].message, /outside the 5:5 board/);
+});
+
+
 test("Return restores the published selector after read-only navigation", async () => {
   const dom = boardDom();
   const besogo = boardBesogo();
@@ -421,6 +501,59 @@ test("Return restores the published selector after read-only navigation", async 
   assert.equal(editor.getTool(), "navOnly");
   assert.equal(dom.returnButton.disabled, true);
   assert.equal(dom.tryButton.disabled, false);
+});
+
+
+test("named branch controls expose, choose, and identify authored A/B variations", async () => {
+  const dom = boardDom();
+  const controller = mountGoBoard(dom.root, {
+    besogo: boardBesogo(),
+    loadSgfText: async () => syntheticSgf,
+    logger: { error() {} },
+  });
+  await controller.ready;
+
+  const editor = dom.host.besogoEditor;
+  assert.equal(dom.variations.hidden, true);
+  dom.next.click();
+  const branchPoint = editor.getCurrent();
+  assert.equal(branchPoint.children.length, 2);
+  assert.equal(dom.variations.hidden, false);
+  assert.deepEqual(
+    dom.variationButtons.children.map((control) => control.textContent),
+    ["Variation A", "Variation B"],
+  );
+  assert.deepEqual(
+    dom.variationButtons.children.map(
+      (control) => control.getAttribute("aria-pressed"),
+    ),
+    ["false", "false"],
+  );
+
+  dom.variationButtons.children[1].click();
+  assert.equal(editor.getCurrent(), branchPoint.children[1]);
+  assert.equal(dom.variationStatus.textContent, "Variation B selected");
+  assert.deepEqual(
+    dom.variationButtons.children.map(
+      (control) => control.getAttribute("aria-pressed"),
+    ),
+    ["false", "true"],
+  );
+  assert.equal(dom.variationButtons.children[1].focused, true);
+
+  editor.setCurrent(branchPoint);
+  editor.setCurrent(branchPoint.children[0]);
+  assert.equal(dom.variationStatus.textContent, "Variation A selected");
+  assert.equal(
+    dom.variationButtons.children[0].getAttribute("aria-pressed"),
+    "true",
+  );
+
+  dom.tryButton.click();
+  assert.equal(dom.variations.hidden, true);
+  dom.returnButton.click();
+  assert.equal(editor.getCurrent().moveNumber, 2);
+  assert.equal(dom.variations.hidden, true);
 });
 
 

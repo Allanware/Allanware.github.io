@@ -1,4 +1,5 @@
 from pathlib import Path
+import hashlib
 import re
 import shutil
 import subprocess
@@ -20,6 +21,17 @@ REQUIRED_JS = {
     "loadSgf.js",
     "parseSgf.js",
     "svgUtil.js",
+}
+UNMODIFIED_VENDOR_FILES = {
+    "LICENSE",
+    "css/board-flat.css",
+    "js/boardDisplay.js",
+    "js/coord.js",
+    "js/editor.js",
+    "js/gameRoot.js",
+    "js/loadSgf.js",
+    "js/parseSgf.js",
+    "js/svgUtil.js",
 }
 SYNTHETIC_SGF = ROOT / "tests/fixtures/go-board/synthetic.sgf"
 GO_BOARD_CONTENT = ROOT / "tests/fixtures/go-board-content"
@@ -119,6 +131,22 @@ class GoBoardVendorTests(unittest.TestCase):
         self.assertIn("https://github.com/yewang/besogo", provenance)
         self.assertIn(PINNED_COMMIT, provenance)
 
+    def test_unmodified_vendor_files_match_the_pinned_checksum_manifest(self):
+        manifest_path = VENDOR / "UPSTREAM_SHA256SUMS"
+        self.assertTrue(manifest_path.is_file())
+        entries = {}
+        for line in manifest_path.read_text(encoding="utf-8").splitlines():
+            digest, relative_path = line.split("  ", 1)
+            self.assertRegex(digest, r"^[0-9a-f]{64}$")
+            entries[relative_path] = digest
+
+        self.assertEqual(UNMODIFIED_VENDOR_FILES, set(entries))
+        for relative_path, expected in entries.items():
+            actual = hashlib.sha256(
+                (VENDOR / relative_path).read_bytes()
+            ).hexdigest()
+            self.assertEqual(expected, actual, relative_path)
+
 
 class GoBoardStyleTests(unittest.TestCase):
     def test_board_cancels_figure_gutters_on_narrow_screens(self):
@@ -183,6 +211,30 @@ class GoBoardStyleTests(unittest.TestCase):
             self.assertGreaterEqual(contrast_ratio(board, fill.group(1)), 3)
         self.assertGreaterEqual(contrast_ratio(halo.group(1), fill.group(1)), 3)
 
+    def test_named_variation_buttons_keep_spacing_and_wrap_on_narrow_boards(self):
+        css = (ROOT / "assets/css/go-board.css").read_text(encoding="utf-8")
+        button_row = re.search(
+            r"\.go-board \[data-go-board-variation-buttons\]\s*"
+            r"\{(?P<body>[^}]*)\}",
+            css,
+        )
+        self.assertIsNotNone(button_row)
+        self.assertRegex(button_row.group("body"), r"display:\s*inline-flex;")
+        self.assertRegex(button_row.group("body"), r"flex-wrap:\s*wrap;")
+        self.assertRegex(button_row.group("body"), r"gap:\s*0\.5rem;")
+
+        narrow = re.search(
+            r"@media \(max-width:\s*480px\)\s*\{(?P<body>.*)\}\s*\Z",
+            css,
+            flags=re.DOTALL,
+        )
+        self.assertIsNotNone(narrow)
+        self.assertRegex(
+            narrow.group("body"),
+            r"\.go-board \[data-go-board-variation-buttons\]\s*"
+            r"\{[^}]*width:\s*100%;[^}]*\}",
+        )
+
 
 class GoBoardGeneratedSiteTests(unittest.TestCase):
     def test_boards_are_localized_accessible_conditional_and_base_path_aware(self):
@@ -240,6 +292,30 @@ class GoBoardGeneratedSiteTests(unittest.TestCase):
                             english,
                         )
                         self.assertIn(f'<figcaption id="{caption_id}">', english)
+                    variation_groups = re.findall(
+                        r'<div id="([^"]+-variations)" '
+                        r'class="go-board__variations" data-go-board-variations\s+'
+                        r'role="group" aria-labelledby="'
+                        r'([^"]+-variations-label) ([^"]+-caption)" hidden>',
+                        english,
+                    )
+                    self.assertEqual(3, len(variation_groups))
+                    self.assertEqual(3, len(set(variation_groups)))
+                    for _, label_id, caption_id in variation_groups:
+                        self.assertIn(
+                            f'<span id="{label_id}" '
+                            'class="go-board__variations-label">'
+                            "Choose a variation</span>",
+                            english,
+                        )
+                        self.assertIn(f'<figcaption id="{caption_id}">', english)
+                    self.assertEqual(
+                        3,
+                        english.count(
+                            'data-go-board-variation-status role="status" '
+                            'aria-live="polite"'
+                        ),
+                    )
                     self.assertEqual(
                         1,
                         len(re.findall(r'<figure[^>]+data-go-board(?:\s|>)', chinese)),
@@ -291,6 +367,9 @@ class GoBoardGeneratedSiteTests(unittest.TestCase):
                         "Previous",
                         "Move {move}",
                         "Next",
+                        "Choose a variation",
+                        "Variation {label}",
+                        "Variation {label} selected",
                         "Try your own line",
                         "Return to position",
                         "Current-position note",
@@ -303,6 +382,9 @@ class GoBoardGeneratedSiteTests(unittest.TestCase):
                         "上一步",
                         "第 {move} 手",
                         "下一步",
+                        "选择变化",
+                        "变化 {label}",
+                        "已选择变化 {label}",
                         "试走变化",
                         "返回指定局面",
                         "当前节点注释",

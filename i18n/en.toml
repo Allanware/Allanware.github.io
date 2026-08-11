@@ -92,6 +92,12 @@ other = "Go board controls"
 other = "Previous"
 [goBoardNext]
 other = "Next"
+[goBoardVariations]
+other = "Choose a variation"
+[goBoardVariation]
+other = "Variation {label}"
+[goBoardVariationSelected]
+other = "Variation {label} selected"
 [goBoardMove]
 other = "Move {move}"
 [goBoardTry]

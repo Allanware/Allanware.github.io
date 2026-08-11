@@ -10,6 +10,60 @@ const ROOT_METADATA_IDS = new Set([
 const ROOT_SETUP_IDS = new Set(["AB", "AW", "AE"]);
 
 
+export function validateSgfMoves(sgf) {
+  const fileFormat = sgf.props.find((property) => property.id === "FF");
+  if (!fileFormat || fileFormat.values.join().trim() !== "4") return;
+
+  const sizeProperty = sgf.props.find((property) => property.id === "SZ");
+  const size = parseBoardSize(sizeProperty?.values.join().trim() ?? "19");
+
+  function validateNode(current) {
+    for (const property of current.props) {
+      if (property.id !== "B" && property.id !== "W") continue;
+      if (property.values.length !== 1) {
+        throw new TypeError(`SGF node has invalid ${property.id} coordinate`);
+      }
+
+      const coordinate = property.values[0];
+      if (coordinate === "") continue;
+      if (!/^[A-Za-z]{2}$/.test(coordinate)) {
+        throw new TypeError(
+          `SGF node has invalid ${property.id} coordinate "${coordinate}"`,
+        );
+      }
+
+      const x = sgfLetterToNumber(coordinate[0]);
+      const y = sgfLetterToNumber(coordinate[1]);
+      if (x > size.x || y > size.y) {
+        throw new RangeError(
+          `SGF ${property.id} coordinate "${coordinate}" is outside the `
+          + `${size.x}:${size.y} board`,
+        );
+      }
+    }
+    for (const child of current.children) validateNode(child);
+  }
+
+  validateNode(sgf);
+}
+
+
+function parseBoardSize(value) {
+  const match = value.replace(/\s/g, "").match(/^(\d+)(?::(\d+))?$/);
+  if (!match) return { x: 19, y: 19 };
+  const x = Number(match[1]);
+  const y = Number(match[2] ?? match[1]);
+  if (x < 1 || x > 52 || y < 1 || y > 52) return { x: 19, y: 19 };
+  return { x, y };
+}
+
+
+function sgfLetterToNumber(letter) {
+  if (/[A-Z]/.test(letter)) return letter.charCodeAt(0) - 38;
+  return letter.charCodeAt(0) - 96;
+}
+
+
 export function loadSgfForReader({ besogo, editor, sgf }) {
   const startsWithMove = sgf.props.some(
     (property) => property.id === "B" || property.id === "W",
@@ -127,6 +181,7 @@ export function selectAuthoredNode(root, selector) {
 
 export function reloadPristine({ editor, sgfText, selector, besogo }) {
   const parsed = besogo.parseSgf(sgfText);
+  validateSgfMoves(parsed);
   loadSgfForReader({ besogo, editor, sgf: parsed });
   editor.setTool("navOnly");
   const selected = selectAuthoredNode(editor.getRoot(), selector);

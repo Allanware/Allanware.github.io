@@ -11,4 +11,5 @@ file tooling, and raster image assets are intentionally omitted. The vendored
 auto-initialization, XHR loading, wheel handler, and panel-aware resizing paths
 were removed. SGF fetching, validation, and responsive sizing live in the site
 wrapper. The other upstream sources are unmodified. All files remain covered
-by the adjacent MIT `LICENSE`.
+by the adjacent MIT `LICENSE`. `UPSTREAM_SHA256SUMS` records the pinned hashes
+for the unmodified source, theme, and license files.

@@ -12,6 +12,7 @@ import {
   loadSgfForReader,
   reloadPristine,
   selectAuthoredNode,
+  validateSgfMoves,
 } from "./go-board-core.mjs";
 
 
@@ -49,6 +50,9 @@ export function mountGoBoard(root, dependencies = {}) {
   const moveOutput = root.querySelector("[data-go-board-move]");
   const note = root.querySelector("[data-go-board-note]");
   const noteText = root.querySelector("[data-go-board-note-text]");
+  const variations = root.querySelector("[data-go-board-variations]");
+  const variationButtons = root.querySelector("[data-go-board-variation-buttons]");
+  const variationStatus = root.querySelector("[data-go-board-variation-status]");
   const selector = selectorFor(root);
   let editor;
   let authoredTarget;
@@ -80,6 +84,47 @@ export function mountGoBoard(root, dependencies = {}) {
     );
     noteText.textContent = current.comment || "";
     note.hidden = !current.comment;
+    renderVariations(current, trying);
+  }
+
+  function renderVariations(current, trying) {
+    let choices = [];
+    let selected = null;
+    if (!trying && current.children.length > 1) {
+      choices = current.children;
+    } else if (!trying && current.parent && current.parent.children.length > 1) {
+      choices = current.parent.children;
+      selected = current;
+    }
+
+    variationButtons.replaceChildren();
+    variationStatus.textContent = "";
+    variations.hidden = choices.length < 2;
+    if (variations.hidden) return;
+
+    const controls = choices.map((choice, index) => {
+      const label = String.fromCharCode("A".charCodeAt(0) + (index % 26));
+      const control = root.ownerDocument.createElement("button");
+      control.type = "button";
+      control.textContent = root.dataset.variationTemplate.replace("{label}", label);
+      control.setAttribute("aria-pressed", String(choice === selected));
+      control.addEventListener("click", () => {
+        editor.setCurrent(choice);
+        const refreshedControl = variationButtons.children[index];
+        if (refreshedControl) refreshedControl.focus();
+      });
+      return control;
+    });
+    variationButtons.replaceChildren(...controls);
+
+    if (selected) {
+      const index = choices.indexOf(selected);
+      const label = String.fromCharCode("A".charCodeAt(0) + (index % 26));
+      variationStatus.textContent = root.dataset.variationSelectedTemplate.replace(
+        "{label}",
+        label,
+      );
+    }
   }
 
   async function initialize() {
@@ -94,6 +139,7 @@ export function mountGoBoard(root, dependencies = {}) {
     let previewEditor;
     try {
       parsed = besogo.parseSgf(pristineSgf);
+      validateSgfMoves(parsed);
       previewEditor = besogo.makeEditor(19, 19);
       loadSgfForReader({ besogo, editor: previewEditor, sgf: parsed });
     } catch (error) {

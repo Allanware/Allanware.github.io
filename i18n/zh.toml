@@ -92,6 +92,12 @@ other = "围棋棋盘控件"
 other = "上一步"
 [goBoardNext]
 other = "下一步"
+[goBoardVariations]
+other = "选择变化"
+[goBoardVariation]
+other = "变化 {label}"
+[goBoardVariationSelected]
+other = "已选择变化 {label}"
 [goBoardMove]
 other = "第 {move} 手"
 [goBoardTry]
