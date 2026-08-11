@@ -49,7 +49,7 @@ function observerHarness() {
 }
 
 
-test("return link re-arms the thought only after a full viewport exit", () => {
+test("return link re-arms the train only after a full viewport exit", () => {
   const { link, root } = endingDom();
   const { FakeIntersectionObserver, instances } = observerHarness();
   const scrollCalls = [];
