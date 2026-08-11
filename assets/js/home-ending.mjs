@@ -7,18 +7,14 @@ export function mountHomeEnding(root, options = {}) {
     : (typeof globalThis.matchMedia === "function"
       ? globalThis.matchMedia.bind(globalThis)
       : undefined);
-  const scrollToImpl = Object.hasOwn(options, "scrollToImpl")
-    ? options.scrollToImpl
-    : (typeof globalThis.scrollTo === "function"
-      ? globalThis.scrollTo.bind(globalThis)
-      : undefined);
+  const locationImpl = Object.hasOwn(options, "locationImpl")
+    ? options.locationImpl
+    : globalThis.location;
   const reducedMotion = Boolean(
     matchMediaImpl?.("(prefers-reduced-motion: reduce)")?.matches,
   );
   const returnLink = root.querySelector("[data-home-ending-return]");
   let observer = null;
-  let armed = true;
-  let waitingForExit = false;
 
   root.dataset.homeEndingEnhanced = "true";
   returnLink?.addEventListener("animationend", () => {
@@ -27,17 +23,10 @@ export function mountHomeEnding(root, options = {}) {
     }
   });
   returnLink?.addEventListener("click", (event) => {
-    if (observer) {
-      armed = false;
-      waitingForExit = true;
-    }
-    if (typeof scrollToImpl === "function") {
-      event.preventDefault();
-      scrollToImpl({
-        top: 0,
-        behavior: reducedMotion ? "auto" : "smooth",
-      });
-    }
+    if (typeof locationImpl?.reload !== "function") return;
+    event.preventDefault();
+    locationImpl.hash = "#home-top";
+    locationImpl.reload();
   });
 
   if (reducedMotion) {
@@ -51,18 +40,9 @@ export function mountHomeEnding(root, options = {}) {
 
   root.dataset.homeEndingState = "idle";
   observer = new IntersectionObserverImpl((entries) => {
-    const isIntersecting = entries.some((entry) => entry.isIntersecting);
-    if (!isIntersecting) {
-      if (waitingForExit) {
-        waitingForExit = false;
-        armed = true;
-        root.dataset.homeEndingState = "idle";
-      }
-      return;
-    }
-    if (!armed) return;
-    armed = false;
+    if (!entries.some((entry) => entry.isIntersecting)) return;
     root.dataset.homeEndingState = "playing";
+    observer.disconnect();
   });
   observer.observe(root);
   return { observer };

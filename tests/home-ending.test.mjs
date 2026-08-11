@@ -49,14 +49,20 @@ function observerHarness() {
 }
 
 
-test("return link re-arms the train only after a full viewport exit", () => {
+test("return link reloads the homepage at the top after one train journey", () => {
   const { link, root } = endingDom();
   const { FakeIntersectionObserver, instances } = observerHarness();
-  const scrollCalls = [];
+  const location = {
+    hash: "",
+    reloadCalls: 0,
+    reload() {
+      this.reloadCalls += 1;
+    },
+  };
   mountHomeEnding(root, {
     IntersectionObserverImpl: FakeIntersectionObserver,
+    locationImpl: location,
     matchMediaImpl: () => ({ matches: false }),
-    scrollToImpl: (options) => scrollCalls.push(options),
   });
 
   assert.equal(root.dataset.homeEndingEnhanced, "true");
@@ -66,35 +72,32 @@ test("return link re-arms the train only after a full viewport exit", () => {
   assert.equal(root.dataset.homeEndingState, "idle");
   instances[0].trigger(true);
   assert.equal(root.dataset.homeEndingState, "playing");
-  assert.equal(instances[0].disconnected, false);
-  instances[0].trigger(true);
-  assert.equal(root.dataset.homeEndingState, "playing");
+  assert.equal(instances[0].disconnected, true);
 
   link.dispatch("animationend");
   assert.equal(root.dataset.homeEndingState, "complete");
   let prevented = false;
   link.dispatch("click", { preventDefault: () => { prevented = true; } });
   assert.equal(prevented, true);
-  assert.deepEqual(scrollCalls, [{ top: 0, behavior: "smooth" }]);
-  assert.equal(root.dataset.homeEndingState, "complete");
-
-  instances[0].trigger(true);
-  assert.equal(root.dataset.homeEndingState, "complete");
-  instances[0].trigger(false);
-  assert.equal(root.dataset.homeEndingState, "idle");
-  instances[0].trigger(true);
-  assert.equal(root.dataset.homeEndingState, "playing");
+  assert.equal(location.hash, "#home-top");
+  assert.equal(location.reloadCalls, 1);
 });
 
 
-test("reduced motion stays static and returns to top without smoothing", () => {
+test("reduced motion stays static and hard-reloads at the top", () => {
   const { link, root } = endingDom();
   const { FakeIntersectionObserver, instances } = observerHarness();
-  const scrollCalls = [];
+  const location = {
+    hash: "",
+    reloadCalls: 0,
+    reload() {
+      this.reloadCalls += 1;
+    },
+  };
   mountHomeEnding(root, {
     IntersectionObserverImpl: FakeIntersectionObserver,
+    locationImpl: location,
     matchMediaImpl: () => ({ matches: true }),
-    scrollToImpl: (options) => scrollCalls.push(options),
   });
 
   assert.equal(root.dataset.homeEndingState, "reduced");
@@ -102,7 +105,8 @@ test("reduced motion stays static and returns to top without smoothing", () => {
   let prevented = false;
   link.dispatch("click", { preventDefault: () => { prevented = true; } });
   assert.equal(prevented, true);
-  assert.deepEqual(scrollCalls, [{ top: 0, behavior: "auto" }]);
+  assert.equal(location.hash, "#home-top");
+  assert.equal(location.reloadCalls, 1);
 });
 
 
@@ -111,7 +115,6 @@ test("missing IntersectionObserver exposes the completed fallback", () => {
   mountHomeEnding(root, {
     IntersectionObserverImpl: undefined,
     matchMediaImpl: () => ({ matches: false }),
-    scrollToImpl: undefined,
   });
 
   assert.equal(root.dataset.homeEndingEnhanced, "true");
