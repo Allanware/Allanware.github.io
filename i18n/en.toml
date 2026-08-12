@@ -12,6 +12,8 @@ other = "RSS"
 other = "Table of contents"
 [zoomImage]
 other = "Enlarge image: {{ . }}"
+[zoomImageGeneric]
+other = "Enlarge image"
 [notFound]
 other = "Page not found"
 [searchPosts]

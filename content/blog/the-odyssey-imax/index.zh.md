@@ -9,13 +9,13 @@ interactionId = "the-odyssey-imax"
 
 意识到中文板块还没有任何东西，赶紧来记录一下生活（水一篇）。 今天周二，又是穿着工作服去辛苦上班的一天。一天八小时，开车5小时，电影3个小时， 还额外加了一小时的班复习了下奥德赛书的情节。
 
-![工作服](work-shirt.jpeg)
+![](work-shirt.jpeg)
 
-之所以要往返芝加哥，是因为最近的 IMAX 70mm 胶片放映机在 Cinemark Seven Bridges and IMAX 这家电影院。\
+之所以要往返芝加哥，是因为最近的 IMAX 70mm 胶片放映机在 Cinemark Seven Bridges and IMAX 这家电影院。
 
 ![](theater-exterior.jpeg)
 
-![海报](poster.jpeg)
+![](poster.jpeg)
 
 不同于美国电影院放其他电影 （至少十五分钟的一堆电影的预告片），放奥德赛之前只放了沙丘3的预告片以及还有一个工作人员专门介绍了一下这次放映的特殊之处 （我怀疑也是为了让日常迟到的美国观众不至于错过）：
 - 每一秒24帧的胶片就高达一米八，电影将近3小时😂

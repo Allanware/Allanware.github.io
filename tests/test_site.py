@@ -3493,6 +3493,75 @@ Inline prose ![Inline diagram](diagram.svg) continues.
                     r"\.toc-nav a:focus-visible::before\s*\{[^}]*background-color: var\(--text-color-primary\)",
                 )
 
+    def test_markdown_images_separate_alt_text_from_optional_captions(self):
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            content = temporary_root / "content"
+            bundle = content / "blog" / "markdown-image-semantics"
+            bundle.mkdir(parents=True)
+            (bundle / "index.zh.md").write_text(
+                '''+++
+title = "Markdown 图片语义"
+date = 2026-08-11
+draft = false
+interactionId = "markdown-image-semantics"
++++
+
+![](diagram.svg)
+
+![工作服](diagram.svg)
+
+![电影院银幕](diagram.svg "开场前")
+''',
+                encoding="utf-8",
+            )
+            (bundle / "index.en.md").write_text(
+                '''+++
+title = "Markdown image semantics"
+date = 2026-08-11
+draft = false
+interactionId = "markdown-image-semantics"
++++
+
+![](diagram.svg)
+''',
+                encoding="utf-8",
+            )
+            (bundle / "diagram.svg").write_text(
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">'
+                '<rect width="10" height="10"/></svg>',
+                encoding="utf-8",
+            )
+            public = temporary_root / "public"
+            result = run_hugo(
+                public,
+                "https://example.test/",
+                "--contentDir",
+                str(content),
+                "--environment",
+                "production",
+            )
+            self.assertEqual(0, result.returncode, command_output(result))
+
+            article = read_html(
+                public,
+                "zh/p/markdown-image-semantics/index.html",
+            )
+            english_article = read_html(
+                public,
+                "p/markdown-image-semantics/index.html",
+            )
+            self.assertIn('aria-label="放大图片"', article)
+            self.assertIn('aria-label="Enlarge image"', english_article)
+            self.assertIn('aria-label="放大图片：工作服"', article)
+            self.assertIn('aria-label="放大图片：电影院银幕"', article)
+            self.assertIn('alt=""', article)
+            self.assertIn('alt="工作服"', article)
+            self.assertIn('alt="电影院银幕"', article)
+            self.assertNotIn("<figcaption>工作服</figcaption>", article)
+            self.assertIn("<figcaption>开场前</figcaption>", article)
+            self.assertEqual(1, article.count("<figcaption>"))
+
 
 if __name__ == "__main__":
     unittest.main()

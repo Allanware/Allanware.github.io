@@ -13,7 +13,11 @@
     {{ if .Page.Site.Params.imageZoom }}
       {{ $controlKey := printf "%s|%s|%d" .Page.RelPermalink .Destination .Ordinal }}
       {{ $controlId := printf "img-%s" (substr (md5 $controlKey) 0 8) }}
-      <input type="checkbox" id="{{ $controlId }}" class="image-zoom-toggle" aria-label="{{ T "zoomImage" .Text }}">
+      {{ $zoomLabel := T "zoomImageGeneric" }}
+      {{ with .Text }}
+        {{ $zoomLabel = T "zoomImage" . }}
+      {{ end }}
+      <input type="checkbox" id="{{ $controlId }}" class="image-zoom-toggle" aria-label="{{ $zoomLabel }}">
       <label for="{{ $controlId }}" class="image-zoom-label">
         <img src="{{ $src }}" alt="{{ .Text }}" loading="lazy" class="zoomable-image">
       </label>
@@ -23,7 +27,7 @@
     {{ else }}
       <img src="{{ $src }}" alt="{{ .Text }}" loading="lazy">
     {{ end }}
-    {{ with .Text }}<figcaption>{{ . }}</figcaption>{{ end }}
+    {{ with .Title }}<figcaption>{{ . }}</figcaption>{{ end }}
   </figure>
 {{- else -}}
   <img src="{{ $src }}" alt="{{ .Text }}" loading="lazy" class="inline-image">

@@ -12,6 +12,8 @@ other = "RSS"
 other = "目录"
 [zoomImage]
 other = "放大图片：{{ . }}"
+[zoomImageGeneric]
+other = "放大图片"
 [notFound]
 other = "页面未找到"
 [searchPosts]

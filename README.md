@@ -128,9 +128,12 @@ python3 scripts/validate_interaction_ids.py content
 ```
 
 Place shared images and downloads beside the Markdown files and link them with
-bundle-relative paths without a leading slash. Images need meaningful
-alternative text. To specify an authored display width, use the local
-`bundle-image` shortcode.
+bundle-relative paths without a leading slash. Markdown images support three
+forms: `![](image.jpg)` for a decorative image with no caption,
+`![Alternative text](image.jpg)` for a described image with no visible caption,
+and `![Alternative text](image.jpg "Caption")` for a described image with a
+visible caption. Use empty alternative text only when the image is decorative.
+To specify an authored display width, use the local `bundle-image` shortcode.
 
 ## RSS
 
