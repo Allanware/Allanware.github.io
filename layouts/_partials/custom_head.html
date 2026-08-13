@@ -6,3 +6,10 @@
 <link rel="stylesheet" href="{{ $siteCSS.RelPermalink }}" integrity="{{ $siteCSS.Data.Integrity }}">
 {{ $syntaxCSS := resources.Get "css/syntax.css" | minify | fingerprint }}
 <link rel="stylesheet" href="{{ $syntaxCSS.RelPermalink }}" integrity="{{ $syntaxCSS.Data.Integrity }}">
+{{ if .HasShortcode "go-board" }}
+  {{ $goBoardStyles := slice (resources.Get "vendor/besogo/css/board-flat.css") (resources.Get "css/go-board.css") | resources.Concat "css/go-board.css" | minify | fingerprint "sha256" }}
+  <link rel="stylesheet" href="{{ $goBoardStyles.RelPermalink }}" integrity="{{ $goBoardStyles.Data.Integrity }}">
+  {{ $goBoardOptions := dict "targetPath" "js/go-board.js" "format" "iife" "target" "es2018" "minify" true }}
+  {{ $goBoardScript := resources.Get "js/go-board.mjs" | js.Build $goBoardOptions | fingerprint "sha256" }}
+  <script defer src="{{ $goBoardScript.RelPermalink }}" integrity="{{ $goBoardScript.Data.Integrity }}"></script>
+{{ end }}

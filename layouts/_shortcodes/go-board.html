@@ -1,0 +1,140 @@
+{{- $position := .Position -}}
+{{- if not .IsNamedParams -}}
+  {{- errorf "go-board at %s: use named arguments (src, caption, and optional move or path)" $position -}}
+{{- else -}}
+  {{- $allowedParams := dict "src" true "caption" true "move" true "path" true -}}
+  {{- $valid := true -}}
+  {{- range $name, $_ := .Params -}}
+    {{- if not (isset $allowedParams $name) -}}
+      {{- $valid = false -}}
+      {{- errorf "go-board at %s: unknown named argument %q" $position $name -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $src := strings.TrimSpace (printf "%v" (.Get "src")) -}}
+  {{- $caption := strings.TrimSpace (printf "%v" (.Get "caption")) -}}
+  {{- $hasMove := isset .Params "move" -}}
+  {{- $hasPath := isset .Params "path" -}}
+  {{- $move := "0" -}}
+  {{- if $hasMove -}}
+    {{- $move = strings.TrimSpace (printf "%v" (.Get "move")) -}}
+  {{- end -}}
+  {{- $path := "" -}}
+  {{- if $hasPath -}}
+    {{- $path = strings.TrimSpace (printf "%v" (.Get "path")) -}}
+  {{- end -}}
+
+  {{- if eq $src "" -}}
+    {{- $valid = false -}}
+    {{- errorf "go-board at %s: src must be non-empty" $position -}}
+  {{- else if not (strings.HasSuffix (strings.ToLower $src) ".sgf") -}}
+    {{- $valid = false -}}
+    {{- errorf "go-board at %s: src must name a local .sgf resource, got %q" $position $src -}}
+  {{- end -}}
+  {{- if eq $caption "" -}}
+    {{- $valid = false -}}
+    {{- errorf "go-board at %s: caption must be non-empty for %q" $position $src -}}
+  {{- end -}}
+  {{- if and $hasMove $hasPath -}}
+    {{- $valid = false -}}
+    {{- errorf "go-board at %s: move and path are mutually exclusive for %q" $position $src -}}
+  {{- end -}}
+  {{- if and $hasMove (eq (len (findRE `^[0-9]+$` $move)) 0) -}}
+    {{- $valid = false -}}
+    {{- errorf "go-board at %s: move %q must be a non-negative integer" $position $move -}}
+  {{- end -}}
+  {{- if and $hasPath (eq (len (findRE `^(N[0-9]+|B[1-9][0-9]*)+$` $path)) 0) -}}
+    {{- $valid = false -}}
+    {{- errorf "go-board at %s: path %q must be a sequence of N<number> and B<positive-number> tokens" $position $path -}}
+  {{- end -}}
+
+  {{- $resource := .Page.Resources.Get $src -}}
+  {{- if and (ne $src "") (strings.HasSuffix (strings.ToLower $src) ".sgf") (not $resource) -}}
+    {{- $valid = false -}}
+    {{- errorf "go-board at %s: resource %q not found in page bundle %q" $position $src .Page.RelPermalink -}}
+  {{- end -}}
+
+  {{- if and $valid $resource -}}
+    {{- $selectorKind := "move" -}}
+    {{- $selectorValue := $move -}}
+    {{- if $hasPath -}}
+      {{- $selectorKind = "path" -}}
+      {{- $selectorValue = $path -}}
+    {{- end -}}
+    {{- $selector := printf "%s:%s" $selectorKind $selectorValue -}}
+    {{- $figureKey := printf "%s|%s|%s|%d" .Page.Permalink $selector $src .Ordinal -}}
+    {{- $figureId := printf "go-board-%s" (substr (md5 $figureKey) 0 12) -}}
+    {{- $captionId := printf "%s-caption" $figureId -}}
+    {{- $controlsId := printf "%s-controls-label" $figureId -}}
+    {{- $tryControlsId := printf "%s-try-controls" $figureId -}}
+    {{- $tryControlsLabelId := printf "%s-try-controls-label" $figureId -}}
+    {{- $tryColumnId := printf "%s-try-column" $figureId -}}
+    {{- $tryRowId := printf "%s-try-row" $figureId -}}
+    {{- $variationsId := printf "%s-variations" $figureId -}}
+    {{- $variationsLabelId := printf "%s-variations-label" $figureId -}}
+    {{- $noticeId := printf "%s-local-notice" $figureId -}}
+    {{- $moveTemplate := T "goBoardMove" -}}
+    <figure id="{{ $figureId }}" class="go-board" data-go-board
+      data-sgf-url="{{ $resource.RelPermalink }}"
+      data-selector-kind="{{ $selectorKind }}" data-selector-value="{{ $selectorValue }}"
+      data-caption-id="{{ $captionId }}" data-move-template="{{ $moveTemplate }}"
+      data-variation-template="{{ T "goBoardVariation" }}"
+      data-variation-selected-template="{{ T "goBoardVariationSelected" }}"
+      data-column-placeholder="{{ T "goBoardChooseColumn" }}"
+      data-row-placeholder="{{ T "goBoardChooseRow" }}"
+      data-point-required-label="{{ T "goBoardPointRequired" }}"
+      data-point-unavailable-label="{{ T "goBoardPointUnavailable" }}"
+      data-point-played-template="{{ T "goBoardPointPlayed" }}"
+      data-ready-label="{{ T "goBoardReady" }}"
+      data-try-ready-label="{{ T "goBoardTryReady" }}"
+      data-returned-label="{{ T "goBoardReturned" }}"
+      data-fetch-error-label="{{ T "goBoardFetchFailed" }}"
+      data-parse-error-label="{{ T "goBoardParseFailed" }}"
+      data-selector-error-label="{{ T "goBoardSelectorFailed" }}"
+      data-state="loading" aria-busy="true">
+      <div class="go-board__shell">
+        <div class="go-board__host" data-go-board-host role="group"
+          aria-labelledby="{{ $captionId }}" aria-describedby="{{ $noticeId }}"></div>
+        <p class="go-board__status" data-go-board-status role="status" aria-live="polite">{{ T "goBoardLoading" }}</p>
+      </div>
+      <div class="go-board__controls" role="group" aria-labelledby="{{ $controlsId }} {{ $captionId }}">
+        <span id="{{ $controlsId }}" class="visually-hidden">{{ T "goBoardControls" }}</span>
+        <button type="button" data-go-board-previous aria-label="{{ T "goBoardPrevious" }}" disabled>{{ T "goBoardPrevious" }}</button>
+        <output data-go-board-move aria-live="polite">{{ replace $moveTemplate "{move}" $move }}</output>
+        <button type="button" data-go-board-next aria-label="{{ T "goBoardNext" }}" disabled>{{ T "goBoardNext" }}</button>
+        <button type="button" data-go-board-try aria-controls="{{ $tryControlsId }}"
+          aria-expanded="false" disabled>{{ T "goBoardTry" }}</button>
+        <button type="button" data-go-board-return disabled>{{ T "goBoardReturn" }}</button>
+      </div>
+      <div id="{{ $tryControlsId }}" class="go-board__try-controls" data-go-board-try-controls
+        role="group" aria-labelledby="{{ $tryControlsLabelId }} {{ $captionId }}" hidden>
+        <span id="{{ $tryControlsLabelId }}" class="go-board__try-controls-label">{{ T "goBoardTryControls" }}</span>
+        <div class="go-board__try-coordinate">
+          <label for="{{ $tryColumnId }}">{{ T "goBoardColumn" }}</label>
+          <select id="{{ $tryColumnId }}" data-go-board-try-column></select>
+        </div>
+        <div class="go-board__try-coordinate">
+          <label for="{{ $tryRowId }}">{{ T "goBoardRow" }}</label>
+          <select id="{{ $tryRowId }}" data-go-board-try-row></select>
+        </div>
+        <button type="button" data-go-board-play-move>{{ T "goBoardPlayMove" }}</button>
+        <span class="go-board__try-status" data-go-board-try-status role="status" aria-live="polite"></span>
+      </div>
+      <div id="{{ $variationsId }}" class="go-board__variations" data-go-board-variations
+        role="group" aria-labelledby="{{ $variationsLabelId }} {{ $captionId }}" hidden>
+        <span id="{{ $variationsLabelId }}" class="go-board__variations-label">{{ T "goBoardVariations" }}</span>
+        <span data-go-board-variation-buttons></span>
+        <span class="visually-hidden" data-go-board-variation-status role="status" aria-live="polite"></span>
+      </div>
+      <p class="go-board__note" data-go-board-note role="status" aria-live="polite" hidden>
+        <strong>{{ T "goBoardNodeNote" }}:</strong>
+        <span data-go-board-note-text></span>
+      </p>
+      <p id="{{ $noticeId }}" class="go-board__local-notice">{{ T "goBoardLocalOnly" }}</p>
+      <p class="go-board__download"><a href="{{ $resource.RelPermalink }}" download>{{ T "goBoardDownload" }}</a></p>
+      <noscript>
+        <p>{{ T "goBoardRequiresJavaScript" }} <a href="{{ $resource.RelPermalink }}" download>{{ T "goBoardDownload" }}</a></p>
+      </noscript>
+      <figcaption id="{{ $captionId }}">{{ $caption }}</figcaption>
+    </figure>
+  {{- end -}}
+{{- end -}}

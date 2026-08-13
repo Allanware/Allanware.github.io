@@ -92,3 +92,61 @@ other = "Caution"
 other = "there goes my train of thought..."
 [homeEndingReturn]
 other = "↑ Catch the next one"
+[goBoardControls]
+other = "Go board controls"
+[goBoardPrevious]
+other = "Previous"
+[goBoardNext]
+other = "Next"
+[goBoardVariations]
+other = "Choose a variation"
+[goBoardVariation]
+other = "Variation {label}"
+[goBoardVariationSelected]
+other = "Variation {label} selected"
+[goBoardMove]
+other = "Move {move}"
+[goBoardTry]
+other = "Try your own line"
+[goBoardTryControls]
+other = "Choose a point to play"
+[goBoardColumn]
+other = "Column"
+[goBoardRow]
+other = "Row"
+[goBoardChooseColumn]
+other = "Choose column"
+[goBoardChooseRow]
+other = "Choose row"
+[goBoardPlayMove]
+other = "Play move"
+[goBoardPointRequired]
+other = "Choose a column and row."
+[goBoardPointUnavailable]
+other = "That point cannot be played."
+[goBoardPointPlayed]
+other = "Played {coordinate}."
+[goBoardReturn]
+other = "Return to position"
+[goBoardNodeNote]
+other = "Current-position note"
+[goBoardLocalOnly]
+other = "Your variations stay in this browser and are discarded when you return."
+[goBoardDownload]
+other = "Download SGF"
+[goBoardLoading]
+other = "Loading Go board"
+[goBoardReady]
+other = "Go board ready"
+[goBoardTryReady]
+other = "Try mode is on; your variations stay in this browser."
+[goBoardReturned]
+other = "Returned to the authored position."
+[goBoardFetchFailed]
+other = "The Go record could not be loaded."
+[goBoardParseFailed]
+other = "The Go record could not be read."
+[goBoardSelectorFailed]
+other = "The requested Go position is unavailable."
+[goBoardRequiresJavaScript]
+other = "Enable JavaScript to use the interactive board."

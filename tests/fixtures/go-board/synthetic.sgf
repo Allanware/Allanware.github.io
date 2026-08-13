@@ -1,0 +1,8 @@
+(;GM[1]FF[4]CA[UTF-8]SZ[5]C[Root <strong>unsafe</strong> comment]
+AB[bc][cb][cd][bb]AW[cc]AE[bb]
+CR[aa]TR[ab]SQ[ac]MA[ad]LB[ae:A]SL[ba]
+;B[dc]C[Black captures the setup stone]
+;W[]C[White passes]
+;C[Comment-only branch point]
+(;B[ee]C[Main branch];W[dd])
+(;B[ed]C[Side branch];W[da]))

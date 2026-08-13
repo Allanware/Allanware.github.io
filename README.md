@@ -135,6 +135,60 @@ and `![Alternative text](image.jpg "Caption")` for a described image with a
 visible caption. Use empty alternative text only when the image is decorative.
 To specify an authored display width, use the local `bundle-image` shortcode.
 
+## Interactive Go boards
+
+Use Sabaki to add variations, SGF node comments, and standard board marks. Save
+the `.sgf` file beside `index.en.md` and `index.zh.md` in the post's leaf
+bundle. Paired translations share the same SGF asset; do not duplicate it.
+
+Embed a position with the local shortcode:
+
+```go-html-template
+{{< go-board src="game.sgf" move="64" caption="Position after move 64." >}}
+```
+
+`src` and `caption` are required. The source must be a bundle-relative `.sgf`
+file, and the caption must not be empty. With no selector, the board defaults to
+move 0. The beginner-friendly `move` selector is a semantic mainline move count
+and skips non-move nodes. An exact `path` starts at the authored first SGF node.
+`N` advances through that many first-child node transitions and counts all
+nodes, not moves; `B` chooses the 1-based child at the current node. `N0` keeps
+the authored root, including its move if the root itself contains one. `move`
+and `path` are mutually exclusive.
+
+For example, this selects the second continuation after move 64 in the bundled
+review record:
+
+```go-html-template
+{{< go-board src="2026-7-26.sgf" path="N64B2" caption="Second continuation after move 64." >}}
+```
+
+Three useful patterns cover most posts:
+
+- To compare branches, create variations in Sabaki. The viewer adds contextual
+  A/B buttons and matching board labels automatically.
+- To discuss one point, use the standard `CR`, `TR`, `SQ`, `MA`, `LB`, and `SL`
+  marks for circles, triangles, squares, crosses, labels, and selections.
+- To show a sequence, record it as a branch so readers can step through it.
+
+Supported SGF properties are moves (`B`/`W`), setup stones and removals
+(`AB`/`AW`/`AE`), those standard marks, and `C` node comments. SGF `C` comments
+are rendered as plain text; Markdown is not formatted there. Put the main
+translated explanation in the Markdown post. Because translations share one
+record, SGF notes should be language-neutral, bilingual, or omitted.
+
+The viewer does not display Sabaki arrows and lines or custom engine values
+such as `SBKV` and `SBKS`. Readers get Previous and Next, contextual A/B
+variation buttons, the current node note, and Try and Return. Try is local and
+ephemeral, with no persistence; Return restores the published position.
+
+The board viewer itself makes no third-party requests. Existing Giscus remains
+the post-level comment system. Durable move-level multi-user discussion is
+deferred to a separate app or backend.
+
+The implementation uses a [pinned, trimmed BesoGo runtime](assets/vendor/besogo/UPSTREAM.md)
+under its [MIT license](assets/vendor/besogo/LICENSE).
+
 ## RSS
 
 The site publishes one feed per language:
