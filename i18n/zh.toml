@@ -129,7 +129,7 @@ other = "已在 {coordinate} 落子。"
 [goBoardReturn]
 other = "返回指定局面"
 [goBoardNodeNote]
-other = "当前节点注释"
+other = "当前局面注释"
 [goBoardLocalOnly]
 other = "试走变化只保存在当前浏览器中；返回时将被清除。"
 [goBoardDownload]

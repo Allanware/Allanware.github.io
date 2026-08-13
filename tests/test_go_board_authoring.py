@@ -14,6 +14,8 @@ from scripts.validate_interaction_ids import read_front_matter
 ROOT = Path(__file__).resolve().parents[1]
 BUNDLE = ROOT / "content/blog/go-game-review-2026-07-26"
 PAGE = BUNDLE / "index.en.md"
+ZH_PAGE = BUNDLE / "index.zh.md"
+HAN_PATTERN = re.compile(r"[一-鿿]")
 SGF = BUNDLE / "2026-7-26.sgf"
 PRO_SGF = BUNDLE / "2026-7-26_pro.sgf"
 EXPECTED_SGF_SHA256 = (
@@ -104,6 +106,33 @@ class GoGameReviewBundleTests(unittest.TestCase):
         for board in boards:
             with self.subTest(board=board):
                 assert_valid_local_board(self, board, BUNDLE)
+
+    def test_translation_shares_identity_and_mirrors_the_english_boards(self):
+        self.assertTrue(ZH_PAGE.is_file(), f"missing Chinese page at {ZH_PAGE}")
+        english_front_matter = read_front_matter(PAGE)
+        chinese_front_matter = read_front_matter(ZH_PAGE)
+        self.assertEqual(
+            english_front_matter.get("interactionId"),
+            chinese_front_matter.get("interactionId"),
+        )
+        self.assertEqual(
+            english_front_matter.get("draft"),
+            chinese_front_matter.get("draft"),
+        )
+        self.assertRegex(str(chinese_front_matter.get("title", "")), HAN_PATTERN)
+
+        english_boards = go_board_shortcodes(PAGE.read_text(encoding="utf-8"))
+        chinese_boards = go_board_shortcodes(ZH_PAGE.read_text(encoding="utf-8"))
+        self.assertEqual(
+            [(board.get("src"), board.get("move")) for board in english_boards],
+            [(board.get("src"), board.get("move")) for board in chinese_boards],
+        )
+        for board in chinese_boards:
+            with self.subTest(board=board):
+                assert_valid_local_board(self, board, BUNDLE)
+                caption = board.get("caption", "")
+                self.assertRegex(caption, HAN_PATTERN)
+                self.assertNotIn("position after move", caption)
 
     def test_page_renders_its_local_boards_with_drafts_enabled(self):
         boards = go_board_shortcodes(PAGE.read_text(encoding="utf-8"))

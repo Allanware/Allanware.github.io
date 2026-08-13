@@ -505,7 +505,7 @@ class GoBoardGeneratedSiteTests(unittest.TestCase):
                         "该位置无法落子。",
                         "已在 {coordinate} 落子。",
                         "返回指定局面",
-                        "当前节点注释",
+                        "当前局面注释",
                         "试走变化只保存在当前浏览器中",
                         "下载 SGF 棋谱",
                         "请启用 JavaScript 以使用交互式棋盘",
