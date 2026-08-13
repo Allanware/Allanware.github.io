@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
+import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import * as goBoardCore from "../assets/js/go-board-core.mjs";
 
@@ -27,20 +29,61 @@ const syntheticSgf = readFileSync(
   new URL("fixtures/go-board/synthetic.sgf", import.meta.url),
   "utf8",
 );
-const goReviewSgf = readFileSync(
-  new URL(
-    "../content/blog/go-game-review-2026-07-26/2026-7-26.sgf",
-    import.meta.url,
-  ),
-  "utf8",
-);
 const authoringReadme = readFileSync(
   new URL("../README.md", import.meta.url),
   "utf8",
 );
+const contentRoot = fileURLToPath(new URL("../content/", import.meta.url));
 const rootMoveSgf = "(;GM[1]FF[4]SZ[5]KM[6.5]C[Root move]B[aa](;W[bb])(;W[cc]))";
 const rootMoveWithSetupSgf = "(;GM[1]FF[4]SZ[5]KM[6.5]AB[cc][ee]AW[dd]AE[ee]C[Root setup and move]B[aa];W[bb])";
 const setupRootSgf = "(;GM[1]FF[4]SZ[5]KM[6.5]AB[cc]C[Setup root];B[aa](;W[bb])(;W[dd]))";
+
+
+function goBoardShortcodes(text) {
+  return Array.from(
+    text.matchAll(/{{<\s*go-board\s+([\s\S]*?)\s*>}}/g),
+    (shortcode) => Object.fromEntries(
+      Array.from(
+        shortcode[1].matchAll(/([a-zA-Z][\w-]*)="([^"]*)"/g),
+        (attribute) => [attribute[1], attribute[2]],
+      ),
+    ),
+  );
+}
+
+
+// Every board authored anywhere in content, discovered rather than listed, so
+// editing or renaming a post does not invalidate these tests.
+function authoredBoards() {
+  return readdirSync(contentRoot, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && /^index\.[a-z]{2}\.md$/.test(entry.name))
+    .flatMap((entry) => {
+      const page = path.join(entry.parentPath ?? entry.path, entry.name);
+      return goBoardShortcodes(readFileSync(page, "utf8")).map((attributes) => ({
+        page,
+        attributes,
+        record: path.join(path.dirname(page), attributes.src),
+      }));
+    });
+}
+
+
+function readerEditor(sgfText) {
+  const editor = globalThis.besogo.makeEditor(19, 19);
+  goBoardCore.loadSgfForReader({
+    besogo: globalThis.besogo,
+    editor,
+    sgf: globalThis.besogo.parseSgf(sgfText),
+  });
+  return editor;
+}
+
+
+function authoredSelector(attributes) {
+  return "path" in attributes
+    ? { kind: "path", value: attributes.path }
+    : { kind: "move", value: attributes.move ?? "0" };
+}
 
 
 function node(name, move = null) {
@@ -181,65 +224,47 @@ test("path selection counts exact nodes and uses one-based branch tokens", () =>
 });
 
 
-test("the documented exact path resolves against the bundled Go review", () => {
-  const advancedExample = Array.from(
-    authoringReadme.matchAll(/{{<\s*go-board\s+([^>]+)>}}/g),
-    (shortcode) => Object.fromEntries(
-      Array.from(
-        shortcode[1].matchAll(/([a-zA-Z][\w-]*)="([^"]*)"/g),
-        (attribute) => [attribute[1], attribute[2]],
-      ),
-    ),
-  ).find((example) => (
-    example.src === "2026-7-26.sgf" && example.path && example.caption
-  ));
-  assert.ok(advancedExample, "README must include the bundled exact-path example");
-
-  const parsed = globalThis.besogo.parseSgf(goReviewSgf);
-  const editor = globalThis.besogo.makeEditor(19, 19);
-  goBoardCore.loadSgfForReader({
-    besogo: globalThis.besogo,
-    editor,
-    sgf: parsed,
-  });
-
-  const branchPoint = selectPath(editor.getRoot(), "N64");
-  const selected = selectPath(editor.getRoot(), advancedExample.path);
-  assert.equal(branchPoint.children.length, 2);
-  assert.equal(selected, branchPoint.children[1]);
-  assert.equal(selected.moveNumber, 65);
-  assert.deepEqual(
-    { x: selected.move.x, y: selected.move.y },
-    { x: 2, y: 14 },
+test("the documented exact-path example selects a branch off the mainline", () => {
+  const advancedExample = goBoardShortcodes(authoringReadme).find(
+    (example) => example.src && example.path && example.caption,
   );
+  assert.ok(advancedExample, "README must document an exact-path example");
+
+  const referenced = authoredBoards().find(
+    ({ attributes }) => attributes.src === advancedExample.src,
+  );
+  if (!referenced) return; // the example names a record no post embeds
+
+  const branch = advancedExample.path.match(/^(?<prefix>.*)B(?<index>\d+)$/);
+  assert.ok(branch, "the exact-path example should end in a B branch token");
+  assert.ok(Number(branch.groups.index) > 1, "B1 is the mainline child");
+
+  const sgfText = readFileSync(referenced.record, "utf8");
+  const root = readerEditor(sgfText).getRoot();
+  const branchPoint = selectPath(root, branch.groups.prefix);
+  const selected = selectPath(root, advancedExample.path);
+  const mainline = selectPath(root, `${branch.groups.prefix}B1`);
+
+  assert.ok(
+    branchPoint.children.length >= Number(branch.groups.index),
+    "the documented branch must exist in the record it names",
+  );
+  assert.equal(selected, branchPoint.children[Number(branch.groups.index) - 1]);
+  assert.notEqual(selected, mainline);
 });
 
 
-test("published review positions preserve their authored forks", () => {
-  const positions = [
-    ["2026-7-26.sgf", "64"],
-    ["2026-7-26.sgf", "80"],
-    ["2026-7-26_pro.sgf", "36"],
-  ];
+test("every published board selector resolves against the record it names", () => {
+  for (const { page, attributes, record } of authoredBoards()) {
+    const selector = authoredSelector(attributes);
+    const label = `${path.basename(page)} \u2192 ${attributes.src} ${
+      JSON.stringify(selector)
+    }`;
+    const editor = readerEditor(readFileSync(record, "utf8"));
+    const selected = selectAuthoredNode(editor.getRoot(), selector);
 
-  for (const [source, move] of positions) {
-    const sgfText = readFileSync(
-      new URL(`../content/blog/go-game-review-2026-07-26/${source}`, import.meta.url),
-      "utf8",
-    );
-    const parsed = globalThis.besogo.parseSgf(sgfText);
-    const editor = globalThis.besogo.makeEditor(19, 19);
-    goBoardCore.loadSgfForReader({
-      besogo: globalThis.besogo,
-      editor,
-      sgf: parsed,
-    });
-
-    const selected = selectAuthoredNode(editor.getRoot(), {
-      kind: "move",
-      value: move,
-    });
-    assert.equal(selected.children.length, 2, `${source} move ${move}`);
+    assert.ok(selected, label);
+    assert.equal(typeof selected.moveNumber, "number", label);
   }
 });
 

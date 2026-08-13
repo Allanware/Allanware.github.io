@@ -1,6 +1,7 @@
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 from tempfile import TemporaryDirectory
 import unittest
 
@@ -47,7 +48,7 @@ class AuthoringWorkflowTests(unittest.TestCase):
                     "blog",
                     "content/blog/my-post/index.en.md",
                 ],
-                ["python3", "scripts/new_translation.py", "my-post", "en", "zh"],
+                [sys.executable, "scripts/new_translation.py", "my-post", "en", "zh"],
                 [
                     "hugo",
                     "new",
@@ -93,7 +94,7 @@ class AuthoringWorkflowTests(unittest.TestCase):
             sentinel = chinese_path.read_bytes() + "\n中文译文。\n".encode("utf-8")
             chinese_path.write_bytes(sentinel)
             refusal = subprocess.run(
-                ["python3", "scripts/new_translation.py", "my-post", "en", "zh"],
+                [sys.executable, "scripts/new_translation.py", "my-post", "en", "zh"],
                 cwd=site,
                 check=False,
                 capture_output=True,

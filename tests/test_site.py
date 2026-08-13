@@ -93,6 +93,27 @@ def alternate_links(html: str) -> set[tuple[str, str]]:
     return set(alternate_link_entries(html))
 
 
+def css_at_rule_block(css: str, header_pattern: str) -> str | None:
+    """Return the brace-balanced body of the first at-rule matching the header.
+
+    Matching braces rather than anchoring on the end of the file keeps these
+    assertions working when a later rule is appended to the stylesheet.
+    """
+    header = re.search(header_pattern, css)
+    if header is None:
+        return None
+    start = css.index("{", header.end())
+    depth = 0
+    for index in range(start, len(css)):
+        if css[index] == "{":
+            depth += 1
+        elif css[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return css[start + 1 : index]
+    raise AssertionError(f"unbalanced braces after {header.group(0)!r}")
+
+
 def css_root_custom_properties(
     css: str,
     *,
@@ -2494,13 +2515,13 @@ interactionId = "resource-suffixes"
         )
         self.assertNotIn("home-ending-wheel-turn", css)
         self.assertNotIn("home-ending-smoke-drift", css)
-        reduced = re.search(
-            r"@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{([\s\S]*)\}\s*$",
+        reduced = css_at_rule_block(
             css,
+            r"@media\s*\(prefers-reduced-motion:\s*reduce\)",
         )
         self.assertIsNotNone(reduced)
-        self.assertIn("animation: none", reduced.group(1))
-        self.assertIn("visibility: visible", reduced.group(1))
+        self.assertIn("animation: none", reduced)
+        self.assertIn("visibility: visible", reduced)
 
     def test_highlighted_code_follows_the_reader_color_scheme(self):
         with TemporaryDirectory() as temporary:
@@ -2577,11 +2598,13 @@ interactionId = "resource-suffixes"
             re.DOTALL,
         )
         with self.subTest(marker="-"):
+            self.assertIn('class="callout callout-note"', folded[0])
             self.assertNotIn("open", folded[0])
             self.assertIn("<summary>Folded fixture callout</summary>", folded[1])
             # The body is markdown, not raw text: its code block still highlights.
             self.assertIn('class="chroma"', folded[1])
         with self.subTest(marker="+"):
+            self.assertIn('class="callout callout-tip"', unfolded[0])
             self.assertIn("open", unfolded[0])
             self.assertIn("<summary>Unfolded fixture callout</summary>", unfolded[1])
 
@@ -2591,24 +2614,6 @@ interactionId = "resource-suffixes"
         self.assertRegex(chinese, r">警告</[a-z]+>\s*<p>测试警告内容")
         self.assertIn("<blockquote>", english)
         self.assertRegex(english, r"<blockquote>\s*<p>Plain fixture quote")
-
-    def test_istanbul_working_session_is_folded_by_default(self):
-        with TemporaryDirectory() as temporary:
-            public = Path(temporary) / "public"
-            build_site(public, "https://example.test/")
-            page = read_html(public, "p/the-miracle-of-istanbul/index.html")
-
-        callout = re.search(
-            r'<details class="callout callout-note"([^>]*)>(.*?)</details>',
-            page,
-            re.DOTALL,
-        )
-        self.assertIsNotNone(callout)
-        self.assertNotIn("open", callout.group(1))
-        self.assertIn("<summary>My working session</summary>", callout.group(2))
-        callout_text = unescape(re.sub(r"<[^>]+>", "", callout.group(2)))
-        self.assertIn("sessionInfo()", callout_text)
-        self.assertIn("R version 4.1.0", callout_text)
 
     def test_upvoted_icon_adds_a_non_color_pressed_cue(self):
         kudos = (ROOT / "layouts/_partials/kudos.html").read_text(

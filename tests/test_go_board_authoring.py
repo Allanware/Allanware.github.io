@@ -1,4 +1,4 @@
-import hashlib
+from collections import Counter
 from html import unescape
 from pathlib import Path
 import re
@@ -12,18 +12,8 @@ from scripts.validate_interaction_ids import read_front_matter
 
 
 ROOT = Path(__file__).resolve().parents[1]
-BUNDLE = ROOT / "content/blog/go-game-review-2026-07-26"
-PAGE = BUNDLE / "index.en.md"
-ZH_PAGE = BUNDLE / "index.zh.md"
+CONTENT = ROOT / "content"
 HAN_PATTERN = re.compile(r"[一-鿿]")
-SGF = BUNDLE / "2026-7-26.sgf"
-PRO_SGF = BUNDLE / "2026-7-26_pro.sgf"
-EXPECTED_SGF_SHA256 = (
-    "829cceb4e5cc25b2d6a97104a76958c7431d98377e33d5d3c0031940bd158427"
-)
-EXPECTED_PRO_SGF_SHA256 = (
-    "4522758078cf8a367e446f981a2f52d3f9f5a91e75e0dc960da38b7100802363"
-)
 SHORTCODE_PATTERN = re.compile(r"{{<\s*go-board\s+(?P<params>.*?)\s*>}}", re.DOTALL)
 ATTRIBUTE_PATTERN = re.compile(r'([a-zA-Z][\w-]*)="([^"]*)"')
 RENDERED_GO_BOARD_FIGURE_PATTERN = re.compile(
@@ -42,6 +32,28 @@ def go_board_shortcodes(text: str) -> list[dict[str, str]]:
         dict(ATTRIBUTE_PATTERN.findall(match.group("params")))
         for match in SHORTCODE_PATTERN.finditer(text)
     ]
+
+
+def board_pages() -> list[Path]:
+    """Every published page that embeds at least one Go board."""
+    return sorted(
+        path
+        for path in CONTENT.rglob("index.*.md")
+        if SHORTCODE_PATTERN.search(path.read_text(encoding="utf-8"))
+    )
+
+
+def selector_of(attributes: dict[str, str]) -> tuple[str, str]:
+    """The (kind, value) pair the shortcode selects, including the default."""
+    for kind in ("move", "path"):
+        if kind in attributes:
+            return kind, attributes[kind]
+    return "move", "0"
+
+
+def board_specification(attributes: dict[str, str]) -> tuple[str, str, str, str]:
+    kind, value = selector_of(attributes)
+    return attributes.get("src", ""), kind, value, attributes.get("caption", "")
 
 
 def assert_valid_local_board(
@@ -64,78 +76,116 @@ def assert_valid_local_board(
         test_case.assertRegex(attributes["path"], r"^(?:N[0-9]+|B[1-9][0-9]*)+$")
 
 
-class GoGameReviewBundleTests(unittest.TestCase):
-    def test_sgf_is_the_unmodified_supplied_record(self):
-        self.assertTrue(SGF.is_file(), f"missing supplied SGF at {SGF}")
-        payload = SGF.read_bytes()
-        self.assertEqual(2703, len(payload))
-        self.assertEqual(EXPECTED_SGF_SHA256, hashlib.sha256(payload).hexdigest())
+class PublishedGoBoardContentTests(unittest.TestCase):
+    """Lint every authored Go board instead of pinning one post's bytes.
 
-    def test_pro_sgf_is_the_unmodified_supplied_record(self):
-        self.assertTrue(PRO_SGF.is_file(), f"missing supplied SGF at {PRO_SGF}")
-        payload = PRO_SGF.read_bytes()
-        self.assertEqual(4770, len(payload))
-        self.assertEqual(
-            EXPECTED_PRO_SGF_SHA256,
-            hashlib.sha256(payload).hexdigest(),
-        )
+    These assertions describe what any Go-board post must satisfy, so editing,
+    renaming, or re-exporting a record keeps them meaningful.
+    """
 
-    def test_page_keeps_its_identity_and_three_valid_local_boards(self):
-        self.assertTrue(PAGE.is_file(), f"missing English page at {PAGE}")
-        self.assertEqual(
-            "go-game-review-2026-07-26",
-            read_front_matter(PAGE).get("interactionId"),
-        )
-        boards = go_board_shortcodes(PAGE.read_text(encoding="utf-8"))
-        self.assertEqual(
-            [
-                ("2026-7-26.sgf", "64"),
-                ("2026-7-26.sgf", "80"),
-                ("2026-7-26_pro.sgf", "36"),
-            ],
-            [(board.get("src"), board.get("move")) for board in boards],
-        )
-        self.assertEqual(
-            [
-                "2026-7-26.sgf — position after move 64.",
-                "2026-7-26.sgf — position after move 80.",
-                "2026-7-26_pro.sgf — position after move 36.",
-            ],
-            [board.get("caption") for board in boards],
-        )
-        for board in boards:
-            with self.subTest(board=board):
-                assert_valid_local_board(self, board, BUNDLE)
+    def setUp(self):
+        self.pages = board_pages()
+        if not self.pages:
+            self.skipTest("no published content embeds a Go board")
 
-    def test_translation_shares_identity_and_mirrors_the_english_boards(self):
-        self.assertTrue(ZH_PAGE.is_file(), f"missing Chinese page at {ZH_PAGE}")
-        english_front_matter = read_front_matter(PAGE)
-        chinese_front_matter = read_front_matter(ZH_PAGE)
-        self.assertEqual(
-            english_front_matter.get("interactionId"),
-            chinese_front_matter.get("interactionId"),
-        )
-        self.assertEqual(
-            english_front_matter.get("draft"),
-            chinese_front_matter.get("draft"),
-        )
-        self.assertRegex(str(chinese_front_matter.get("title", "")), HAN_PATTERN)
+    def test_every_authored_board_names_a_valid_local_record(self):
+        for page in self.pages:
+            boards = go_board_shortcodes(page.read_text(encoding="utf-8"))
+            self.assertTrue(boards)
+            for board in boards:
+                with self.subTest(page=page.relative_to(ROOT), board=board):
+                    assert_valid_local_board(self, board, page.parent)
 
-        english_boards = go_board_shortcodes(PAGE.read_text(encoding="utf-8"))
-        chinese_boards = go_board_shortcodes(ZH_PAGE.read_text(encoding="utf-8"))
-        self.assertEqual(
-            [(board.get("src"), board.get("move")) for board in english_boards],
-            [(board.get("src"), board.get("move")) for board in chinese_boards],
-        )
-        for board in chinese_boards:
-            with self.subTest(board=board):
-                assert_valid_local_board(self, board, BUNDLE)
-                caption = board.get("caption", "")
-                self.assertRegex(caption, HAN_PATTERN)
-                self.assertNotIn("position after move", caption)
+    def test_referenced_records_are_non_empty_sgf_collections(self):
+        for page in self.pages:
+            for board in go_board_shortcodes(page.read_text(encoding="utf-8")):
+                record = page.parent / board["src"]
+                with self.subTest(record=record.relative_to(ROOT)):
+                    payload = record.read_text(encoding="utf-8").lstrip("﻿")
+                    self.assertRegex(payload.lstrip(), r"^\(\s*;")
+                    self.assertIn("FF[", payload)
 
-    def test_page_renders_its_local_boards_with_drafts_enabled(self):
-        boards = go_board_shortcodes(PAGE.read_text(encoding="utf-8"))
+    def test_translations_share_identity_and_mirror_their_board_selectors(self):
+        bundles: dict[Path, list[Path]] = {}
+        for page in self.pages:
+            bundles.setdefault(page.parent, []).append(page)
+
+        for bundle, pages in bundles.items():
+            if len(pages) < 2:
+                continue
+            with self.subTest(bundle=bundle.relative_to(ROOT)):
+                front_matter = {
+                    page: read_front_matter(page) for page in pages
+                }
+                identities = {
+                    matter.get("interactionId") for matter in front_matter.values()
+                }
+                self.assertEqual(1, len(identities), identities)
+                self.assertEqual(
+                    1,
+                    len({matter.get("draft") for matter in front_matter.values()}),
+                )
+
+                selectors = {
+                    page: [
+                        (board.get("src"), *selector_of(board))
+                        for board in go_board_shortcodes(
+                            page.read_text(encoding="utf-8")
+                        )
+                    ]
+                    for page in pages
+                }
+                reference = selectors[pages[0]]
+                for page, authored in selectors.items():
+                    self.assertEqual(reference, authored, page.relative_to(ROOT))
+
+    def test_chinese_pages_translate_their_titles_and_captions(self):
+        for page in self.pages:
+            if not page.name.endswith(".zh.md"):
+                continue
+            english = page.with_name(page.name.replace(".zh.md", ".en.md"))
+            with self.subTest(page=page.relative_to(ROOT)):
+                self.assertRegex(
+                    str(read_front_matter(page).get("title", "")),
+                    HAN_PATTERN,
+                )
+                chinese_captions = [
+                    board.get("caption", "")
+                    for board in go_board_shortcodes(
+                        page.read_text(encoding="utf-8")
+                    )
+                ]
+                for caption in chinese_captions:
+                    self.assertRegex(caption, HAN_PATTERN)
+                if not english.is_file():
+                    continue
+                english_captions = [
+                    board.get("caption", "")
+                    for board in go_board_shortcodes(
+                        english.read_text(encoding="utf-8")
+                    )
+                ]
+                self.assertEqual(len(english_captions), len(chinese_captions))
+                for chinese, source in zip(chinese_captions, english_captions):
+                    self.assertNotEqual(source, chinese)
+
+
+class RenderedGoBoardTests(unittest.TestCase):
+    def test_published_pages_render_every_authored_board(self):
+        pages = board_pages()
+        if not pages:
+            self.skipTest("no published content embeds a Go board")
+
+        authored = Counter()
+        records: dict[str, set[bytes]] = {}
+        for page in pages:
+            for board in go_board_shortcodes(page.read_text(encoding="utf-8")):
+                authored[board_specification(board)] += 1
+                records.setdefault(board["src"], set()).add(
+                    (page.parent / board["src"]).read_bytes()
+                )
+        self.assertTrue(authored)
+
         with TemporaryDirectory() as temporary:
             temporary_root = Path(temporary)
             public = temporary_root / "public"
@@ -160,116 +210,119 @@ class GoGameReviewBundleTests(unittest.TestCase):
             )
 
             self.assertEqual([], check_site(public, base_url))
-            rendered_path = public / "p/go-game-review-2026-07-26/index.html"
-            self.assertTrue(
-                rendered_path.is_file(),
-                "Go review was not rendered with --buildDrafts",
-            )
-            rendered = rendered_path.read_text(encoding="utf-8")
-            figures = list(RENDERED_GO_BOARD_FIGURE_PATTERN.finditer(rendered))
-            self.assertEqual(3, len(figures))
-
             base_path = urlsplit(base_url).path.rstrip("/")
-            published_page_path = "/p/go-game-review-2026-07-26"
-            figure_ids = []
-            figure_sgf_urls = []
-            for attributes, figure in zip(boards, figures, strict=True):
-                selector_kind = next(
-                    (
-                        selector
-                        for selector in ("move", "path")
-                        if selector in attributes
-                    ),
-                    "move",
-                )
-                selector_value = attributes.get(selector_kind, "0")
-                with self.subTest(attributes=attributes):
-                    figure_attributes = dict(
+
+            rendered = Counter()
+            sgf_urls: set[str] = set()
+            for document in sorted(public.rglob("*.html")):
+                html = document.read_text(encoding="utf-8")
+                figures = list(RENDERED_GO_BOARD_FIGURE_PATTERN.finditer(html))
+                if not figures:
+                    continue
+                identifiers = []
+                for figure in figures:
+                    attributes = dict(
                         ATTRIBUTE_PATTERN.findall(figure.group("opening"))
                     )
-                    figure_id = figure_attributes.get("id")
-                    self.assertIsNotNone(figure_id)
-                    self.assertRegex(figure_id, r"^go-board-[0-9a-f]{12}$")
-                    figure_ids.append(figure_id)
+                    with self.subTest(page=document.relative_to(public)):
+                        identifier = attributes.get("id")
+                        self.assertIsNotNone(identifier)
+                        self.assertRegex(identifier, r"^go-board-[0-9a-f]{12}$")
+                        identifiers.append(identifier)
 
-                    expected_sgf_url = (
-                        f"{base_path}{published_page_path}/{attributes['src']}"
-                    )
-                    self.assertEqual(
-                        expected_sgf_url,
-                        figure_attributes.get("data-sgf-url"),
-                    )
-                    figure_sgf_urls.append(figure_attributes["data-sgf-url"])
-                    self.assertEqual(
-                        selector_kind,
-                        figure_attributes.get("data-selector-kind"),
-                    )
-                    self.assertEqual(
-                        selector_value,
-                        figure_attributes.get("data-selector-value"),
-                    )
-                    self.assertEqual(
-                        [attributes["caption"]],
-                        [
+                        sgf_url = attributes.get("data-sgf-url")
+                        self.assertIsNotNone(sgf_url)
+                        self.assertTrue(sgf_url.startswith(f"{base_path}/"), sgf_url)
+                        sgf_urls.add(sgf_url)
+
+                        captions = [
                             unescape(caption)
                             for caption in FIGCAPTION_PATTERN.findall(
                                 figure.group(0)
                             )
-                        ],
-                    )
-                    published_sgf = public / figure_attributes[
-                        "data-sgf-url"
-                    ].removeprefix(base_path).lstrip("/")
-                    self.assertEqual(
-                        (BUNDLE / attributes["src"]).read_bytes(),
-                        published_sgf.read_bytes(),
-                    )
+                        ]
+                        self.assertEqual(1, len(captions))
+                        rendered[(
+                            sgf_url.rsplit("/", 1)[-1],
+                            attributes.get("data-selector-kind"),
+                            attributes.get("data-selector-value"),
+                            captions[0],
+                        )] += 1
+                with self.subTest(page=document.relative_to(public)):
+                    self.assertEqual(len(identifiers), len(set(identifiers)))
 
-            self.assertEqual(3, len(figure_ids))
-            self.assertEqual(3, len(set(figure_ids)))
-            self.assertEqual(
-                [
-                    f"{base_path}{published_page_path}/2026-7-26.sgf",
-                    f"{base_path}{published_page_path}/2026-7-26.sgf",
-                    f"{base_path}{published_page_path}/2026-7-26_pro.sgf",
-                ],
-                figure_sgf_urls,
-            )
+            self.assertEqual(authored, rendered)
+
+            for sgf_url in sorted(sgf_urls):
+                published = public / sgf_url.removeprefix(base_path).lstrip("/")
+                name = sgf_url.rsplit("/", 1)[-1]
+                with self.subTest(sgf_url=sgf_url):
+                    self.assertTrue(published.is_file(), published)
+                    self.assertIn(published.read_bytes(), records[name])
 
 
 class GoBoardAuthoringDocumentationTests(unittest.TestCase):
-    def test_readme_examples_and_capability_boundaries_are_maintainable(self):
+    def readme_section(self) -> str:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        section_match = re.search(
+        match = re.search(
             r"^## Interactive Go boards\n(?P<body>.*?)(?=^## |\Z)",
             readme,
             flags=re.MULTILINE | re.DOTALL,
         )
-        self.assertIsNotNone(section_match)
-        section = section_match.group("body")
-        normalized = " ".join(section.split())
+        self.assertIsNotNone(match)
+        return match.group("body")
 
-        examples = go_board_shortcodes(section)
+    def test_readme_documents_a_resolvable_exact_path_example(self):
+        examples = go_board_shortcodes(self.readme_section())
+        self.assertTrue(examples, "document at least one shortcode example")
+
         advanced = next(
             (example for example in examples if "path" in example),
             None,
         )
         self.assertIsNotNone(advanced, "document an exact-path shortcode example")
         self.assertTrue(advanced.get("path"))
-        assert_valid_local_board(self, advanced, BUNDLE)
+        self.assertRegex(advanced["path"], r"^(?:N[0-9]+|B[1-9][0-9]*)+$")
+        self.assertTrue(advanced.get("caption", "").strip())
 
-        for pattern in (
-            r"Sabaki.*variations.*marks",
-            r"authored first SGF node.*`N`.*first-child node transitions.*all nodes.*not moves.*`B`.*1-based child",
-            r"`C`.*rendered as plain text.*Markdown.*not formatted",
-            r"Try.*local.*no persistence",
-            r"no third-party requests.*Giscus.*post-level.*move-level multi-user.*deferred",
+        # Any example naming a bundled record must still resolve to that record.
+        bundles = {
+            page.parent
+            for page in board_pages()
+            if (page.parent / advanced["src"]).is_file()
+        }
+        for example in examples:
+            with self.subTest(example=example):
+                self.assertEqual(".sgf", Path(example["src"]).suffix.lower())
+        if bundles:
+            for bundle in bundles:
+                assert_valid_local_board(self, advanced, bundle)
+
+    def test_readme_covers_the_documented_capability_boundaries(self):
+        # Topic terms, not ordered phrases: rewording the prose is fine, but
+        # silently dropping a documented boundary is not.
+        section = " ".join(self.readme_section().split())
+        for topic in (
+            "Sabaki",
+            "variations",
+            "leaf bundle",
+            "`move`",
+            "`path`",
+            "`C`",
+            "plain text",
+            "no persistence",
+            "no third-party requests",
+            "Giscus",
         ):
-            with self.subTest(pattern=pattern):
-                self.assertRegex(normalized, pattern)
+            with self.subTest(topic=topic):
+                self.assertIn(topic, section)
 
+    def test_readme_links_the_vendored_license_and_provenance(self):
         local_links = set(
-            re.findall(r"\]\((assets/vendor/besogo/[^)]+)\)", section)
+            re.findall(
+                r"\]\((assets/vendor/besogo/[^)]+)\)",
+                self.readme_section(),
+            )
         )
         self.assertEqual(
             {

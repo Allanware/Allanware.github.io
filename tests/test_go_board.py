@@ -55,6 +55,47 @@ def contrast_ratio(first: str, second: str) -> float:
     return (lighter + 0.05) / (darker + 0.05)
 
 
+def css_at_rule_block(css: str, header_pattern: str) -> str | None:
+    """Return the brace-balanced body of the first at-rule matching the header.
+
+    Matching braces rather than anchoring on the end of the file keeps these
+    assertions working when a later rule is appended to the stylesheet.
+    """
+    header = re.search(header_pattern, css)
+    if header is None:
+        return None
+    start = css.index("{", header.end())
+    depth = 0
+    for index in range(start, len(css)):
+        if css[index] == "{":
+            depth += 1
+        elif css[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return css[start + 1 : index]
+    raise AssertionError(f"unbalanced braces after {header.group(0)!r}")
+
+
+def color_scheme_sections(css: str) -> dict[str, str]:
+    """Split a stylesheet into the rules that apply to each color scheme.
+
+    The light scheme is everything before the first at-rule; the dark scheme
+    adds the overrides inside the dark ``prefers-color-scheme`` block. Reading
+    both from the source keeps the paired colors together no matter which
+    order the rules are written in.
+    """
+    dark = css_at_rule_block(css, r"@media\s*\(prefers-color-scheme:\s*dark\)")
+    return {"light": css.split("@media", 1)[0], "dark": dark or ""}
+
+
+def declaration(css: str, selector_pattern: str, property_name: str) -> str | None:
+    match = re.search(
+        rf"{selector_pattern}\s*\{{[^}}]*?{property_name}:\s*(#[0-9a-fA-F]{{6}})",
+        css,
+    )
+    return match.group(1) if match else None
+
+
 def build_site(destination: Path, base_url: str, content: Path) -> None:
     subprocess.run(
         [
@@ -204,22 +245,32 @@ class GoBoardStyleTests(unittest.TestCase):
                 rf"{selector}\s*\{{[^}}]*order:\s*{order};[^}}]*\}}",
             )
 
+    def board_colors(self, css: str) -> dict[str, str]:
+        """The board fill each color scheme actually paints, read from source."""
+        colors = {}
+        light = declaration(css, r"\.go-board \.besogo-svg-board", "fill")
+        self.assertIsNotNone(light, "light board fill is missing")
+        for scheme, section in color_scheme_sections(css).items():
+            override = declaration(section, r"\.go-board \.besogo-svg-board", "fill")
+            colors[scheme] = override or light
+        return colors
+
     def test_white_stones_have_contrasting_boundaries_in_both_color_schemes(self):
         css = (ROOT / "assets/css/go-board.css").read_text(encoding="utf-8")
-        white_stone_rules = re.findall(
-            r"\.go-board \.besogo-svg-whiteStone\s*\{(?P<body>[^}]*)\}",
-            css,
+        boards = self.board_colors(css)
+        light_stroke = declaration(
+            css, r"\.go-board \.besogo-svg-whiteStone", "stroke"
         )
-        self.assertEqual(2, len(white_stone_rules))
+        self.assertIsNotNone(light_stroke, "light white-stone stroke is missing")
 
-        strokes = []
-        for rule in white_stone_rules:
-            match = re.search(r"stroke:\s*(#[0-9a-fA-F]{6})", rule)
-            self.assertIsNotNone(match)
-            strokes.append(match.group(1))
-
-        for board, stroke in (("#e0bb6c", strokes[0]), ("#caa35e", strokes[1])):
-            self.assertGreaterEqual(contrast_ratio(board, stroke), 3)
+        for scheme, section in color_scheme_sections(css).items():
+            with self.subTest(scheme=scheme):
+                stroke = declaration(
+                    section, r"\.go-board \.besogo-svg-whiteStone", "stroke"
+                ) or light_stroke
+                self.assertGreaterEqual(
+                    contrast_ratio(boards[scheme], stroke), 3
+                )
 
     def test_automatic_branch_labels_are_bold_and_contrast_on_both_boards(self):
         css = (ROOT / "assets/css/go-board.css").read_text(encoding="utf-8")
@@ -240,8 +291,9 @@ class GoBoardStyleTests(unittest.TestCase):
         self.assertGreaterEqual(int(weight.group(1)), 700)
         self.assertGreaterEqual(float(stroke_width.group(1)), 3)
         self.assertRegex(body, r"paint-order:\s*stroke fill;")
-        for board in ("#e0bb6c", "#caa35e"):
-            self.assertGreaterEqual(contrast_ratio(board, fill.group(1)), 3)
+        for scheme, board in self.board_colors(css).items():
+            with self.subTest(scheme=scheme):
+                self.assertGreaterEqual(contrast_ratio(board, fill.group(1)), 3)
         self.assertGreaterEqual(contrast_ratio(halo.group(1), fill.group(1)), 3)
 
     def test_named_variation_buttons_keep_spacing_and_wrap_on_narrow_boards(self):
@@ -256,14 +308,10 @@ class GoBoardStyleTests(unittest.TestCase):
         self.assertRegex(button_row.group("body"), r"flex-wrap:\s*wrap;")
         self.assertRegex(button_row.group("body"), r"gap:\s*0\.5rem;")
 
-        narrow = re.search(
-            r"@media \(max-width:\s*480px\)\s*\{(?P<body>.*)\}\s*\Z",
-            css,
-            flags=re.DOTALL,
-        )
+        narrow = css_at_rule_block(css, r"@media \(max-width:\s*480px\)")
         self.assertIsNotNone(narrow)
         self.assertRegex(
-            narrow.group("body"),
+            narrow,
             r"\.go-board \[data-go-board-variation-buttons\]\s*"
             r"\{[^}]*width:\s*100%;[^}]*\}",
         )
@@ -277,14 +325,10 @@ class GoBoardStyleTests(unittest.TestCase):
         self.assertRegex(controls.group("body"), r"display:\s*flex;")
         self.assertRegex(controls.group("body"), r"flex-wrap:\s*wrap;")
 
-        narrow = re.search(
-            r"@media \(max-width:\s*480px\)\s*\{(?P<body>.*)\}\s*\Z",
-            css,
-            flags=re.DOTALL,
-        )
+        narrow = css_at_rule_block(css, r"@media \(max-width:\s*480px\)")
         self.assertIsNotNone(narrow)
         self.assertRegex(
-            narrow.group("body"),
+            narrow,
             r"\.go-board__try-controls\s*\{[^}]*display:\s*grid;[^}]*"
             r"grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);",
         )

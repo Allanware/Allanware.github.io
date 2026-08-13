@@ -1,6 +1,7 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import subprocess
+import sys
 import unittest
 
 from scripts.new_translation import create_translation
@@ -50,7 +51,7 @@ class TranslationCopyTests(unittest.TestCase):
             source = self.make_source(content, section="projects")
             result = subprocess.run(
                 [
-                    "python3",
+                    sys.executable,
                     str(ROOT / "scripts/new_translation.py"),
                     "my-post",
                     "en",
