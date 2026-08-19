@@ -5,6 +5,8 @@
   {{- $projects = where $projects "Language.Lang" .Language.Lang -}}
   {{- $projects = where $projects "Draft" false -}}
   {{- $projects = where $projects "Params.hidden" "ne" true -}}
+  {{- $currentProjects := where $projects "Params.projectstatus" "ne" "past" -}}
+  {{- $currentProjects = $currentProjects.ByDate.Reverse -}}
   {{- $pastProjects := where $projects "Params.projectstatus" "past" -}}
   {{- $pastProjects = $pastProjects.ByDate.Reverse -}}
   {{- $posts := where .Site.RegularPages "Section" "blog" -}}
@@ -16,6 +18,10 @@
     <div class="home-intro">{{ .Content }}</div>
     <section data-home-section="projects">
       <h2>{{ T "projects" }}</h2>
+      <section data-project-status="current">
+        <h3>{{ T "currentProjects" }}</h3>
+        {{ partial "home-title-list.html" (dict "Pages" $currentProjects "EmptyKey" "noCurrentProjects") }}
+      </section>
       <section data-project-status="past">
         <h3>{{ T "pastProjects" }}</h3>
         {{ partial "home-title-list.html" (dict "Pages" $pastProjects "EmptyKey" "noPastProjects") }}

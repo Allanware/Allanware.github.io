@@ -1652,6 +1652,10 @@ interactionId = "mixed-image-renderers"
 ![Markdown diagram](diagram.svg)
 
 {{< bundle-image src="diagram.svg" alt="Shortcode diagram" width="400" >}}
+
+{{< side-by-side src="diagram.svg" alt="Side by side diagram" >}}
+Description paragraph.
+{{< /side-by-side >}}
 ''',
                 encoding="utf-8",
             )
@@ -1671,8 +1675,61 @@ interactionId = "mixed-image-renderers"
             parser = MarkupReviewParser()
             parser.feed(article)
 
-            self.assertEqual(2, len(parser.zoom_control_ids))
-            self.assertEqual(2, len(set(parser.zoom_control_ids)))
+            self.assertEqual(3, len(parser.zoom_control_ids))
+            self.assertEqual(3, len(set(parser.zoom_control_ids)))
+
+    def test_side_by_side_shortcode_renders_media_and_split_columns(self):
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            content = temporary_root / "content"
+            bundle = content / "projects" / "side-by-side-demo"
+            bundle.mkdir(parents=True)
+            (bundle / "index.en.md").write_text(
+                '''+++
+title = "Side-by-side demo"
+date = 2026-08-09
+draft = false
+interactionId = "side-by-side-demo"
++++
+
+{{< side-by-side src="diagram.svg" alt="Cover diagram" caption="Diagram caption" >}}
+Description of the cover diagram with [a link](https://example.test/).
+{{< /side-by-side >}}
+
+{{< side-by-side reverse="true" ratio="40%" >}}
+First column content.
+<!-- split -->
+Second column content.
+{{< /side-by-side >}}
+''',
+                encoding="utf-8",
+            )
+            (bundle / "diagram.svg").write_text(
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"></svg>',
+                encoding="utf-8",
+            )
+            public = temporary_root / "public"
+            build_site(
+                public,
+                "https://example.test/",
+                "--contentDir",
+                str(content),
+            )
+            article = read_html(public, "p/side-by-side-demo/index.html")
+            parser = MarkupReviewParser()
+            parser.feed(article)
+
+            self.assertIn('class="side-by-side"', article)
+            self.assertIn('class="side-by-side-media"', article)
+            self.assertIn('class="side-by-side-content"', article)
+            self.assertIn('class="side-by-side side-by-side-reversed"', article)
+            self.assertIn('style="--sbs-ratio: 40%;"', article)
+            self.assertIn('class="side-by-side-col"', article)
+            self.assertIn("<figcaption>Diagram caption</figcaption>", article)
+            self.assertEqual(1, len(parser.zoom_control_ids))
+            self.assertTrue(
+                any(attributes.get("href") == "https://example.test/" for _, attributes in parser.links)
+            )
 
     def test_markdown_bundle_resources_resolve_encoded_paths_and_preserve_suffixes(self):
         with TemporaryDirectory() as temporary:
@@ -1908,6 +1965,133 @@ interactionId = "resource-suffixes"
                 self.assertNotIn("Shared article", chinese_latest)
                 self.assertNotRegex(chinese_latest, r"<time|data-post-count|#[\w-]+")
                 self.assertEqual(2, chinese_latest.count("<li>"))
+
+    def test_home_current_projects_precede_past_and_localize_empty_state(self):
+        with TemporaryDirectory() as temporary:
+            for name, base_url in (
+                ("root", "https://example.test/"),
+                ("project", "https://example.test/example-blog/"),
+            ):
+                public = Path(temporary) / name
+                build_site(
+                    public,
+                    base_url,
+                    "--config",
+                    "hugo.toml,tests/fixtures/interactions.toml",
+                    "--contentDir",
+                    "tests/fixtures/content",
+                )
+                expected = {
+                    "en": {
+                        "headings": ("Current projects", "Past projects"),
+                        "current": ["Current project"],
+                        "past": ["Shared project", "Older project"],
+                        "empty": None,
+                    },
+                    "zh": {
+                        "headings": ("进行中的项目", "过往项目"),
+                        "current": [],
+                        "past": ["共享项目"],
+                        "empty": "暂无进行中的项目",
+                    },
+                }
+                pages = {
+                    "en": read_html(public, "index.html"),
+                    "zh": read_html(public, "zh/index.html"),
+                }
+                for language, html in pages.items():
+                    with self.subTest(build=name, language=language):
+                        current_heading, past_heading = expected[language]["headings"]
+                        self.assertIn(f"<h3>{current_heading}</h3>", html)
+                        self.assertLess(
+                            html.index('data-project-status="current"'),
+                            html.index('data-project-status="past"'),
+                        )
+                        self.assertLess(
+                            html.index(f"<h3>{current_heading}</h3>"),
+                            html.index(f"<h3>{past_heading}</h3>"),
+                        )
+                        sections = {
+                            status: re.search(
+                                rf'<section data-project-status="{status}">(.*?)</section>',
+                                html,
+                                re.DOTALL,
+                            )
+                            for status in ("current", "past")
+                        }
+                        self.assertIsNotNone(sections["current"])
+                        self.assertIsNotNone(sections["past"])
+                        current = sections["current"].group(1)
+                        past = sections["past"].group(1)
+                        self.assertEqual(
+                            expected[language]["current"],
+                            re.findall(r"<a[^>]*>([^<]+)</a>", current),
+                        )
+                        self.assertEqual(
+                            expected[language]["past"],
+                            re.findall(r"<a[^>]*>([^<]+)</a>", past),
+                        )
+                        self.assertNotRegex(current, r"<time|data-post-count|#[\w-]+")
+                        empty = expected[language]["empty"]
+                        if empty is None:
+                            self.assertNotIn("home-empty", current)
+                        else:
+                            self.assertIn(
+                                f'<p class="home-empty">{empty}</p>', current
+                            )
+
+    def test_home_treats_projects_without_status_as_current(self):
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            content = temporary_root / "content"
+            content.mkdir()
+            (content / "_index.en.md").write_text(
+                '+++\ntitle = "Fixture Home"\n+++\n\nFixture home.\n',
+                encoding="utf-8",
+            )
+            for slug, title, date, status in (
+                ("archived", "Archived project", "2026-01-03", '\nprojectStatus = "past"'),
+                ("labeled", "Labeled current project", "2026-01-02", '\nprojectStatus = "current"'),
+                ("unlabeled", "Unlabeled project", "2026-01-01", ""),
+            ):
+                bundle = content / "projects" / slug
+                bundle.mkdir(parents=True)
+                (bundle / "index.en.md").write_text(
+                    "+++\n"
+                    f'title = "{title}"\n'
+                    f"date = {date}\n"
+                    "draft = false\n"
+                    f'interactionId = "{slug}-project"{status}\n'
+                    "+++\n\nBody.\n",
+                    encoding="utf-8",
+                )
+
+            public = temporary_root / "public"
+            build_site(
+                public,
+                "https://example.test/",
+                "--contentDir",
+                str(content),
+            )
+            home = read_html(public, "index.html")
+            sections = {
+                status: re.search(
+                    rf'<section data-project-status="{status}">(.*?)</section>',
+                    home,
+                    re.DOTALL,
+                )
+                for status in ("current", "past")
+            }
+            self.assertIsNotNone(sections["current"])
+            self.assertIsNotNone(sections["past"])
+            self.assertEqual(
+                ["Labeled current project", "Unlabeled project"],
+                re.findall(r"<a[^>]*>([^<]+)</a>", sections["current"].group(1)),
+            )
+            self.assertEqual(
+                ["Archived project"],
+                re.findall(r"<a[^>]*>([^<]+)</a>", sections["past"].group(1)),
+            )
 
     def test_train_of_thought_is_localized_home_only_and_base_path_safe(self):
         module_pattern = re.compile(
@@ -3144,6 +3328,47 @@ projectStatus = "past"
                 '<time datetime="2026-08-08">2026年8月8日</time>',
                 chinese_ungrouped,
             )
+
+    def test_article_renders_lastmod_when_updated_after_publication(self):
+        with TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            content = temporary_root / "content"
+            bundle = content / "projects" / "updated-project"
+            bundle.mkdir(parents=True)
+            for language, title, date, lastmod in (
+                ("en", "Updated project", "2024-12-06", "2026-08-16"),
+                ("zh", "更新的项目", "2024-12-06", "2026-08-16"),
+            ):
+                (bundle / f"index.{language}.md").write_text(
+                    f'''+++
+title = "{title}"
+date = {date}
+lastmod = {lastmod}
+draft = false
+interactionId = "updated-project"
++++
+
+Project body.
+''',
+                    encoding="utf-8",
+                )
+            public = temporary_root / "public"
+            build_site(
+                public,
+                "https://example.test/",
+                "--contentDir",
+                str(content),
+            )
+            english_html = read_html(public, "p/updated-project/index.html")
+            chinese_html = read_html(public, "zh/p/updated-project/index.html")
+
+            self.assertIn('<time datetime="2024-12-06">December 6, 2024</time>', english_html)
+            self.assertIn('class="post-lastmod"', english_html)
+            self.assertIn('Updated: <time datetime="2026-08-16">August 16, 2026</time>', english_html)
+
+            self.assertIn('<time datetime="2024-12-06">2024年12月6日</time>', chinese_html)
+            self.assertIn('class="post-lastmod"', chinese_html)
+            self.assertIn('更新于：<time datetime="2026-08-16">2026年8月16日</time>', chinese_html)
 
     def test_grouped_list_abbreviates_all_month_names(self):
         # The grouped date column uses consistent three-character month names.

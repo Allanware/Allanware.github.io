@@ -8,6 +8,8 @@ import * as goBoardCore from "../assets/js/go-board-core.mjs";
 
 const {
   createSgfTextLoader,
+  nodeAtIndexPath,
+  nodeIndexPath,
   reloadPristine,
   selectAuthoredNode,
   selectMainlineMove,
@@ -381,6 +383,45 @@ test("pristine reload discards reader nodes, restores nav-only, and reapplies se
 });
 
 
+test("index paths address nodes across a rebuilt tree and report unreachable ones", () => {
+  const editor = loadSyntheticEditor();
+  const root = editor.getRoot();
+  const branch = selectPath(root, "N3B2");
+
+  assert.deepEqual(nodeIndexPath(root, branch), [0, 0, 0, 1]);
+  assert.equal(nodeAtIndexPath(root, [0, 0, 0, 1]), branch);
+  assert.equal(nodeAtIndexPath(root, [0, 0, 0, 9]), null);
+  assert.equal(nodeIndexPath(branch, root), null);
+});
+
+
+test("pristine reload restores the reader's departure point, not the selector", () => {
+  const editor = loadSyntheticEditor();
+  const departure = selectPath(editor.getRoot(), "N3B1");
+  const restorePath = nodeIndexPath(editor.getRoot(), departure);
+
+  const readerNode = departure.makeChild();
+  readerNode.playMove(1, 5, 0, true);
+  departure.addChild(readerNode);
+  editor.setCurrent(readerNode);
+  editor.setTool("auto");
+
+  const authored = reloadPristine({
+    editor,
+    sgfText: syntheticSgf,
+    selector: { kind: "move", value: "2" },
+    besogo: globalThis.besogo,
+    restorePath,
+  });
+
+  const current = editor.getCurrent();
+  assert.equal(current.comment, "Main branch");
+  assert.equal(current.children.length, 1);
+  assert.equal(authored.moveNumber, 2);
+  assert.notEqual(current, authored);
+});
+
+
 test("SGF text loading caches one fetch promise per resource URL", async () => {
   const requests = [];
   const load = createSgfTextLoader(async (url) => {
@@ -521,15 +562,19 @@ function button() {
 }
 
 
-function select() {
+function textInput() {
+  const listeners = new Map();
+  const attributes = new Map();
   const control = {
-    children: [],
-    focused: false,
     value: "",
+    focused: false,
     focus: () => { control.focused = true; },
-    replaceChildren(...children) {
-      this.children = children;
-      this.value = children[0]?.value ?? "";
+    addEventListener: (name, handler) => listeners.set(name, handler),
+    getAttribute: (name) => attributes.get(name),
+    setAttribute: (name, value) => attributes.set(name, String(value)),
+    press(key) {
+      const listener = listeners.get("keydown");
+      if (listener) listener({ key, preventDefault() {} });
     },
   };
   return control;
@@ -541,15 +586,12 @@ function boardDom(selector = { kind: "move", value: "2" }) {
   const previous = button();
   const next = button();
   const tryButton = button();
-  const returnButton = button();
   const tryControls = { hidden: true };
-  const tryColumn = select();
-  const tryRow = select();
-  const playMoveButton = button();
-  playMoveButton.type = "button";
+  const tryPoint = textInput();
   const tryStatus = { textContent: "" };
   tryButton.setAttribute("aria-controls", "go-board-fixture-try-controls");
   tryButton.setAttribute("aria-expanded", "false");
+  tryButton.setAttribute("aria-pressed", "false");
   const move = { textContent: "" };
   const note = { hidden: true };
   const noteText = { textContent: "" };
@@ -566,9 +608,18 @@ function boardDom(selector = { kind: "move", value: "2" }) {
   const svg = {
     setAttribute: (name, value) => svgAttributes.set(name, value),
   };
+  const hostAttributes = new Map();
+  const hostListeners = new Map();
   const host = {
     besogoEditor: null,
     querySelector: (query) => query === "svg" ? svg : null,
+    setAttribute: (name, value) => hostAttributes.set(name, String(value)),
+    getAttribute: (name) => hostAttributes.get(name),
+    addEventListener: (name, handler) => hostListeners.set(name, handler),
+    press(key, modifiers = {}) {
+      const listener = hostListeners.get("keydown");
+      if (listener) listener({ key, preventDefault() {}, ...modifiers });
+    },
   };
   const elements = {
     "[data-go-board-host]": host,
@@ -576,11 +627,8 @@ function boardDom(selector = { kind: "move", value: "2" }) {
     "[data-go-board-previous]": previous,
     "[data-go-board-next]": next,
     "[data-go-board-try]": tryButton,
-    "[data-go-board-return]": returnButton,
     "[data-go-board-try-controls]": tryControls,
-    "[data-go-board-try-column]": tryColumn,
-    "[data-go-board-try-row]": tryRow,
-    "[data-go-board-play-move]": playMoveButton,
+    "[data-go-board-try-point]": tryPoint,
     "[data-go-board-try-status]": tryStatus,
     "[data-go-board-move]": move,
     "[data-go-board-note]": note,
@@ -604,16 +652,15 @@ function boardDom(selector = { kind: "move", value: "2" }) {
       selectorErrorLabel: "Selector failed",
       variationTemplate: "Variation {label}",
       variationSelectedTemplate: "Variation {label} selected",
-      columnPlaceholder: "Choose column",
-      rowPlaceholder: "Choose row",
-      pointRequiredLabel: "Choose a column and row.",
+      tryLabel: "Try your own line",
+      returnLabel: "Return to position",
+      pointRequiredLabel: "Enter a point, for example D4.",
       pointUnavailableLabel: "That point cannot be played.",
       pointPlayedTemplate: "Played {coordinate}.",
     },
     ownerDocument: {
       createElement(name) {
         if (name === "button") return button();
-        if (name === "option") return { textContent: "", value: "" };
         assert.fail(`Unexpected element: ${name}`);
       },
     },
@@ -627,11 +674,8 @@ function boardDom(selector = { kind: "move", value: "2" }) {
     previous,
     next,
     tryButton,
-    returnButton,
     tryControls,
-    tryColumn,
-    tryRow,
-    playMoveButton,
+    tryPoint,
     tryStatus,
     move,
     note,
@@ -640,6 +684,7 @@ function boardDom(selector = { kind: "move", value: "2" }) {
     variationButtons,
     variationStatus,
     attributes,
+    hostAttributes,
     svgAttributes,
   };
 }
@@ -784,7 +829,7 @@ test("malformed FF4 coordinates fail with the localized parse label before mount
 });
 
 
-test("Return restores the published selector after read-only navigation", async () => {
+test("the Try control toggles into local play and back to the published selector", async () => {
   const dom = boardDom();
   const besogo = boardBesogo();
   const controller = mountGoBoard(dom.root, {
@@ -798,18 +843,29 @@ test("Return restores the published selector after read-only navigation", async 
   const publishedRoot = editor.getRoot();
   assert.equal(editor.getCurrent().moveNumber, 2);
   assert.equal(editor.getVariantStyle(), 2);
-  assert.equal(dom.returnButton.disabled, true);
+  assert.equal(dom.tryButton.textContent, "Try your own line");
+  assert.equal(dom.tryButton.getAttribute("aria-pressed"), "false");
+  assert.equal(dom.tryControls.hidden, true);
 
   dom.previous.click();
   assert.equal(editor.getCurrent().moveNumber, 1);
-  assert.equal(dom.returnButton.disabled, false);
 
-  dom.returnButton.click();
+  dom.tryButton.click();
+  assert.equal(editor.getTool(), "auto");
+  assert.equal(dom.tryControls.hidden, false);
+  assert.equal(dom.tryButton.textContent, "Return to position");
+  assert.equal(dom.tryButton.getAttribute("aria-pressed"), "true");
+  assert.equal(dom.tryButton.getAttribute("aria-expanded"), "true");
+  assert.equal(dom.tryPoint.focused, true);
+
+  dom.tryButton.click();
   assert.notEqual(editor.getRoot(), publishedRoot);
-  assert.equal(editor.getCurrent().moveNumber, 2);
+  assert.equal(editor.getCurrent().moveNumber, 1);
   assert.equal(editor.getVariantStyle(), 2);
   assert.equal(editor.getTool(), "navOnly");
-  assert.equal(dom.returnButton.disabled, true);
+  assert.equal(dom.tryControls.hidden, true);
+  assert.equal(dom.tryButton.textContent, "Try your own line");
+  assert.equal(dom.tryButton.getAttribute("aria-pressed"), "false");
   assert.equal(dom.tryButton.disabled, false);
 });
 
@@ -835,8 +891,15 @@ test("automatic board labels are enabled only at authored forks", async () => {
   assert.equal(editor.getCurrent(), fork);
   assert.equal(editor.getVariantStyle(), 0);
 
+  // Returning lands back inside the branch, so the markers stay off there...
   editor.setCurrent(fork.children[1]);
-  dom.returnButton.click();
+  dom.tryButton.click();
+  dom.tryButton.click();
+  assert.equal(editor.getCurrent().children.length, 1);
+  assert.equal(editor.getVariantStyle(), 2);
+
+  // ...and come back on once the rebuilt fork is current again.
+  dom.previous.click();
   assert.equal(editor.getCurrent().children.length, 2);
   assert.equal(editor.getVariantStyle(), 0);
 });
@@ -859,6 +922,12 @@ test("named branch controls expose, choose, and identify authored A/B variations
   assert.equal(dom.variations.hidden, false);
   assert.deepEqual(
     dom.variationButtons.children.map((control) => control.textContent),
+    ["A", "B"],
+  );
+  assert.deepEqual(
+    dom.variationButtons.children.map(
+      (control) => control.getAttribute("aria-label"),
+    ),
     ["Variation A", "Variation B"],
   );
   assert.deepEqual(
@@ -889,13 +958,19 @@ test("named branch controls expose, choose, and identify authored A/B variations
 
   dom.tryButton.click();
   assert.equal(dom.variations.hidden, true);
-  dom.returnButton.click();
-  assert.equal(editor.getCurrent().moveNumber, 2);
-  assert.equal(dom.variations.hidden, true);
+
+  // Returning restores the chosen variation, so its chip comes back pressed.
+  dom.tryButton.click();
+  assert.equal(editor.getCurrent().moveNumber, 3);
+  assert.equal(dom.variations.hidden, false);
+  assert.equal(
+    dom.variationButtons.children[0].getAttribute("aria-pressed"),
+    "true",
+  );
 });
 
 
-test("keyboard move controls expose western coordinates only in Try mode", async () => {
+test("keyboard coordinate entry is disclosed only in Try mode", async () => {
   const dom = boardDom();
   dom.tryButton.setAttribute("aria-expanded", "true");
   const controller = mountGoBoard(dom.root, {
@@ -911,38 +986,25 @@ test("keyboard move controls expose western coordinates only in Try mode", async
     dom.tryButton.getAttribute("aria-controls"),
     "go-board-fixture-try-controls",
   );
-  assert.equal(dom.playMoveButton.type, "button");
-  assert.deepEqual(
-    dom.tryColumn.children.map((option) => [option.value, option.textContent]),
-    [["", "Choose column"], ["1", "A"], ["2", "B"], ["3", "C"],
-      ["4", "D"], ["5", "E"]],
-  );
-  assert.deepEqual(
-    dom.tryRow.children.map((option) => [option.value, option.textContent]),
-    [["", "Choose row"], ["1", "5"], ["2", "4"], ["3", "3"],
-      ["4", "2"], ["5", "1"]],
-  );
 
   dom.tryButton.click();
   assert.equal(dom.tryControls.hidden, false);
   assert.equal(dom.tryButton.getAttribute("aria-expanded"), "true");
-  assert.equal(dom.tryColumn.focused, true);
+  assert.equal(dom.tryPoint.focused, true);
 
-  dom.tryColumn.value = "3";
-  dom.tryRow.value = "4";
+  dom.tryPoint.value = "C2";
   dom.tryStatus.textContent = "old status";
-  dom.returnButton.click();
+  dom.tryButton.click();
   assert.equal(dom.tryControls.hidden, true);
   assert.equal(dom.tryButton.getAttribute("aria-expanded"), "false");
-  assert.equal(dom.tryColumn.value, "");
-  assert.equal(dom.tryRow.value, "");
+  assert.equal(dom.tryPoint.value, "");
   assert.equal(dom.tryStatus.textContent, "");
 });
 
 
-test("native Play move contains invalid choices and plays a legal intersection", async () => {
+test("coordinate entry rejects empty and unplayable points and plays a legal one", async () => {
   const dom = boardDom();
-  dom.root.dataset.pointRequiredLabel = "请选择列和行。";
+  dom.root.dataset.pointRequiredLabel = "请输入落子点，例如 D4。";
   dom.root.dataset.pointUnavailableLabel = "该位置无法落子。";
   dom.root.dataset.pointPlayedTemplate = "已在 {coordinate} 落子。";
   const controller = mountGoBoard(dom.root, {
@@ -956,20 +1018,28 @@ test("native Play move contains invalid choices and plays a legal intersection",
   const editor = dom.host.besogoEditor;
   const startingPosition = editor.getCurrent();
 
-  dom.playMoveButton.click();
+  dom.tryPoint.press("Enter");
   assert.equal(editor.getCurrent(), startingPosition);
-  assert.equal(dom.tryStatus.textContent, "请选择列和行。");
+  assert.equal(dom.tryStatus.textContent, "请输入落子点，例如 D4。");
 
-  dom.tryColumn.value = "2";
-  dom.tryRow.value = "3";
-  dom.playMoveButton.click();
+  dom.tryPoint.value = "Z9";
+  dom.tryPoint.press("Enter");
   assert.equal(editor.getCurrent(), startingPosition);
   assert.equal(dom.tryStatus.textContent, "该位置无法落子。");
 
-  dom.tryColumn.value = "1";
-  dom.tryRow.value = "5";
-  dom.tryColumn.focused = false;
-  dom.playMoveButton.click();
+  dom.tryPoint.value = "B3";
+  dom.tryPoint.press("Enter");
+  assert.equal(editor.getCurrent(), startingPosition);
+  assert.equal(dom.tryStatus.textContent, "该位置无法落子。");
+
+  dom.tryPoint.value = "a1";
+  dom.tryStatus.textContent = "";
+  dom.tryPoint.press("Escape");
+  assert.equal(editor.getCurrent(), startingPosition);
+  assert.equal(dom.tryStatus.textContent, "");
+
+  dom.tryPoint.focused = false;
+  dom.tryPoint.press("Enter");
   assert.notEqual(editor.getCurrent(), startingPosition);
   assert.deepEqual(
     { x: editor.getCurrent().move.x, y: editor.getCurrent().move.y },
@@ -977,9 +1047,8 @@ test("native Play move contains invalid choices and plays a legal intersection",
   );
   assert.equal(dom.move.textContent, "Move 3");
   assert.equal(dom.tryStatus.textContent, "已在 A1 落子。");
-  assert.equal(dom.tryColumn.value, "");
-  assert.equal(dom.tryRow.value, "");
-  assert.equal(dom.tryColumn.focused, true);
+  assert.equal(dom.tryPoint.value, "");
+  assert.equal(dom.tryPoint.focused, true);
 });
 
 
@@ -1008,21 +1077,24 @@ test("root-move SGF starts at move zero and Return reloads its pristine pre-move
   assert.equal(dom.move.textContent, "Move 0");
   assert.equal(initialRoot.children.length, 1);
 
+  // Returning rebuilds the tree but keeps the reader where they were.
   dom.next.click();
   assert.equal(editor.getCurrent().moveNumber, 1);
-  assert.equal(dom.returnButton.disabled, false);
-  dom.returnButton.click();
+  dom.tryButton.click();
+  dom.tryButton.click();
   assert.notEqual(editor.getRoot(), initialRoot);
-  assert.equal(editor.getCurrent().moveNumber, 0);
+  assert.equal(editor.getCurrent().moveNumber, 1);
 
   const pristineRoot = editor.getRoot();
+  const departure = editor.getCurrent();
   dom.tryButton.click();
-  editor.click(3, 3, false, false);
-  assert.equal(pristineRoot.children.length, 2);
-  dom.returnButton.click();
+  editor.click(5, 5, false, false);
+  assert.equal(departure.children.length, 3);
+  dom.tryButton.click();
   assert.notEqual(editor.getRoot(), pristineRoot);
   assert.equal(editor.getRoot().children.length, 1);
-  assert.equal(editor.getCurrent().moveNumber, 0);
+  assert.equal(editor.getCurrent().moveNumber, 1);
+  assert.equal(editor.getCurrent().children.length, 2);
   assert.deepEqual(parseInputs, [authoredText, authoredText, authoredText]);
 });
 
@@ -1039,22 +1111,19 @@ test("guided controls sync notes, enable local play, and restore pristine SGF", 
 
   assert.deepEqual(besogo.createCalls, [{
     size: "5:5",
-    panels: [],
     tool: "navOnly",
     variants: 0,
     coord: "western",
-    nowheel: true,
-    resize: "none",
     realstones: false,
     shadows: "off",
+    nokeys: true,
   }]);
   assert.equal(dom.move.textContent, "Move 2");
   assert.equal(dom.noteText.textContent, "White passes");
-  assert.equal(dom.note.hidden, false);
   assert.equal(dom.previous.disabled, false);
   assert.equal(dom.next.disabled, false);
   assert.equal(dom.tryButton.disabled, false);
-  assert.equal(dom.returnButton.disabled, true);
+  assert.equal(dom.hostAttributes.get("tabindex"), "0");
   assert.equal(dom.svgAttributes.get("role"), "img");
   assert.equal(
     dom.svgAttributes.get("aria-labelledby"),
@@ -1064,21 +1133,82 @@ test("guided controls sync notes, enable local play, and restore pristine SGF", 
   dom.tryButton.click();
   const editor = dom.host.besogoEditor;
   assert.equal(editor.getTool(), "auto");
-  assert.equal(dom.tryButton.disabled, true);
-  assert.equal(dom.returnButton.disabled, false);
   const authoredRoot = editor.getRoot();
   editor.click(1, 5, false, false);
   assert.equal(editor.getCurrent().parent.children.length, 2);
 
-  dom.returnButton.click();
+  dom.tryButton.click();
   assert.notEqual(editor.getRoot(), authoredRoot);
   assert.equal(editor.getTool(), "navOnly");
   assert.equal(editor.getCurrent().moveNumber, 2);
   assert.equal(editor.getCurrent().children.length, 1);
   assert.equal(dom.tryButton.disabled, false);
-  assert.equal(dom.returnButton.disabled, true);
   assert.equal(dom.status.textContent, "Returned");
 
   dom.previous.click();
   assert.equal(dom.move.textContent, "Move 1");
+});
+
+
+test("returning from Try lands where the reader left, not at the authored position", async () => {
+  const dom = boardDom();
+  const besogo = boardBesogo();
+  const controller = mountGoBoard(dom.root, {
+    besogo,
+    loadSgfText: async () => syntheticSgf,
+    logger: { error() {} },
+  });
+  await controller.ready;
+
+  // Walk away from the authored move 2 before trying anything.
+  dom.next.click();
+  dom.next.click();
+  assert.equal(dom.move.textContent, "Move 3");
+  assert.equal(dom.noteText.textContent, "Main branch");
+
+  dom.tryButton.click();
+  const editor = dom.host.besogoEditor;
+  editor.click(1, 5, false, false);
+  assert.equal(dom.move.textContent, "Move 4");
+
+  dom.tryButton.click();
+  assert.equal(dom.move.textContent, "Move 3");
+  assert.equal(dom.noteText.textContent, "Main branch");
+  assert.equal(editor.getCurrent().children.length, 1);
+
+  // Home still goes to the authored position, so both destinations survive.
+  dom.host.press("Home");
+  assert.equal(dom.move.textContent, "Move 2");
+  assert.equal(dom.noteText.textContent, "White passes");
+});
+
+
+test("the board host keymap steps, returns home, and runs to the end of the line", async () => {
+  const dom = boardDom();
+  const controller = mountGoBoard(dom.root, {
+    besogo: boardBesogo(),
+    loadSgfText: async () => syntheticSgf,
+    logger: { error() {} },
+  });
+  await controller.ready;
+
+  const editor = dom.host.besogoEditor;
+  const authored = editor.getCurrent();
+  assert.equal(authored.moveNumber, 2);
+
+  dom.host.press("ArrowLeft");
+  assert.equal(editor.getCurrent().moveNumber, 1);
+  dom.host.press("ArrowRight");
+  assert.equal(editor.getCurrent(), authored);
+
+  dom.host.press("End");
+  assert.equal(editor.getCurrent().children.length, 0);
+  dom.host.press("Home");
+  assert.equal(editor.getCurrent(), authored);
+
+  // Keys the trimmed surface no longer binds must leave the position alone.
+  dom.host.press("Delete");
+  dom.host.press("PageDown");
+  dom.host.press("ArrowDown");
+  assert.equal(editor.getCurrent(), authored);
 });

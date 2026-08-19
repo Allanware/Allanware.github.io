@@ -38,6 +38,8 @@ other = "暂无相关内容"
 other = "暂无标签"
 [filteringFor]
 other = "标签：{{ . }}"
+[lastModified]
+other = "更新于：{{ . }}"
 [upvoteAdd]
 other = "赞同这篇文章"
 [upvoteRemove]
@@ -56,6 +58,10 @@ other = "{{ . }}的最新文章"
 other = "项目"
 [posts]
 other = "博客"
+[currentProjects]
+other = "进行中的项目"
+[noCurrentProjects]
+other = "暂无进行中的项目"
 [pastProjects]
 other = "过往项目"
 [noPastProjects]
@@ -110,24 +116,16 @@ other = "第 {move} 手"
 other = "试走变化"
 [goBoardTryControls]
 other = "选择试走位置"
-[goBoardColumn]
-other = "列"
-[goBoardRow]
-other = "行"
-[goBoardChooseColumn]
-other = "选择列"
-[goBoardChooseRow]
-other = "选择行"
-[goBoardPlayMove]
-other = "落子"
+[goBoardTryPointExample]
+other = "例如 D4"
 [goBoardPointRequired]
-other = "请选择列和行。"
+other = "请输入落子点，例如 D4。"
 [goBoardPointUnavailable]
 other = "该位置无法落子。"
 [goBoardPointPlayed]
 other = "已在 {coordinate} 落子。"
 [goBoardReturn]
-other = "返回指定局面"
+other = "撤销试走"
 [goBoardNodeNote]
 other = "当前局面注释"
 [goBoardLocalOnly]
@@ -141,7 +139,7 @@ other = "棋盘已加载"
 [goBoardTryReady]
 other = "试走模式已开启；变化只保存在当前浏览器中。"
 [goBoardReturned]
-other = "已返回指定局面。"
+other = "已撤销试走，回到试走前的局面。"
 [goBoardFetchFailed]
 other = "无法加载棋谱。"
 [goBoardParseFailed]

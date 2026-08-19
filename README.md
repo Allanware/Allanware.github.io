@@ -141,6 +141,10 @@ Use Sabaki to add variations, SGF node comments, and standard board marks. Save
 the `.sgf` file beside `index.en.md` and `index.zh.md` in the post's leaf
 bundle. Paired translations share the same SGF asset; do not duplicate it.
 
+[Authoring a Go review](docs/go-review-authoring.md) is the step-by-step
+workflow for game reviews: the Sabaki pass, the record naming rules, how prose
+divides between Markdown and SGF comments, and the pre-publish checklist.
+
 Embed a position with the local shortcode:
 
 ```go-html-template
@@ -178,9 +182,18 @@ translated explanation in the Markdown post. Because translations share one
 record, SGF notes should be language-neutral, bilingual, or omitted.
 
 The viewer does not display Sabaki arrows and lines or custom engine values
-such as `SBKV` and `SBKS`. Readers get Previous and Next, contextual A/B
-variation buttons, the current node note, and Try and Return. Try is local and
-ephemeral, with no persistence; Return restores the published position.
+such as `SBKV` and `SBKS`. It also ignores node titles (`N`) and Sabaki's move
+and position judgements, so put any verdict in the comment itself.
+
+Readers get one compact control row: Previous, the move number, Next,
+contextual A/B variation buttons, and a Try toggle. The current node comment
+sits below that row and is the viewer's main prose surface. Try discloses a
+single coordinate field, so a move can be played by typing a point such as `D4`
+and pressing Enter, or by clicking the board. Try is local and
+ephemeral, with no persistence; leaving Try discards the tried moves and puts
+the reader back on the position they entered it from. With focus on the board,
+the arrow keys step one move and Home and End jump to the published position
+and the end of the current line.
 
 The board viewer itself makes no third-party requests. Existing Giscus remains
 the post-level comment system. Durable move-level multi-user discussion is

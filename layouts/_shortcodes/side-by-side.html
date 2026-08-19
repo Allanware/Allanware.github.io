@@ -1,0 +1,48 @@
+{{- $src := strings.TrimSpace (printf "%v" (.Get "src" | default "")) -}}
+{{- $alt := strings.TrimSpace (printf "%v" (.Get "alt" | default "")) -}}
+{{- $caption := strings.TrimSpace (printf "%v" (.Get "caption" | default "")) -}}
+{{- $reverse := .Get "reverse" | default false -}}
+{{- $ratio := .Get "ratio" | default "" -}}
+
+{{- if $src -}}
+  {{- $resource := .Page.Resources.Get $src -}}
+  {{- $imgSrc := $src -}}
+  {{- if $resource -}}
+    {{- $imgSrc = $resource.RelPermalink -}}
+  {{- end -}}
+  {{- $controlKey := printf "%s|%s|%d" .Page.RelPermalink $src .Ordinal -}}
+  {{- $controlId := printf "sbs-img-%s" (substr (md5 $controlKey) 0 8) -}}
+  <div class="side-by-side{{ if $reverse }} side-by-side-reversed{{ end }}"{{ with $ratio }} style="--sbs-ratio: {{ . }};"{{ end }}>
+    <div class="side-by-side-media">
+      <figure class="image-caption{{ if .Page.Site.Params.imageZoom }} image-zoom-container{{ end }}">
+        {{ if .Page.Site.Params.imageZoom }}
+          <input type="checkbox" id="{{ $controlId }}" class="image-zoom-toggle" aria-label="{{ if $alt }}{{ T "zoomImage" $alt }}{{ else }}{{ T "zoomImageGeneric" }}{{ end }}">
+          <label for="{{ $controlId }}" class="image-zoom-label">
+            <img src="{{ $imgSrc }}" alt="{{ $alt }}" loading="lazy" class="zoomable-image">
+          </label>
+          <label for="{{ $controlId }}" class="image-zoom-overlay" aria-hidden="true">
+            <img src="{{ $imgSrc }}" alt="" class="zoomable-image">
+          </label>
+        {{ else }}
+          <img src="{{ $imgSrc }}" alt="{{ $alt }}" loading="lazy">
+        {{ end }}
+        {{ with $caption }}<figcaption>{{ . }}</figcaption>{{ end }}
+      </figure>
+    </div>
+    <div class="side-by-side-content">
+      {{ .Inner | .Page.RenderString }}
+    </div>
+  </div>
+{{- else -}}
+  {{- $parts := split .Inner "<!-- split -->" -}}
+  {{- if eq (len $parts) 1 -}}
+    {{- $parts = split .Inner "<!-- col -->" -}}
+  {{- end -}}
+  <div class="side-by-side{{ if $reverse }} side-by-side-reversed{{ end }}"{{ with $ratio }} style="--sbs-ratio: {{ . }};"{{ end }}>
+    {{- range $parts -}}
+      <div class="side-by-side-col">
+        {{ . | $.Page.RenderString }}
+      </div>
+    {{- end -}}
+  </div>
+{{- end -}}

@@ -135,6 +135,10 @@ details.callout[open] > summary {
   margin-left: 0.4rem;
 }
 
+.post-lastmod {
+  color: var(--text-color-secondary);
+}
+
 .post-interaction {
   margin-top: 2rem;
 }
@@ -426,5 +430,62 @@ ol.home-title-list {
     opacity: 1;
     pointer-events: auto;
     visibility: visible;
+  }
+}
+
+.side-by-side {
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+  gap: 1.5rem;
+  margin-block: 1.75rem;
+}
+
+.side-by-side.side-by-side-reversed {
+  flex-direction: row-reverse;
+}
+
+.side-by-side-media,
+.side-by-side-content,
+.side-by-side-col {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.side-by-side-media figure,
+.side-by-side-col figure {
+  margin: 0;
+}
+
+.side-by-side-media img,
+.side-by-side-col img {
+  display: block;
+  height: auto;
+  margin: 0 auto;
+  max-width: 100%;
+  width: 100%;
+}
+
+.side-by-side-content > :first-child,
+.side-by-side-col > :first-child {
+  margin-block-start: 0;
+}
+
+.side-by-side-content > :last-child,
+.side-by-side-col > :last-child {
+  margin-block-end: 0;
+}
+
+@media (max-width: 700px) {
+  .side-by-side,
+  .side-by-side.side-by-side-reversed {
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .side-by-side-media,
+  .side-by-side-content,
+  .side-by-side-col {
+    width: 100%;
   }
 }

@@ -3,7 +3,18 @@
   <header>
     <h2>{{ .Title }}</h2>
     {{ if not .Date.IsZero }}
-      <p><time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date | time.Format .Site.Params.dateFormat }}</time></p>
+      <p>
+        <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date | time.Format .Site.Params.dateFormat }}</time>
+        {{- if and (not .Lastmod.IsZero) (ne (.Lastmod.Format "2006-01-02") (.Date.Format "2006-01-02")) -}}
+          {{- $lastmodFormatted := printf `<time datetime="%s">%s</time>` (.Lastmod.Format "2006-01-02") (.Lastmod | time.Format .Site.Params.dateFormat) -}}
+          <span class="post-lastmod"> ({{ T "lastModified" $lastmodFormatted | safeHTML }})</span>
+        {{- end -}}
+      </p>
+    {{ else if not .Lastmod.IsZero }}
+      <p>
+        {{- $lastmodFormatted := printf `<time datetime="%s">%s</time>` (.Lastmod.Format "2006-01-02") (.Lastmod | time.Format .Site.Params.dateFormat) -}}
+        <span class="post-lastmod">{{ T "lastModified" $lastmodFormatted | safeHTML }}</span>
+      </p>
     {{ end }}
   </header>
   <content>{{ .Content }}</content>

@@ -316,14 +316,29 @@ class GoBoardStyleTests(unittest.TestCase):
             r"\{[^}]*width:\s*100%;[^}]*\}",
         )
 
-    def test_keyboard_move_controls_wrap_and_stack_on_narrow_boards(self):
+    def test_keyboard_coordinate_entry_stacks_on_narrow_boards(self):
         css = (ROOT / "assets/css/go-board.css").read_text(encoding="utf-8")
         controls = re.search(
             r"\.go-board__try-controls\s*\{(?P<body>[^}]*)\}", css
         )
         self.assertIsNotNone(controls)
-        self.assertRegex(controls.group("body"), r"display:\s*flex;")
-        self.assertRegex(controls.group("body"), r"flex-wrap:\s*wrap;")
+        # The entry sits inside the single compact row rather than owning a
+        # row of its own, so it lays out inline until the narrow breakpoint.
+        self.assertRegex(controls.group("body"), r"display:\s*inline-flex;")
+
+        # The selector also appears in a grouped rule, so check every rule that
+        # ends with it rather than only the first match.
+        entries = [
+            match.group("body")
+            for match in re.finditer(
+                r"\.go-board__try-controls input\s*\{(?P<body>[^}]*)\}", css
+            )
+        ]
+        self.assertTrue(entries)
+        self.assertTrue(
+            any(re.search(r"inline-size:\s*4rem;", body) for body in entries),
+            "the coordinate entry needs an explicit compact width",
+        )
 
         narrow = css_at_rule_block(css, r"@media \(max-width:\s*480px\)")
         self.assertIsNotNone(narrow)
@@ -331,6 +346,10 @@ class GoBoardStyleTests(unittest.TestCase):
             narrow,
             r"\.go-board__try-controls\s*\{[^}]*display:\s*grid;[^}]*"
             r"grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);",
+        )
+        self.assertRegex(
+            narrow,
+            r"\.go-board__try-controls input\s*\{[^}]*inline-size:\s*100%;[^}]*\}",
         )
 
 
@@ -390,54 +409,45 @@ class GoBoardGeneratedSiteTests(unittest.TestCase):
                             english,
                         )
                         self.assertIn(f'<figcaption id="{caption_id}">', english)
+                    # The coordinate entry is disclosed by the Try toggle from
+                    # inside the single compact row, so it is a span rather than
+                    # a labelled group of its own.
                     try_groups = re.findall(
-                        r'<div id="(go-board-[0-9a-f]{12}-try-controls)" '
-                        r'class="go-board__try-controls" data-go-board-try-controls\s+'
-                        r'role="group" aria-labelledby="'
-                        r'(go-board-[0-9a-f]{12}-try-controls-label) '
-                        r'(go-board-[0-9a-f]{12}-caption)" hidden>',
+                        r'<span id="(go-board-[0-9a-f]{12}-try-controls)" '
+                        r'class="go-board__try-controls" '
+                        r"data-go-board-try-controls hidden>",
                         english,
                     )
                     self.assertEqual(3, len(try_groups))
                     self.assertEqual(3, len(set(try_groups)))
-                    for group_id, label_id, caption_id in try_groups:
+                    for group_id in try_groups:
                         figure_id = group_id.removesuffix("-try-controls")
-                        self.assertEqual(f"{figure_id}-try-controls-label", label_id)
-                        self.assertEqual(f"{figure_id}-caption", caption_id)
+                        point_id = f"{figure_id}-try-point"
                         self.assertRegex(
                             english,
-                            rf'<button[^>]+data-go-board-try[^>]+'
+                            rf"<button[^>]+data-go-board-try[^>]+"
                             rf'aria-controls="{group_id}"[^>]+'
-                            r'aria-expanded="false"[^>]*>',
+                            r'aria-expanded="false" aria-pressed="false"[^>]*>',
                         )
                         self.assertIn(
-                            f'<span id="{label_id}" '
-                            'class="go-board__try-controls-label">'
-                            "Choose a point to play</span>",
+                            f'<label for="{point_id}" class="visually-hidden">'
+                            "Choose a point to play</label>",
                             english,
                         )
-                        for axis, label in (("column", "Column"), ("row", "Row")):
-                            control_id = f"{figure_id}-try-{axis}"
-                            self.assertIn(
-                                f'<label for="{control_id}">{label}</label>', english
-                            )
-                            self.assertIn(
-                                f'<select id="{control_id}" '
-                                f'data-go-board-try-{axis}></select>',
-                                english,
-                            )
-                        self.assertIn(
-                            '<button type="button" data-go-board-play-move>'
-                            "Play move</button>",
+                        self.assertRegex(
                             english,
+                            rf'<input id="{point_id}"[^>]+'
+                            r"data-go-board-try-point[^>]*>",
                         )
                         self.assertIn(
                             'data-go-board-try-status role="status" '
                             'aria-live="polite"',
                             english,
                         )
+                    # A/B live inside the compact row; their group label is
+                    # visually hidden because the chips carry aria-label.
                     variation_groups = re.findall(
-                        r'<div id="([^"]+-variations)" '
+                        r'<span id="([^"]+-variations)" '
                         r'class="go-board__variations" data-go-board-variations\s+'
                         r'role="group" aria-labelledby="'
                         r'([^"]+-variations-label) ([^"]+-caption)" hidden>',
@@ -447,8 +457,7 @@ class GoBoardGeneratedSiteTests(unittest.TestCase):
                     self.assertEqual(3, len(set(variation_groups)))
                     for _, label_id, caption_id in variation_groups:
                         self.assertIn(
-                            f'<span id="{label_id}" '
-                            'class="go-board__variations-label">'
+                            f'<span id="{label_id}" class="visually-hidden">'
                             "Choose a variation</span>",
                             english,
                         )
@@ -516,15 +525,11 @@ class GoBoardGeneratedSiteTests(unittest.TestCase):
                         "Variation {label} selected",
                         "Try your own line",
                         "Choose a point to play",
-                        "Column",
-                        "Row",
-                        "Choose column",
-                        "Choose row",
-                        "Play move",
-                        "Choose a column and row.",
+                        "e.g. D4",
+                        "Enter a point, for example D4.",
                         "That point cannot be played.",
                         "Played {coordinate}.",
-                        "Return to position",
+                        "Discard my moves",
                         "Current-position note",
                         "Your variations stay in this browser",
                         "Download SGF",
@@ -540,15 +545,11 @@ class GoBoardGeneratedSiteTests(unittest.TestCase):
                         "已选择变化 {label}",
                         "试走变化",
                         "选择试走位置",
-                        "列",
-                        "行",
-                        "选择列",
-                        "选择行",
-                        "落子",
-                        "请选择列和行。",
+                        "例如 D4",
+                        "请输入落子点，例如 D4。",
                         "该位置无法落子。",
                         "已在 {coordinate} 落子。",
-                        "返回指定局面",
+                        "撤销试走",
                         "当前局面注释",
                         "试走变化只保存在当前浏览器中",
                         "下载 SGF 棋谱",

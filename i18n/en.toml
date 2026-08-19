@@ -38,6 +38,8 @@ other = "No tagged content yet"
 other = "No tags yet"
 [filteringFor]
 other = "Tag: {{ . }}"
+[lastModified]
+other = "Updated: {{ . }}"
 [upvoteAdd]
 other = "Upvote this post"
 [upvoteRemove]
@@ -56,6 +58,10 @@ other = "Recent posts from {{ . }}"
 other = "Projects"
 [posts]
 other = "Blog"
+[currentProjects]
+other = "Current projects"
+[noCurrentProjects]
+other = "No current projects yet"
 [pastProjects]
 other = "Past projects"
 [noPastProjects]
@@ -110,24 +116,16 @@ other = "Move {move}"
 other = "Try your own line"
 [goBoardTryControls]
 other = "Choose a point to play"
-[goBoardColumn]
-other = "Column"
-[goBoardRow]
-other = "Row"
-[goBoardChooseColumn]
-other = "Choose column"
-[goBoardChooseRow]
-other = "Choose row"
-[goBoardPlayMove]
-other = "Play move"
+[goBoardTryPointExample]
+other = "e.g. D4"
 [goBoardPointRequired]
-other = "Choose a column and row."
+other = "Enter a point, for example D4."
 [goBoardPointUnavailable]
 other = "That point cannot be played."
 [goBoardPointPlayed]
 other = "Played {coordinate}."
 [goBoardReturn]
-other = "Return to position"
+other = "Discard my moves"
 [goBoardNodeNote]
 other = "Current-position note"
 [goBoardLocalOnly]
@@ -141,7 +139,7 @@ other = "Go board ready"
 [goBoardTryReady]
 other = "Try mode is on; your variations stay in this browser."
 [goBoardReturned]
-other = "Returned to the authored position."
+other = "Your moves were discarded; back at the position you left."
 [goBoardFetchFailed]
 other = "The Go record could not be loaded."
 [goBoardParseFailed]

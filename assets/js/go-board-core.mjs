@@ -179,14 +179,45 @@ export function selectAuthoredNode(root, selector) {
 }
 
 
-export function reloadPristine({ editor, sgfText, selector, besogo }) {
+// Reloading rebuilds the tree, so node identity cannot survive it. Child
+// indices can: the pristine text is unchanged, so the same walk lands on the
+// same node.
+export function nodeIndexPath(root, node) {
+  const indices = [];
+  for (let current = node; current !== root; current = current.parent) {
+    if (!current.parent) return null;
+    indices.unshift(current.parent.children.indexOf(current));
+  }
+  return indices;
+}
+
+
+export function nodeAtIndexPath(root, indices) {
+  let current = root;
+  for (const index of indices) {
+    if (!current.children[index]) return null;
+    current = current.children[index];
+  }
+  return current;
+}
+
+
+export function reloadPristine({
+  editor,
+  sgfText,
+  selector,
+  besogo,
+  restorePath,
+}) {
   const parsed = besogo.parseSgf(sgfText);
   validateSgfMoves(parsed);
   loadSgfForReader({ besogo, editor, sgf: parsed });
   editor.setTool("navOnly");
-  const selected = selectAuthoredNode(editor.getRoot(), selector);
-  editor.setCurrent(selected);
-  return selected;
+  const root = editor.getRoot();
+  const authored = selectAuthoredNode(root, selector);
+  const restored = restorePath ? nodeAtIndexPath(root, restorePath) : null;
+  editor.setCurrent(restored ?? authored);
+  return authored;
 }
 
 

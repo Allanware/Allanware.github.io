@@ -66,9 +66,7 @@
     {{- $captionId := printf "%s-caption" $figureId -}}
     {{- $controlsId := printf "%s-controls-label" $figureId -}}
     {{- $tryControlsId := printf "%s-try-controls" $figureId -}}
-    {{- $tryControlsLabelId := printf "%s-try-controls-label" $figureId -}}
-    {{- $tryColumnId := printf "%s-try-column" $figureId -}}
-    {{- $tryRowId := printf "%s-try-row" $figureId -}}
+    {{- $tryPointId := printf "%s-try-point" $figureId -}}
     {{- $variationsId := printf "%s-variations" $figureId -}}
     {{- $variationsLabelId := printf "%s-variations-label" $figureId -}}
     {{- $noticeId := printf "%s-local-notice" $figureId -}}
@@ -79,8 +77,8 @@
       data-caption-id="{{ $captionId }}" data-move-template="{{ $moveTemplate }}"
       data-variation-template="{{ T "goBoardVariation" }}"
       data-variation-selected-template="{{ T "goBoardVariationSelected" }}"
-      data-column-placeholder="{{ T "goBoardChooseColumn" }}"
-      data-row-placeholder="{{ T "goBoardChooseRow" }}"
+      data-try-label="{{ T "goBoardTry" }}"
+      data-return-label="{{ T "goBoardReturn" }}"
       data-point-required-label="{{ T "goBoardPointRequired" }}"
       data-point-unavailable-label="{{ T "goBoardPointUnavailable" }}"
       data-point-played-template="{{ T "goBoardPointPlayed" }}"
@@ -98,38 +96,27 @@
       </div>
       <div class="go-board__controls" role="group" aria-labelledby="{{ $controlsId }} {{ $captionId }}">
         <span id="{{ $controlsId }}" class="visually-hidden">{{ T "goBoardControls" }}</span>
-        <button type="button" data-go-board-previous aria-label="{{ T "goBoardPrevious" }}" disabled>{{ T "goBoardPrevious" }}</button>
-        <output data-go-board-move aria-live="polite">{{ replace $moveTemplate "{move}" $move }}</output>
-        <button type="button" data-go-board-next aria-label="{{ T "goBoardNext" }}" disabled>{{ T "goBoardNext" }}</button>
-        <button type="button" data-go-board-try aria-controls="{{ $tryControlsId }}"
-          aria-expanded="false" disabled>{{ T "goBoardTry" }}</button>
-        <button type="button" data-go-board-return disabled>{{ T "goBoardReturn" }}</button>
+        <button type="button" class="go-board__step" data-go-board-previous aria-label="{{ T "goBoardPrevious" }}" disabled><span aria-hidden="true">◀</span></button>
+        <output data-go-board-move aria-live="off">{{ replace $moveTemplate "{move}" $move }}</output>
+        <button type="button" class="go-board__step" data-go-board-next aria-label="{{ T "goBoardNext" }}" disabled><span aria-hidden="true">▶</span></button>
+        <span id="{{ $variationsId }}" class="go-board__variations" data-go-board-variations
+          role="group" aria-labelledby="{{ $variationsLabelId }} {{ $captionId }}" hidden>
+          <span id="{{ $variationsLabelId }}" class="visually-hidden">{{ T "goBoardVariations" }}</span>
+          <span data-go-board-variation-buttons></span>
+          <span class="visually-hidden" data-go-board-variation-status role="status" aria-live="polite"></span>
+        </span>
+        <button type="button" class="go-board__try" data-go-board-try aria-controls="{{ $tryControlsId }}"
+          aria-expanded="false" aria-pressed="false" disabled>{{ T "goBoardTry" }}</button>
+        <span id="{{ $tryControlsId }}" class="go-board__try-controls" data-go-board-try-controls hidden>
+          <label for="{{ $tryPointId }}" class="visually-hidden">{{ T "goBoardTryControls" }}</label>
+          <input id="{{ $tryPointId }}" type="text" size="4" inputmode="text" autocomplete="off"
+            data-go-board-try-point placeholder="{{ T "goBoardTryPointExample" }}">
+          <span class="go-board__try-status" data-go-board-try-status role="status" aria-live="polite"></span>
+        </span>
       </div>
-      <div id="{{ $tryControlsId }}" class="go-board__try-controls" data-go-board-try-controls
-        role="group" aria-labelledby="{{ $tryControlsLabelId }} {{ $captionId }}" hidden>
-        <span id="{{ $tryControlsLabelId }}" class="go-board__try-controls-label">{{ T "goBoardTryControls" }}</span>
-        <div class="go-board__try-coordinate">
-          <label for="{{ $tryColumnId }}">{{ T "goBoardColumn" }}</label>
-          <select id="{{ $tryColumnId }}" data-go-board-try-column></select>
-        </div>
-        <div class="go-board__try-coordinate">
-          <label for="{{ $tryRowId }}">{{ T "goBoardRow" }}</label>
-          <select id="{{ $tryRowId }}" data-go-board-try-row></select>
-        </div>
-        <button type="button" data-go-board-play-move>{{ T "goBoardPlayMove" }}</button>
-        <span class="go-board__try-status" data-go-board-try-status role="status" aria-live="polite"></span>
-      </div>
-      <div id="{{ $variationsId }}" class="go-board__variations" data-go-board-variations
-        role="group" aria-labelledby="{{ $variationsLabelId }} {{ $captionId }}" hidden>
-        <span id="{{ $variationsLabelId }}" class="go-board__variations-label">{{ T "goBoardVariations" }}</span>
-        <span data-go-board-variation-buttons></span>
-        <span class="visually-hidden" data-go-board-variation-status role="status" aria-live="polite"></span>
-      </div>
-      <p class="go-board__note" data-go-board-note role="status" aria-live="polite" hidden>
-        <strong>{{ T "goBoardNodeNote" }}:</strong>
-        <span data-go-board-note-text></span>
-      </p>
-      <p id="{{ $noticeId }}" class="go-board__local-notice">{{ T "goBoardLocalOnly" }}</p>
+      <div class="go-board__note" data-go-board-note role="status" aria-live="polite"
+        aria-label="{{ T "goBoardNodeNote" }}"><span data-go-board-note-text></span></div>
+      <p id="{{ $noticeId }}" class="go-board__local-notice visually-hidden">{{ T "goBoardLocalOnly" }}</p>
       <p class="go-board__download"><a href="{{ $resource.RelPermalink }}" download>{{ T "goBoardDownload" }}</a></p>
       <noscript>
         <p>{{ T "goBoardRequiresJavaScript" }} <a href="{{ $resource.RelPermalink }}" download>{{ T "goBoardDownload" }}</a></p>

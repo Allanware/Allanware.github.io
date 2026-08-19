@@ -10,6 +10,7 @@ import "../vendor/besogo/js/svgUtil.js";
 import {
   createSgfTextLoader,
   loadSgfForReader,
+  nodeIndexPath,
   reloadPristine,
   selectAuthoredNode,
   validateSgfMoves,
@@ -46,14 +47,10 @@ export function mountGoBoard(root, dependencies = {}) {
   const previous = root.querySelector("[data-go-board-previous]");
   const next = root.querySelector("[data-go-board-next]");
   const tryButton = root.querySelector("[data-go-board-try]");
-  const returnButton = root.querySelector("[data-go-board-return]");
   const tryControls = root.querySelector("[data-go-board-try-controls]");
-  const tryColumn = root.querySelector("[data-go-board-try-column]");
-  const tryRow = root.querySelector("[data-go-board-try-row]");
-  const playMoveButton = root.querySelector("[data-go-board-play-move]");
+  const tryPoint = root.querySelector("[data-go-board-try-point]");
   const tryStatus = root.querySelector("[data-go-board-try-status]");
   const moveOutput = root.querySelector("[data-go-board-move]");
-  const note = root.querySelector("[data-go-board-note]");
   const noteText = root.querySelector("[data-go-board-note-text]");
   const variations = root.querySelector("[data-go-board-variations]");
   const variationButtons = root.querySelector("[data-go-board-variation-buttons]");
@@ -62,8 +59,9 @@ export function mountGoBoard(root, dependencies = {}) {
   let editor;
   let authoredTarget;
   let pristineSgf;
+  let tryOrigin = null;
 
-  for (const button of [previous, next, tryButton, returnButton]) {
+  for (const button of [previous, next, tryButton]) {
     button.disabled = true;
   }
   resetTryEntry();
@@ -71,14 +69,17 @@ export function mountGoBoard(root, dependencies = {}) {
   setBusy(root, true);
 
   function resetTryEntry() {
-    tryColumn.value = "";
-    tryRow.value = "";
+    tryPoint.value = "";
     tryStatus.textContent = "";
   }
 
   function setTryControlsVisible(visible) {
     tryControls.hidden = !visible;
     tryButton.setAttribute("aria-expanded", String(visible));
+    tryButton.setAttribute("aria-pressed", String(visible));
+    tryButton.textContent = visible
+      ? root.dataset.returnLabel
+      : root.dataset.tryLabel;
   }
 
   function fail(label, error) {
@@ -105,14 +106,11 @@ export function mountGoBoard(root, dependencies = {}) {
     setTryControlsVisible(trying);
     previous.disabled = current.parent === null;
     next.disabled = current.children.length === 0;
-    tryButton.disabled = trying;
-    returnButton.disabled = !trying && current === authoredTarget;
     moveOutput.textContent = formatMove(
       root.dataset.moveTemplate,
       current.moveNumber,
     );
     noteText.textContent = current.comment || "";
-    note.hidden = !current.comment;
     renderVariations(current, trying);
   }
 
@@ -135,7 +133,11 @@ export function mountGoBoard(root, dependencies = {}) {
       const label = String.fromCharCode("A".charCodeAt(0) + (index % 26));
       const control = root.ownerDocument.createElement("button");
       control.type = "button";
-      control.textContent = root.dataset.variationTemplate.replace("{label}", label);
+      control.textContent = label;
+      control.setAttribute(
+        "aria-label",
+        root.dataset.variationTemplate.replace("{label}", label),
+      );
       control.setAttribute("aria-pressed", String(choice === selected));
       control.addEventListener("click", () => {
         editor.setCurrent(choice);
@@ -156,61 +158,76 @@ export function mountGoBoard(root, dependencies = {}) {
     }
   }
 
-  function makeOption(value, label) {
-    const option = root.ownerDocument.createElement("option");
-    option.value = String(value);
-    option.textContent = label;
-    return option;
-  }
-
-  function populateTryCoordinates(size) {
+  function parsePoint(text, size) {
     const coordinates = besogo.coord.western(size.x, size.y);
-    const columns = [makeOption("", root.dataset.columnPlaceholder)];
-    const rows = [makeOption("", root.dataset.rowPlaceholder)];
-    for (let x = 1; x <= size.x; x += 1) {
-      columns.push(makeOption(x, coordinates.x[x]));
+    const match = /^([A-Za-z])\s*([0-9]{1,2})$/.exec(String(text).trim());
+    if (!match) return null;
+    const column = match[1].toUpperCase();
+    const row = String(Number(match[2]));
+    let x = 0;
+    let y = 0;
+    for (let index = 1; index <= size.x; index += 1) {
+      if (coordinates.x[index] === column) x = index;
     }
-    for (let y = 1; y <= size.y; y += 1) {
-      rows.push(makeOption(y, coordinates.y[y]));
+    for (let index = 1; index <= size.y; index += 1) {
+      if (coordinates.y[index] === row) y = index;
     }
-    tryColumn.replaceChildren(...columns);
-    tryRow.replaceChildren(...rows);
+    if (!x || !y) return null;
+    return { x, y, label: `${coordinates.x[x]}${coordinates.y[y]}` };
   }
 
-  function playSelectedPoint() {
+  function playTryPoint() {
     if (editor.getTool() !== "auto") return;
-    if (!tryColumn.value || !tryRow.value) {
+    if (!tryPoint.value.trim()) {
       tryStatus.textContent = root.dataset.pointRequiredLabel;
       return;
     }
 
-    const x = Number(tryColumn.value);
-    const y = Number(tryRow.value);
     const size = editor.getRoot().getSize();
-    if (!Number.isSafeInteger(x) || !Number.isSafeInteger(y)
-        || x < 1 || x > size.x || y < 1 || y > size.y) {
+    const point = parsePoint(tryPoint.value, size);
+    if (!point) {
       tryStatus.textContent = root.dataset.pointUnavailableLabel;
       return;
     }
 
     const before = editor.getCurrent();
     const beforeMove = before.move;
-    editor.click(x, y, false, false);
+    editor.click(point.x, point.y, false, false);
     const after = editor.getCurrent();
     if (after === before && after.move === beforeMove) {
       tryStatus.textContent = root.dataset.pointUnavailableLabel;
       return;
     }
 
-    const coordinates = besogo.coord.western(size.x, size.y);
-    const label = `${coordinates.x[x]}${coordinates.y[y]}`;
     tryStatus.textContent = root.dataset.pointPlayedTemplate.replace(
       "{coordinate}",
-      label,
+      point.label,
     );
-    tryColumn.value = "";
-    tryRow.value = "";
-    tryColumn.focus();
+    tryPoint.value = "";
+    tryPoint.focus();
+  }
+
+  function handleBoardKey(event) {
+    switch (event.key) {
+      case "ArrowLeft":
+        editor.prevNode(1);
+        break;
+      case "ArrowRight":
+        editor.nextNode(1);
+        break;
+      case "Home":
+        editor.setCurrent(authoredTarget);
+        break;
+      case "End": {
+        let node = editor.getCurrent();
+        while (node.children.length > 0) node = node.children[0];
+        editor.setCurrent(node);
+        break;
+      }
+      default:
+        return;
+    }
+    event.preventDefault();
   }
 
   async function initialize() {
@@ -244,20 +261,17 @@ export function mountGoBoard(root, dependencies = {}) {
     try {
       besogo.create(host, {
         size: `${size.x}:${size.y}`,
-        panels: [],
         tool: "navOnly",
         variants: 0,
         coord: "western",
-        nowheel: true,
-        resize: "none",
         realstones: false,
         shadows: "off",
+        nokeys: true,
       });
       editor = host.besogoEditor;
       loadSgfForReader({ besogo, editor, sgf: parsed });
       authoredTarget = selectAuthoredNode(editor.getRoot(), selector);
       editor.setCurrent(authoredTarget);
-      populateTryCoordinates(size);
     } catch (error) {
       fail(root.dataset.parseErrorLabel, error);
       return;
@@ -270,42 +284,47 @@ export function mountGoBoard(root, dependencies = {}) {
     }
 
     editor.addListener(sync);
+    host.setAttribute("tabindex", "0");
+    host.addEventListener("keydown", handleBoardKey);
     previous.addEventListener("click", () => editor.prevNode(1));
     next.addEventListener("click", () => editor.nextNode(1));
+    tryPoint.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      playTryPoint();
+    });
     tryButton.addEventListener("click", () => {
+      if (editor.getTool() === "auto") {
+        try {
+          authoredTarget = reloadPristine({
+            editor,
+            sgfText: pristineSgf,
+            selector,
+            besogo,
+            restorePath: tryOrigin,
+          });
+          tryOrigin = null;
+          resetTryEntry();
+          setTryControlsVisible(false);
+          status.textContent = root.dataset.returnedLabel;
+          status.dataset.state = "ready";
+          root.dataset.state = "ready";
+          sync();
+        } catch (error) {
+          fail(root.dataset.parseErrorLabel, error);
+        }
+        return;
+      }
+      tryOrigin = nodeIndexPath(editor.getRoot(), editor.getCurrent());
       resetTryEntry();
       editor.setTool("auto");
-      tryButton.disabled = true;
-      returnButton.disabled = false;
       status.textContent = root.dataset.tryReadyLabel;
       status.dataset.state = "ready";
       root.dataset.state = "trying";
-      tryColumn.focus();
-    });
-    playMoveButton.addEventListener("click", playSelectedPoint);
-    returnButton.addEventListener("click", () => {
-      try {
-        authoredTarget = reloadPristine({
-          editor,
-          sgfText: pristineSgf,
-          selector,
-          besogo,
-        });
-        resetTryEntry();
-        setTryControlsVisible(false);
-        tryButton.disabled = false;
-        returnButton.disabled = true;
-        status.textContent = root.dataset.returnedLabel;
-        status.dataset.state = "ready";
-        root.dataset.state = "ready";
-        sync();
-      } catch (error) {
-        fail(root.dataset.parseErrorLabel, error);
-      }
+      tryPoint.focus();
     });
 
     tryButton.disabled = false;
-    returnButton.disabled = true;
     status.textContent = root.dataset.readyLabel;
     status.dataset.state = "ready";
     root.dataset.state = "ready";
